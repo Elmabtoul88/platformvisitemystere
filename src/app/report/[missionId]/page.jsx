@@ -1,3 +1,5 @@
+'use server'; // Mark functions within this file that need server context
+
 import { ReportSubmissionForm } from '@/components/report-submission-form';
 import { mockMissions, mockUser } from '@/lib/mock-data'; // Using mock data
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
@@ -5,32 +7,16 @@ import { ArrowLeft, FileWarning } from "lucide-react";
 import Link from 'next/link';
 import { Button } from '@/components/ui/button';
 import { Toaster } from '@/components/ui/toaster'; // Import Toaster
-
+import { submitReport } from '@/app/actions/report-actions'; // Import the server action
 
 // Simulate fetching mission data based on ID
+// This remains a server-side function
 async function getMissionData(missionId) {
   // In a real app, fetch from your backend API
   console.log(`Fetching data for mission: ${missionId}`);
   await new Promise(resolve => setTimeout(resolve, 100)); // Simulate network delay
   const mission = mockMissions.find(m => m.id === missionId);
   return mission || null;
-}
-
-// Simulate submitting report data
-async function submitReport(data, missionId, userId) {
-   // In a real app, send this data to your backend API
-  console.log(`Submitting report for mission ${missionId} by user ${userId}:`, data);
-  // Simulate network delay for submission
-  await new Promise(resolve => setTimeout(resolve, 1000));
-
-   // Simulate potential error
-   // if (Math.random() > 0.8) { // 20% chance of error
-   //   throw new Error("Simulated submission error");
-   // }
-
-  console.log("Report submission successful (simulated)");
-  // Add the submitted report to mock data (or update backend)
-   // Note: In a real app, the backend would handle report creation/update.
 }
 
 
@@ -78,12 +64,7 @@ export default async function ReportSubmissionPage({ params }) {
      );
    }
 
-
-  // Pass the submitReport function, binding the necessary IDs
-  const handleActualSubmit = async (data) => {
-     await submitReport(data, mission.id, mockUser.id); // Using mock user ID
-  };
-
+  // Pass the server action directly to the client component
   return (
     <main className="min-h-screen bg-background py-10 px-4">
        <div className="container mx-auto max-w-3xl">
@@ -92,7 +73,8 @@ export default async function ReportSubmissionPage({ params }) {
                  <ArrowLeft className="w-4 h-4 mr-1" /> Back to Missions
                </Link>
              </Button>
-            <ReportSubmissionForm mission={mission} onSubmit={handleActualSubmit} />
+            {/* Pass the imported server action as the onSubmit prop */}
+            <ReportSubmissionForm mission={mission} onSubmitAction={submitReport} />
         </div>
          <Toaster /> {/* Add Toaster here for this page's toasts */}
     </main>

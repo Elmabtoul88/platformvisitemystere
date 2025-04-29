@@ -21,8 +21,10 @@ import { useState } from "react";
 import Image from 'next/image';
 import { useRouter } from 'next/navigation';
 import { useToast } from "@/hooks/use-toast";
+import { mockUser } from '@/lib/mock-data'; // Still using mock user for now
 
-export function ReportSubmissionForm({ mission, onSubmit }) {
+// The component now receives the server action via `onSubmitAction` prop
+export function ReportSubmissionForm({ mission, onSubmitAction }) {
   const router = useRouter();
   const { toast } = useToast();
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -63,11 +65,15 @@ export function ReportSubmissionForm({ mission, onSubmit }) {
     }
   };
 
-  const handleSubmit = async (data) => {
+  // This function is called by react-hook-form's handleSubmit
+  const processSubmit = async (data) => {
     setIsSubmitting(true);
-    console.log("Submitting report:", data);
+    console.log("Submitting report data:", data);
     try {
-        await onSubmit(data); // Call the passed onSubmit function
+        // Call the server action passed as a prop
+        // Pass necessary IDs along with form data
+        await onSubmitAction(data, mission.id, mockUser.id);
+
         toast({
             title: "Report Submitted Successfully!",
             description: `Your report for "${mission.title}" has been submitted.`,
@@ -79,7 +85,7 @@ export function ReportSubmissionForm({ mission, onSubmit }) {
         console.error("Submission failed:", error);
         toast({
             title: "Submission Failed",
-            description: "Could not submit the report. Please try again.",
+            description: error.message || "Could not submit the report. Please try again.", // Show server action error message if available
             variant: "destructive",
           });
     } finally {
@@ -95,7 +101,8 @@ export function ReportSubmissionForm({ mission, onSubmit }) {
             <CardDescription>Complete the form below for mission ID: {mission.id}</CardDescription>
         </CardHeader>
         <Form {...form}>
-            <form onSubmit={form.handleSubmit(handleSubmit)} className="space-y-6">
+            {/* Use RHF's handleSubmit to trigger validation and then call processSubmit */}
+            <form onSubmit={form.handleSubmit(processSubmit)} className="space-y-6">
                 <CardContent className="space-y-4">
                 <FormField
                     control={form.control}
