@@ -5,9 +5,12 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Shield, Bell, Users, BarChart2, AlertCircle } from 'lucide-react'; // Import relevant icons
+import { Switch } from "@/components/ui/switch"; // Import Switch component
+import { Shield, Bell, Users, BarChart2, AlertCircle, Loader2, Save } from 'lucide-react'; // Import relevant icons and Loader2/Save
+import { useToast } from "@/hooks/use-toast"; // Import useToast
 
 export default function AdminSettingsPage() {
+  const { toast } = useToast(); // Initialize toast
 
   // Placeholder states and handlers for potential admin settings
   const [adminEmail, setAdminEmail] = React.useState('admin@example.com'); // Read-only usually
@@ -18,15 +21,19 @@ export default function AdminSettingsPage() {
   });
   const [isSaving, setIsSaving] = React.useState(false);
 
-  const handleNotificationToggle = (key) => {
-    setNotificationSettings(prev => ({ ...prev, [key]: !prev[key] }));
+  // Updated handler for ShadCN Switch component
+  const handleNotificationToggle = (key, checked) => {
+    setNotificationSettings(prev => ({ ...prev, [key]: checked }));
   };
 
   const handleSaveChanges = async () => {
     setIsSaving(true);
     console.log("Saving admin settings (simulated):", { notificationSettings });
     await new Promise(resolve => setTimeout(resolve, 1000));
-    alert("Admin settings saved (simulated)."); // Replace with toast
+    toast({ // Use toast for feedback
+        title: "Settings Saved",
+        description: "Admin settings have been updated (simulated).",
+    });
     setIsSaving(false);
   };
 
@@ -64,50 +71,47 @@ export default function AdminSettingsPage() {
             <CardDescription>Choose which system events trigger notifications for administrators.</CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
-             {/* Example Notification Toggles */}
+             {/* Example Notification Toggles using Switch component */}
              <div className="flex items-center justify-between space-x-2 p-3 rounded-md border bg-background">
-               <Label htmlFor="newUserSignup" className="flex flex-col space-y-1">
+               <Label htmlFor="newUserSignup" className="flex flex-col space-y-1 flex-grow pr-4"> {/* Added flex-grow and padding */}
                  <span>New Shopper Signup</span>
                  <span className="font-normal leading-snug text-muted-foreground text-xs">
                    Notify when a new shopper registers.
                  </span>
                </Label>
-               {/* Replace with ShadCN Switch component */}
-               <input
-                  type="checkbox"
+               <Switch
                   id="newUserSignup"
                   checked={notificationSettings.newUserSignup}
-                  onChange={() => handleNotificationToggle('newUserSignup')}
+                  onCheckedChange={(checked) => handleNotificationToggle('newUserSignup', checked)} // Pass key and checked value
+                  aria-label="Toggle new shopper signup notifications"
                 />
              </div>
              <div className="flex items-center justify-between space-x-2 p-3 rounded-md border bg-background">
-               <Label htmlFor="reportSubmitted" className="flex flex-col space-y-1">
+               <Label htmlFor="reportSubmitted" className="flex flex-col space-y-1 flex-grow pr-4"> {/* Added flex-grow and padding */}
                  <span>Mission Report Submitted</span>
                  <span className="font-normal leading-snug text-muted-foreground text-xs">
                     Notify when a shopper submits a report for review.
                  </span>
                </Label>
-                {/* Replace with ShadCN Switch component */}
-               <input
-                  type="checkbox"
+                <Switch
                   id="reportSubmitted"
                   checked={notificationSettings.reportSubmitted}
-                  onChange={() => handleNotificationToggle('reportSubmitted')}
+                  onCheckedChange={(checked) => handleNotificationToggle('reportSubmitted', checked)} // Pass key and checked value
+                  aria-label="Toggle report submitted notifications"
                 />
              </div>
              <div className="flex items-center justify-between space-x-2 p-3 rounded-md border bg-background">
-               <Label htmlFor="missionExpiringSoon" className="flex flex-col space-y-1">
+               <Label htmlFor="missionExpiringSoon" className="flex flex-col space-y-1 flex-grow pr-4"> {/* Added flex-grow and padding */}
                  <span>Mission Deadline Approaching</span>
                   <span className="font-normal leading-snug text-muted-foreground text-xs">
                     Notify about missions nearing their deadline without reports.
                  </span>
                </Label>
-                {/* Replace with ShadCN Switch component */}
-                <input
-                  type="checkbox"
+                <Switch
                   id="missionExpiringSoon"
                   checked={notificationSettings.missionExpiringSoon}
-                  onChange={() => handleNotificationToggle('missionExpiringSoon')}
+                  onCheckedChange={(checked) => handleNotificationToggle('missionExpiringSoon', checked)} // Pass key and checked value
+                  aria-label="Toggle mission expiring soon notifications"
                 />
              </div>
           </CardContent>
@@ -132,7 +136,15 @@ export default function AdminSettingsPage() {
          {/* Save Button */}
          <div className="flex justify-end pt-4">
            <Button onClick={handleSaveChanges} disabled={isSaving}>
-             {isSaving ? 'Saving...' : 'Save Admin Settings'}
+             {isSaving ? (
+                <>
+                    <Loader2 className="mr-2 h-4 w-4 animate-spin" /> Saving...
+                </>
+             ) : (
+                <>
+                    <Save className="w-4 h-4 mr-2"/> Save Admin Settings
+                </>
+             )}
            </Button>
          </div>
       </div>
