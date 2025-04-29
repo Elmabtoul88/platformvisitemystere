@@ -8,7 +8,7 @@ import Link from 'next/link';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from "@/components/ui/card"; // Added Card components
 import { Toaster } from '@/components/ui/toaster'; // Import Toaster
-import { submitReport } from '../../actions/report-actions.js'; // Corrected path
+import { submitReport } from '@/app/actions/report-actions.js'; // Import the server action
 
 // Simulate fetching mission data based on ID
 // This remains a server-side function
@@ -58,12 +58,23 @@ export default async function ReportSubmissionPage({ params }) {
    // Check if the mission is assigned to the current user and allows submission
    // Handles both single string and array for assignedTo
    const isAssignedToUser = Array.isArray(mission.assignedTo)
-        ? mission.assignedTo.includes(mockUser.id)
-        : mission.assignedTo === mockUser.id;
+        ? mission.assignedTo.includes(mockUser.id) // Use the imported mockUser's ID
+        : mission.assignedTo === mockUser.id; // Use the imported mockUser's ID
 
+   // Corrected logic: canSubmit should be true if status is 'assigned' or 'submitted' AND assigned to the current user
    const canSubmit = (mission.status === 'assigned' || mission.status === 'submitted') && isAssignedToUser;
 
+   console.log("--- Report Page Debug ---");
+   console.log("Mission ID:", missionId);
+   console.log("Mission Status:", mission.status);
+   console.log("Assigned To (Mission Data):", mission.assignedTo);
+   console.log("Current Mock User ID:", mockUser.id);
+   console.log("Is Assigned To User:", isAssignedToUser);
+   console.log("Can Submit Report:", canSubmit);
+   console.log("-------------------------");
 
+
+   // If the user *cannot* submit, show the error message.
    if (!canSubmit) {
      return (
         <div className="container mx-auto py-16 px-4 flex flex-col items-center text-center">
@@ -106,6 +117,7 @@ export default async function ReportSubmissionPage({ params }) {
      );
    }
 
+  // If canSubmit is true, render the form
   // Pass the server action AND survey questions to the client component
   return (
     <main className="min-h-screen bg-background py-10 px-4">
