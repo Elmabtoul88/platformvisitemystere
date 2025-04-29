@@ -23,7 +23,8 @@ const generateMockUsers = (count) => {
             cvUrl: i % 6 === 0 ? `/mock-cv/cv_${userId}.pdf` : null, // More CVs
             birthYear: 1980 + (i % 25), // Wider age range
             gender: ['female', 'male', 'other', 'prefer_not_say'][i % 4], // Cycle genders
-            registrationDate: new Date(Date.now() - (i * 3 + 1) * 24 * 60 * 60 * 1000), // Simulate varied registration dates
+             // Simulate varied registration dates over the last year (approx)
+             registrationDate: new Date(Date.now() - Math.floor(Math.random() * 365 + 1) * 24 * 60 * 60 * 1000),
             completedMissions: Math.floor(Math.random() * 35), // Wider mission count range
         });
         usedIds.add(userId);
@@ -39,7 +40,8 @@ const generateMockUsers = (count) => {
             email: 'alex@example.com', // Ensure email is set
             status: 'active',
             telephone: '+1-555-123-4567', // Example phone for Alex
-            registrationDate: new Date(Date.now() - 35 * 24 * 60 * 60 * 1000),
+            // Make Alex's registration date more recent for variety
+            registrationDate: new Date(Date.now() - 15 * 24 * 60 * 60 * 1000),
             completedMissions: 7,
         });
         usedIds.add(alexUserId);
