@@ -1,6 +1,7 @@
+
 "use client";
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -8,10 +9,18 @@ import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
 import { useToast } from "@/hooks/use-toast";
 import { mockUser } from "@/lib/mock-data"; // Using mock user data
-import { ArrowLeft, User, Bell, Save, Camera } from 'lucide-react';
+import { ArrowLeft, User, Bell, Save, Camera, Moon, Sun, Share2, Linkedin, Facebook } from 'lucide-react'; // Added Moon, Sun, Share2, Linkedin, Facebook
 import Link from 'next/link';
-import Image from 'next/image'; // Import next/image
-import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'; // Import Avatar components
+import Image from 'next/image';
+import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
+
+// Define Twitter icon SVG as it's not directly in lucide-react
+const TwitterIcon = (props) => (
+    <svg viewBox="0 0 24 24" fill="currentColor" {...props}>
+        <path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z" />
+    </svg>
+);
+
 
 export default function SettingsPage() {
   const { toast } = useToast();
@@ -26,7 +35,33 @@ export default function SettingsPage() {
     deadlineReminderEmail: false,
     reportStatusPush: true,
   });
-   const [isSaving, setIsSaving] = useState(false);
+  const [isSaving, setIsSaving] = useState(false);
+  const [isDarkMode, setIsDarkMode] = useState(false); // State for dark mode
+
+  // Effect to check initial theme preference
+  useEffect(() => {
+    const storedTheme = localStorage.getItem('theme');
+    const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+    setIsDarkMode(storedTheme === 'dark' || (!storedTheme && prefersDark));
+  }, []);
+
+  // Handle dark mode toggle
+  const handleThemeChange = (checked) => {
+    setIsDarkMode(checked);
+    const newTheme = checked ? 'dark' : 'light';
+    localStorage.setItem('theme', newTheme); // Persist preference
+    if (checked) {
+      document.documentElement.classList.add('dark');
+    } else {
+      document.documentElement.classList.remove('dark');
+    }
+     // Dispatch storage event manually to ensure layout updates immediately
+    window.dispatchEvent(new StorageEvent('storage', { key: 'theme', newValue: newTheme }));
+    toast({
+      title: `Theme Changed`,
+      description: `Switched to ${checked ? 'Dark' : 'Light'} Mode.`,
+    });
+  };
 
   // Handle changes in notification switches
   const handleNotificationChange = (id, checked) => {
@@ -46,14 +81,11 @@ export default function SettingsPage() {
 
       // 2. Simulate Upload & Get URL (replace with actual upload logic)
       console.log("Simulating profile picture upload...");
-      // Simulate network delay
       await new Promise(resolve => setTimeout(resolve, 1500));
-      // In a real app, upload 'file' to your storage (e.g., Firebase Storage)
-      // and get the actual downloadable URL.
-      const placeholderUrl = `https://picsum.photos/seed/${mockUser.id}-${Date.now()}/100/100`; // New random URL for simulation
+      const placeholderUrl = `https://picsum.photos/seed/${mockUser.id}-${Date.now()}/100/100`;
       console.log("Simulated upload complete. New URL:", placeholderUrl);
 
-      // 3. Update State (use the actual URL from upload in real app)
+      // 3. Update State
       setUserProfile(prev => ({ ...prev, profilePicUrl: placeholderUrl }));
       toast({ title: "Profile Picture Updated (Simulated)" });
     }
@@ -62,18 +94,38 @@ export default function SettingsPage() {
   // Simulate saving settings
   const handleSaveChanges = async () => {
     setIsSaving(true);
-    console.log("Saving settings (simulated):", { userProfile, notifications });
-    // Simulate network delay
+    console.log("Saving settings (simulated):", { userProfile, notifications, isDarkMode });
     await new Promise(resolve => setTimeout(resolve, 1000));
 
     toast({
       title: "Settings Saved",
       description: "Your preferences have been updated (simulated).",
     });
-    // In a real app, you would make an API call here to persist the changes
-    // This would include the updated userProfile.profilePicUrl if changed
     setIsSaving(false);
   };
+
+   // Handle social media share
+  const handleShare = (platform) => {
+    const profileUrl = window.location.origin; // Use base URL as placeholder
+    const text = `Check out my MissionView profile!`;
+    let shareUrl = '';
+
+    switch (platform) {
+      case 'twitter':
+        shareUrl = `https://twitter.com/intent/tweet?url=${encodeURIComponent(profileUrl)}&text=${encodeURIComponent(text)}`;
+        break;
+      case 'facebook':
+        shareUrl = `https://www.facebook.com/sharer/sharer.php?u=${encodeURIComponent(profileUrl)}&quote=${encodeURIComponent(text)}`;
+        break;
+      case 'linkedin':
+        shareUrl = `https://www.linkedin.com/sharing/share-offsite/?url=${encodeURIComponent(profileUrl)}`;
+        break;
+      default:
+        return;
+    }
+    window.open(shareUrl, '_blank', 'noopener,noreferrer');
+  };
+
 
   return (
     <div className="container mx-auto py-8 px-4 max-w-3xl">
@@ -84,7 +136,7 @@ export default function SettingsPage() {
        </Button>
 
       <h1 className="text-2xl font-bold mb-6 text-primary flex items-center gap-2">
-        <User className="w-6 h-6" /> My Settings
+        <Settings className="w-6 h-6" /> My Settings
       </h1>
 
       <div className="space-y-8">
@@ -121,8 +173,6 @@ export default function SettingsPage() {
                       Change Photo
                     </Label>
                   </Button>
-                   {/* Optional: Add a remove photo button */}
-                   {/* <Button variant="ghost" size="sm" onClick={() => {/* Remove logic * /}}>Remove</Button> */}
                 </div>
                  <p className="text-xs text-muted-foreground">Upload a new profile picture (JPG, PNG).</p>
               </div>
@@ -134,9 +184,7 @@ export default function SettingsPage() {
               <Input
                 id="name"
                 value={userProfile.name}
-                // You might allow changing the name here if needed
-                // onChange={(e) => setUserProfile(prev => ({ ...prev, name: e.target.value }))}
-                readOnly // For this example, keep it read-only
+                readOnly
                 className="bg-secondary/50 cursor-not-allowed"
               />
             </div>
@@ -151,11 +199,36 @@ export default function SettingsPage() {
               />
                <p className="text-xs text-muted-foreground pt-1">Email is used for login and cannot be changed here.</p>
             </div>
-
-            {/* Add Change Password button/section if needed */}
              <Button variant="outline" size="sm" disabled>Change Password (Coming Soon)</Button>
           </CardContent>
         </Card>
+
+         {/* Appearance Section */}
+        <Card className="shadow-sm">
+          <CardHeader>
+             <CardTitle className="text-lg font-medium flex items-center gap-2">
+                 {isDarkMode ? <Moon className="w-5 h-5 text-primary"/> : <Sun className="w-5 h-5 text-primary"/>} Appearance
+            </CardTitle>
+            <CardDescription>Customize the look and feel of the app.</CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <div className="flex items-center justify-between space-x-2 p-3 rounded-md border bg-background">
+              <Label htmlFor="dark-mode" className="flex flex-col space-y-1">
+                <span>Dark Mode</span>
+                <span className="font-normal leading-snug text-muted-foreground text-xs">
+                  Enable dark theme for reduced eye strain.
+                </span>
+              </Label>
+              <Switch
+                id="dark-mode"
+                checked={isDarkMode}
+                onCheckedChange={handleThemeChange}
+                aria-label="Toggle dark mode"
+              />
+            </div>
+          </CardContent>
+        </Card>
+
 
         {/* Notification Settings Section */}
         <Card className="shadow-sm">
@@ -166,7 +239,8 @@ export default function SettingsPage() {
             <CardDescription>Choose how you want to be notified about mission updates.</CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
-            <div className="flex items-center justify-between space-x-2 p-3 rounded-md border bg-background">
+            {/* Notification items remain the same */}
+             <div className="flex items-center justify-between space-x-2 p-3 rounded-md border bg-background">
               <Label htmlFor="new-mission-email" className="flex flex-col space-y-1">
                 <span>New Mission Alerts (Email)</span>
                 <span className="font-normal leading-snug text-muted-foreground text-xs">
@@ -211,7 +285,34 @@ export default function SettingsPage() {
           </CardContent>
         </Card>
 
-         {/* Add more settings sections as needed (Appearance, Location, etc.) */}
+         {/* Share Profile Section */}
+        <Card className="shadow-sm">
+          <CardHeader>
+            <CardTitle className="text-lg font-medium flex items-center gap-2">
+              <Share2 className="w-5 h-5 text-primary" /> Share Your Profile
+            </CardTitle>
+            <CardDescription>Let others know about your mystery shopping activities.</CardDescription>
+          </CardHeader>
+          <CardContent className="flex items-center justify-start gap-3">
+            <Button variant="outline" size="icon" onClick={() => handleShare('twitter')} aria-label="Share on Twitter">
+              <TwitterIcon className="w-5 h-5" />
+            </Button>
+            <Button variant="outline" size="icon" onClick={() => handleShare('facebook')} aria-label="Share on Facebook">
+              <Facebook className="w-5 h-5" />
+            </Button>
+             <Button variant="outline" size="icon" onClick={() => handleShare('linkedin')} aria-label="Share on LinkedIn">
+              <Linkedin className="w-5 h-5" />
+            </Button>
+            {/* Add more platforms like WhatsApp, Email etc. if needed */}
+             <Button variant="link" size="sm" onClick={() => {
+                  navigator.clipboard.writeText(window.location.origin); // Copy base URL
+                  toast({ title: 'Profile Link Copied!'});
+              }}>
+                Copy Link
+             </Button>
+          </CardContent>
+        </Card>
+
 
          {/* Save Button */}
          <div className="flex justify-end pt-4">

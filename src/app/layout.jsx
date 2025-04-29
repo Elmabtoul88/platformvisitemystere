@@ -1,9 +1,12 @@
+'use client'; // Add 'use client' for useEffect and useState
+
 import { Geist, Geist_Mono } from 'next/font/google';
 import './globals.css';
 import Link from 'next/link';
 import { Button } from '@/components/ui/button';
-import { Home, ListChecks, CheckSquare } from 'lucide-react'; // Removed User icon, it's in ProfileMenu now
-import { ProfileMenu } from '@/components/profile-menu'; // Import the new ProfileMenu component
+import { Home, ListChecks, CheckSquare } from 'lucide-react';
+import { ProfileMenu } from '@/components/profile-menu';
+import React, { useEffect, useState } from 'react'; // Import useEffect and useState
 
 const geistSans = Geist({
   variable: '--font-geist-sans',
@@ -15,17 +18,66 @@ const geistMono = Geist_Mono({
   subsets: ['latin'],
 });
 
-export const metadata = {
-  title: 'MissionView App', // Updated title
-  description: 'Manage your mystery shopper missions.', // Updated description
-};
+// Metadata cannot be exported from client components, move it to a server component if needed or manage dynamically
+// export const metadata = {
+//   title: 'MissionView App',
+//   description: 'Manage your mystery shopper missions.',
+// };
 
 export default function RootLayout({
   children,
 }) {
+  const [isDarkMode, setIsDarkMode] = useState(false);
+
+  useEffect(() => {
+    // Check localStorage for theme preference on initial client load
+    const storedTheme = localStorage.getItem('theme');
+    const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+    const initialDarkMode = storedTheme === 'dark' || (!storedTheme && prefersDark);
+
+    setIsDarkMode(initialDarkMode);
+
+    // Apply the theme class to the html element
+    if (initialDarkMode) {
+      document.documentElement.classList.add('dark');
+    } else {
+      document.documentElement.classList.remove('dark');
+    }
+
+    // Add listener for changes in theme preference in localStorage (e.g., from settings page)
+    const handleStorageChange = (event) => {
+      if (event.key === 'theme') {
+        const newTheme = event.newValue;
+        setIsDarkMode(newTheme === 'dark');
+        if (newTheme === 'dark') {
+          document.documentElement.classList.add('dark');
+        } else {
+          document.documentElement.classList.remove('dark');
+        }
+      }
+    };
+
+    window.addEventListener('storage', handleStorageChange);
+
+    return () => {
+      window.removeEventListener('storage', handleStorageChange);
+    };
+  }, []);
+
+
+  // Use 'useEffect' to set the title dynamically if needed since metadata can't be static here
+   useEffect(() => {
+     document.title = 'MissionView App';
+   }, []);
+
   return (
-    <html lang="en">
-      <body className={`${geistSans.variable} ${geistMono.variable} antialiased flex flex-col min-h-screen`}>
+    // Apply the 'dark' class conditionally based on state
+    <html lang="en" className={isDarkMode ? 'dark' : ''}>
+      <head>
+         {/* Add description meta tag manually if needed */}
+         <meta name="description" content="Manage your mystery shopper missions." />
+      </head>
+      <body className={`${geistSans.variable} ${geistMono.variable} antialiased flex flex-col min-h-screen bg-background text-foreground transition-colors duration-200`}>
         <header className="sticky top-0 z-50 w-full border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60 shadow-sm">
           <nav className="container flex h-14 items-center justify-between px-4">
             <Link href="/" className="flex items-center gap-2 font-bold text-primary">
@@ -51,7 +103,6 @@ export default function RootLayout({
                    <CheckSquare className="w-4 h-4" /> Completed
                  </Link>
                </Button>
-               {/* Replace static button with ProfileMenu component */}
                <ProfileMenu />
             </div>
           </nav>
