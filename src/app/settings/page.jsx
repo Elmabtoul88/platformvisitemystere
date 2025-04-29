@@ -9,7 +9,7 @@ import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
 import { useToast } from "@/hooks/use-toast";
 import { mockUser } from "@/lib/mock-data"; // Using mock user data
-import { ArrowLeft, User, Bell, Save, Camera, Moon, Sun, Share2, Linkedin, Facebook } from 'lucide-react'; // Added Moon, Sun, Share2, Linkedin, Facebook
+import { ArrowLeft, User, Bell, Save, Camera, Moon, Sun, Share2, Linkedin, Facebook, Settings } from 'lucide-react'; // Added Settings icon
 import Link from 'next/link';
 import Image from 'next/image';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
@@ -42,7 +42,8 @@ export default function SettingsPage() {
   useEffect(() => {
     const storedTheme = localStorage.getItem('theme');
     const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
-    setIsDarkMode(storedTheme === 'dark' || (!storedTheme && prefersDark));
+    const initialDarkMode = storedTheme === 'dark' || (!storedTheme && prefersDark);
+    setIsDarkMode(initialDarkMode);
   }, []);
 
   // Handle dark mode toggle
