@@ -14,7 +14,7 @@ import { useAuth } from '@/context/auth-context'; // Import useAuth
 export default function SignUpPage() {
   const { toast } = useToast();
   const router = useRouter();
-   const { isAuthenticated, isLoading } = useAuth(); // Use auth context
+   const { isAuthenticated, setAuthState, isLoading, userRole } = useAuth(); // Use auth context, get setAuthState
   const [completeName, setCompleteName] = useState('');
   const [email, setEmail] = useState('');
   const [telephone, setTelephone] = useState('');
@@ -24,12 +24,17 @@ export default function SignUpPage() {
 
    // Redirect if already authenticated
    useEffect(() => {
-      // Check isLoading first to avoid premature redirect
-      if (!isLoading && isAuthenticated) {
-          console.log("Already authenticated, redirecting from signup...");
-          router.push('/'); // Redirect to home or dashboard
-      }
-  }, [isAuthenticated, isLoading, router]);
+      // Redirect logic based on role (similar to login page)
+       if (!isLoading && isAuthenticated) {
+         if (userRole === 'admin') {
+           router.push('/admin');
+         } else if (userRole === 'shopper') {
+           router.push('/');
+         } else {
+           router.push('/login'); // Fallback
+         }
+       }
+  }, [isAuthenticated, isLoading, userRole, router]);
 
   const handleSignUp = async (event) => {
     event.preventDefault();
@@ -57,16 +62,23 @@ export default function SignUpPage() {
       return;
     }
 
+     // Basic email and password validation
     if (email.includes('@') && password.length >= 6) {
+       // Simulate backend call
        await new Promise(resolve => setTimeout(resolve, 1500));
       console.log("Sign up successful (simulated)");
+      // Important: DO NOT set auth state here. User needs to log in.
+      // setAuthState(true, 'shopper'); // REMOVED - User should log in after signing up
+
       toast({
         title: "Sign Up Successful",
-        description: "Account created! You can now log in.",
+        description: "Account created! Please log in.",
       });
+      // Ensure auth state is cleared locally before redirecting to login, just in case
+       setAuthState(false, null);
       router.push('/login');
     } else {
-      console.error("Sign up failed (simulated)");
+      console.error("Sign up failed (simulated) - invalid email or password length");
       toast({
         variant: "destructive",
         title: "Sign Up Failed",
@@ -80,8 +92,8 @@ export default function SignUpPage() {
    if (isLoading || (!isLoading && isAuthenticated)) {
       return (
          <div className="flex min-h-screen items-center justify-center bg-background p-4">
-           {/* Optional: Add a loading indicator if needed */}
-           <p>Loading...</p>
+           <Loader2 className="h-8 w-8 animate-spin text-primary" />
+           <span className="ml-2">Loading...</span>
          </div>
       );
     }
@@ -95,12 +107,12 @@ export default function SignUpPage() {
              <UserPlus className="h-6 w-6 text-primary" aria-hidden="true" />
            </div>
           <CardTitle className="text-2xl font-bold">Create Account</CardTitle>
-          <CardDescription>Enter your details to sign up.</CardDescription>
+          <CardDescription>Enter your details to sign up as a shopper.</CardDescription>
         </CardHeader>
         <form onSubmit={handleSignUp}>
           <CardContent className="space-y-4">
             <div className="space-y-2">
-              <Label htmlFor="completeName" className="flex items-center gap-1"> <UserIcon className="w-3 h-3"/> Complete Name</Label>
+              <Label htmlFor="completeName" className="flex items-center gap-1"> <UserIcon className="w-3 h-3"/> Complete Name *</Label>
               <Input
                 id="completeName"
                 type="text"
@@ -112,7 +124,7 @@ export default function SignUpPage() {
               />
             </div>
             <div className="space-y-2">
-              <Label htmlFor="email">Email</Label>
+              <Label htmlFor="email">Email *</Label>
               <Input
                 id="email"
                 type="email"
@@ -135,11 +147,11 @@ export default function SignUpPage() {
               />
             </div>
             <div className="space-y-2">
-                <Label htmlFor="password">Password</Label>
+                <Label htmlFor="password">Password *</Label>
               <Input
                 id="password"
                 type="password"
-                placeholder="********"
+                placeholder="******** (min. 6 characters)"
                 required
                 minLength={6}
                 value={password}
@@ -148,7 +160,7 @@ export default function SignUpPage() {
               />
             </div>
              <div className="space-y-2">
-                <Label htmlFor="confirm-password">Confirm Password</Label>
+                <Label htmlFor="confirm-password">Confirm Password *</Label>
               <Input
                 id="confirm-password"
                 type="password"
@@ -185,3 +197,4 @@ export default function SignUpPage() {
     </div>
   );
 }
+```

@@ -4,7 +4,7 @@ import { Geist, Geist_Mono } from 'next/font/google';
 import './globals.css';
 import Link from 'next/link';
 import { Button } from '@/components/ui/button';
-import { Home, ListChecks, CheckSquare, LogIn } from 'lucide-react'; // Added LogIn
+import { Home, ListChecks, CheckSquare, LogIn, Shield, Users, Settings as SettingsIcon } from 'lucide-react'; // Added Admin icons
 import { ProfileMenu } from '@/components/profile-menu';
 import React, { useEffect, useState } from 'react';
 import { AuthProvider, useAuth } from '@/context/auth-context'; // Import AuthProvider and useAuth
@@ -23,13 +23,13 @@ const geistMono = Geist_Mono({
 
 // Component responsible for layout structure and conditional rendering
 function AppLayout({ children }) {
-  const { isAuthenticated, isLoading } = useAuth(); // Get auth state and loading status
+  const { isAuthenticated, userRole, isLoading } = useAuth(); // Get auth state, role, and loading status
   const pathname = usePathname();
   const router = useRouter();
   const [isDarkMode, setIsDarkMode] = useState(false);
 
-  // Theme handling effect
-  useEffect(() => {
+  // --- Theme handling (unchanged) ---
+   useEffect(() => {
     const storedTheme = localStorage.getItem('theme');
     const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
     const initialDarkMode = storedTheme === 'dark' || (!storedTheme && prefersDark);
@@ -60,46 +60,78 @@ function AppLayout({ children }) {
     };
   }, []);
 
-  // Route protection effect
+  // --- Route protection effect ---
   useEffect(() => {
-    // Don't run protection logic until auth state is determined
     if (isLoading) {
-      return;
+      return; // Wait until auth status and role are determined
     }
 
     const isPublicRoute = pathname === '/login' || pathname === '/signup';
+    const isAdminRoute = pathname.startsWith('/admin');
+    const isShopperRoute = !isPublicRoute && !isAdminRoute; // Routes other than public and admin
 
-    // If not authenticated and trying to access a protected route, redirect to login
-    if (!isAuthenticated && !isPublicRoute) {
-      router.push('/login');
+    console.log(`Route Protection Check: Path=${pathname}, IsAuth=${isAuthenticated}, Role=${userRole}, IsLoading=${isLoading}, IsAdminRoute=${isAdminRoute}, IsShopperRoute=${isShopperRoute}`);
+
+    if (!isAuthenticated) {
+      // If not authenticated, allow only public routes
+      if (!isPublicRoute) {
+        console.log("Redirecting unauthenticated user to /login");
+        router.push('/login');
+      }
+    } else {
+      // If authenticated...
+      if (userRole === 'admin') {
+        // Allow access to admin routes, redirect from non-admin routes (except potentially settings, chat?)
+         if (isShopperRoute && pathname !== '/settings' && pathname !=='/chat') { // Allow admin to access settings/chat
+             console.log("Redirecting admin from shopper route to /admin");
+             router.push('/admin');
+         } else if (isPublicRoute) {
+            console.log("Redirecting admin from public route to /admin");
+             router.push('/admin');
+         }
+      } else if (userRole === 'shopper') {
+        // Allow access to shopper routes, redirect from admin routes
+        if (isAdminRoute) {
+          console.log("Redirecting shopper from admin route to /");
+          router.push('/');
+        } else if (isPublicRoute) {
+            console.log("Redirecting shopper from public route to /");
+            router.push('/');
+         }
+      } else {
+          // Authenticated but no role? Redirect to login to be safe
+          console.warn("Authenticated user has no role. Redirecting to /login.");
+          if (!isPublicRoute) {
+              router.push('/login');
+          }
+      }
     }
-  }, [isAuthenticated, isLoading, pathname, router]);
+  }, [isAuthenticated, userRole, isLoading, pathname, router]);
 
-  // Set document title
+  // --- Set document title (unchanged) ---
   useEffect(() => {
     document.title = 'MissionView App';
   }, []);
 
-  // Determine if header/nav should be shown
-  const showHeaderNav = isAuthenticated && pathname !== '/login' && pathname !== '/signup';
-  const showLoginButton = !isAuthenticated && pathname !== '/login' && pathname !== '/signup';
+  // --- Determine header/nav visibility ---
+  const isAuthPage = pathname === '/login' || pathname === '/signup';
+  const showHeaderNav = isAuthenticated && !isAuthPage;
+  const showLoginButton = !isAuthenticated && !isAuthPage;
 
-  // Show a loading state or null while authentication status is being determined
-  if (isLoading && pathname !== '/login' && pathname !== '/signup') {
-    // Optional: Add a loading spinner or skeleton screen here
+  // --- Loading state ---
+   if (isLoading) { // Show loading indicator if auth state is loading AND not on public pages
     return (
         <html lang="en" className={isDarkMode ? 'dark' : ''}>
            <head>
               <meta name="description" content="Manage your mystery shopper missions." />
            </head>
            <body className={`${geistSans.variable} ${geistMono.variable} antialiased flex flex-col min-h-screen bg-background text-foreground transition-colors duration-200 justify-center items-center`}>
-              {/* Basic Loading Indicator */}
               <div className="flex items-center space-x-2">
                   <svg className="animate-spin h-5 w-5 text-primary" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
                       <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
                       <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
                   </svg>
-                  <span>Loading...</span>
+                  <span>Loading Authentication...</span>
               </div>
               <Toaster />
            </body>
@@ -107,6 +139,9 @@ function AppLayout({ children }) {
     );
   }
 
+
+  // Determine home link based on role
+  const homeLink = isAuthenticated ? (userRole === 'admin' ? '/admin' : '/') : '/login';
 
   return (
     <html lang="en" className={isDarkMode ? 'dark' : ''}>
@@ -116,30 +151,55 @@ function AppLayout({ children }) {
       <body className={`${geistSans.variable} ${geistMono.variable} antialiased flex flex-col min-h-screen bg-background text-foreground transition-colors duration-200`}>
         <header className="sticky top-0 z-50 w-full border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60 shadow-sm">
           <nav className="container flex h-14 items-center justify-between px-4">
-            <Link href={isAuthenticated ? "/" : "/login"} className="flex items-center gap-2 font-bold text-primary">
+            {/* Logo links to appropriate dashboard or login */}
+            <Link href={homeLink} className="flex items-center gap-2 font-bold text-primary">
               <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" className="w-6 h-6">
                 <path fillRule="evenodd" d="M11.54 22.351l.07.04.028.016a.76.76 0 00.723 0l.028-.015.071-.041a16.975 16.975 0 001.144-.742 19.58 19.58 0 002.683-2.282c1.944-1.99 3.963-4.98 3.963-8.827a8.25 8.25 0 00-16.5 0c0 3.846 2.02 6.837 3.963 8.827a19.58 19.58 0 002.682 2.282 16.975 16.975 0 001.145.742zM12 13.5a3 3 0 100-6 3 3 0 000 6z" clipRule="evenodd" />
               </svg>
-              MissionView
+              MissionView {userRole === 'admin' && <span className="text-xs font-normal text-muted-foreground">(Admin)</span>}
             </Link>
+
             <div className="flex items-center gap-2">
-              {showHeaderNav && (
+              {showHeaderNav && userRole === 'shopper' && (
                 <>
-                  <Button variant="ghost" size="sm" asChild>
+                  {/* Shopper Navigation */}
+                  <Button variant={pathname === '/' ? "secondary" : "ghost"} size="sm" asChild>
                     <Link href="/" className="flex items-center gap-1">
                       <Home className="w-4 h-4" /> Available
                     </Link>
                   </Button>
-                  <Button variant="ghost" size="sm" asChild>
+                  <Button variant={pathname === '/missions/assigned' ? "secondary" : "ghost"} size="sm" asChild>
                     <Link href="/missions/assigned" className="flex items-center gap-1">
                       <ListChecks className="w-4 h-4" /> Assigned
                     </Link>
                   </Button>
-                  <Button variant="ghost" size="sm" asChild>
+                   <Button variant={pathname === '/missions/completed' ? "secondary" : "ghost"} size="sm" asChild>
                     <Link href="/missions/completed" className="flex items-center gap-1">
                       <CheckSquare className="w-4 h-4" /> Completed
                     </Link>
                   </Button>
+                  <ProfileMenu />
+                </>
+              )}
+               {showHeaderNav && userRole === 'admin' && (
+                <>
+                  {/* Admin Navigation */}
+                  <Button variant={pathname === '/admin' ? "secondary" : "ghost"} size="sm" asChild>
+                    <Link href="/admin" className="flex items-center gap-1">
+                      <Shield className="w-4 h-4" /> Dashboard
+                    </Link>
+                  </Button>
+                  <Button variant={pathname === '/admin/missions' ? "secondary" : "ghost"} size="sm" asChild>
+                    <Link href="/admin/missions" className="flex items-center gap-1">
+                      <ListChecks className="w-4 h-4" /> Manage Missions
+                    </Link>
+                  </Button>
+                  <Button variant={pathname === '/admin/users' ? "secondary" : "ghost"} size="sm" asChild>
+                    <Link href="/admin/users" className="flex items-center gap-1">
+                      <Users className="w-4 h-4" /> Manage Users
+                    </Link>
+                  </Button>
+                  {/* Admins can also access their own settings/chat via profile menu */}
                   <ProfileMenu />
                 </>
               )}
@@ -150,8 +210,8 @@ function AppLayout({ children }) {
                    </Link>
                  </Button>
                )}
-               {/* Login/Signup pages show minimal header */}
-                {(pathname === '/login' || pathname === '/signup') && !isAuthenticated && (
+               {/* Minimal header for Login/Signup */}
+                {isAuthPage && !isAuthenticated && (
                     <span className="text-sm text-muted-foreground">Welcome</span>
                 )}
             </div>

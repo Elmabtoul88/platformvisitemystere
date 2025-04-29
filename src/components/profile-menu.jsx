@@ -20,19 +20,18 @@ import { useAuth } from '@/context/auth-context'; // Import useAuth
 export function ProfileMenu() {
   const { toast } = useToast();
   const router = useRouter();
-  const { setIsAuthenticated } = useAuth(); // Get setIsAuthenticated from context
+  const { setAuthState } = useAuth(); // Get setAuthState from context
   // Simulate notification count - set initial value here
   const [notificationCount, setNotificationCount] = useState(3);
 
   const handleLogout = () => {
     // Simulate logout action
     console.log("User logged out (simulated)");
-    setIsAuthenticated(false); // Update global auth state
+    setAuthState(false, null); // Update global auth state and clear role
     toast({
       title: "Logged Out",
       description: "You have been successfully logged out.",
     });
-    // In a real app, you would clear auth tokens, etc.
     // Redirect handled by the global layout effect now, but can keep explicit push
      router.push('/login');
   };
@@ -88,7 +87,7 @@ export function ProfileMenu() {
         {/* Logout Item */}
         <DropdownMenuItem onClick={handleLogout} className="cursor-pointer text-destructive focus:text-destructive focus:bg-destructive/10">
           <LogOut className="mr-2 h-4 w-4" />
-          <span>Déconnexion</span>
+          <span>Logout</span>
         </DropdownMenuItem>
       </DropdownMenuContent>
     </DropdownMenu>

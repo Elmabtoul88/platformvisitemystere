@@ -6,27 +6,39 @@ import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle }
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { useToast } from "@/hooks/use-toast";
-import { LogIn, Loader2 } from 'lucide-react';
+import { LogIn, Loader2, ShieldCheck } from 'lucide-react'; // Added ShieldCheck for admin indication
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { useAuth } from '@/context/auth-context'; // Import useAuth
 
+// Define Admin Credentials (for simulation)
+const ADMIN_EMAIL = "admin@example.com";
+const ADMIN_PASSWORD = "password123"; // Keep password requirements reasonable
+
 export default function LoginPage() {
   const { toast } = useToast();
   const router = useRouter();
-  const { isAuthenticated, setIsAuthenticated, isLoading } = useAuth(); // Use auth context
+  const { isAuthenticated, setAuthState, isLoading, userRole } = useAuth(); // Use auth context, get setAuthState
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
-  const [isSubmitting, setIsSubmitting] = useState(false); // Renamed from isLoading to avoid conflict
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
-  // Redirect if already authenticated
+  // Redirect if already authenticated based on role
   useEffect(() => {
-    // Check isLoading first to avoid premature redirect
     if (!isLoading && isAuthenticated) {
-       console.log("Already authenticated, redirecting from login...");
-      router.push('/'); // Redirect to home or dashboard
+      if (userRole === 'admin') {
+        console.log("Admin already authenticated, redirecting to /admin...");
+        router.push('/admin');
+      } else if (userRole === 'shopper') {
+        console.log("Shopper already authenticated, redirecting to /...");
+        router.push('/');
+      } else {
+         // Fallback if role is somehow null/undefined but authenticated
+         console.log("Authenticated but no role, redirecting to login...");
+         router.push('/login'); // Or handle appropriately
+      }
     }
-  }, [isAuthenticated, isLoading, router]);
+  }, [isAuthenticated, isLoading, userRole, router]);
 
 
   const handleLogin = async (event) => {
@@ -35,36 +47,57 @@ export default function LoginPage() {
 
     // --- Simulate Login ---
     console.log(`Simulating login for email: ${email}`);
-    await new Promise(resolve => setTimeout(resolve, 1500));
+    await new Promise(resolve => setTimeout(resolve, 1000)); // Shorter delay
 
-    // Basic validation (replace with real auth)
-    if (email.includes('@') && password.length >= 6) {
-      console.log("Login successful (simulated)");
-      setIsAuthenticated(true); // Update auth state
+    let loggedIn = false;
+    let role = null;
+
+    // Check for Admin
+    if (email === ADMIN_EMAIL && password === ADMIN_PASSWORD) {
+      console.log("Admin login successful (simulated)");
+      loggedIn = true;
+      role = 'admin';
+      toast({
+        title: "Admin Login Successful",
+        description: "Welcome, Administrator!",
+      });
+    }
+    // Check for Shopper (basic validation for simulation)
+    else if (email.includes('@') && password.length >= 6) {
+      console.log("Shopper login successful (simulated)");
+      loggedIn = true;
+      role = 'shopper';
       toast({
         title: "Login Successful",
         description: "Welcome back!",
       });
-      // Redirect handled by the useEffect hook now, but can keep direct push as fallback/explicit action
-       router.push('/');
-    } else {
+    }
+    // Login Failed
+    else {
       console.error("Login failed (simulated)");
       toast({
         variant: "destructive",
         title: "Login Failed",
-        description: "Invalid email or password (simulation). Please try again.",
+        description: "Invalid email or password. Please try again.",
       });
-      setIsSubmitting(false);
+    }
+
+    // Update Auth State and Redirect (handled by useEffect)
+    if (loggedIn && role) {
+      setAuthState(true, role); // Update auth state and role using the context function
+       // Redirection will be handled by the useEffect hook based on the new role
+    } else {
+      setIsSubmitting(false); // Only set submitting false if login failed
     }
     // --- End Simulation ---
   };
 
-   // Don't render the form if redirecting or if auth state is loading
+   // Show loading indicator while auth state is loading or redirecting
    if (isLoading || (!isLoading && isAuthenticated)) {
     return (
        <div className="flex min-h-screen items-center justify-center bg-background p-4">
-         {/* Optional: Add a loading indicator if needed */}
-         <p>Loading...</p>
+          <Loader2 className="h-8 w-8 animate-spin text-primary" />
+          <span className="ml-2">Loading...</span>
        </div>
     );
   }
@@ -77,7 +110,7 @@ export default function LoginPage() {
              <LogIn className="h-6 w-6 text-primary" aria-hidden="true" />
            </div>
           <CardTitle className="text-2xl font-bold">Welcome Back!</CardTitle>
-          <CardDescription>Enter your credentials to access your missions.</CardDescription>
+          <CardDescription>Enter your credentials to access your account.</CardDescription>
         </CardHeader>
         <form onSubmit={handleLogin}>
           <CardContent className="space-y-4">
@@ -109,6 +142,10 @@ export default function LoginPage() {
                 disabled={isSubmitting}
               />
             </div>
+             {/* Hint for admin login */}
+            <p className="text-xs text-muted-foreground text-center pt-2">
+                Admin Login: <code className="bg-secondary px-1 rounded">admin@example.com</code> / <code className="bg-secondary px-1 rounded">password123</code>
+            </p>
           </CardContent>
           <CardFooter className="flex flex-col gap-4">
             <Button type="submit" className="w-full" disabled={isSubmitting}>
@@ -134,3 +171,4 @@ export default function LoginPage() {
     </div>
   );
 }
+```
