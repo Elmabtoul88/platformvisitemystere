@@ -97,10 +97,12 @@ export const mockReports = [
 // Mock user for context (replace with actual authentication data later)
 export const mockUser = {
   id: 'user-shopper-1',
-  name: 'Alex Shopper',
+  name: 'Alex Shopper', // This might be the full name
   role: 'shopper',
   profilePicUrl: null, // Set to null initially, or provide a default URL like 'https://picsum.photos/seed/user-shopper-1/100/100'
   city: 'Anytown', // Added city
   motivation: 'Passionate about improving customer experiences and providing detailed feedback.', // Added motivation
   cvUrl: null, // Added cvUrl, initially null
+  birthYear: 1992, // Added birth year
+  gender: 'female', // Added gender ('male', 'female', 'other', 'prefer_not_say')
 };

@@ -6,11 +6,12 @@ import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle }
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"; // Import Select
 import { Switch } from "@/components/ui/switch";
 import { Textarea } from "@/components/ui/textarea"; // Import Textarea
 import { useToast } from "@/hooks/use-toast";
 import { mockUser } from "@/lib/mock-data"; // Using mock user data
-import { ArrowLeft, User, Bell, Save, Camera, Moon, Sun, Share2, Linkedin, Facebook, Settings, Info, Upload, FileText, MapPin } from 'lucide-react'; // Added more icons
+import { ArrowLeft, User, Bell, Save, Camera, Moon, Sun, Share2, Linkedin, Facebook, Settings, Info, Upload, FileText, MapPin, Cake, Users } from 'lucide-react'; // Added more icons
 import Link from 'next/link';
 import Image from 'next/image';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
@@ -29,10 +30,11 @@ export default function SettingsPage() {
     name: mockUser.name,
     email: `${mockUser.id}@example.com`, // Example email based on ID
     profilePicUrl: mockUser.profilePicUrl || `https://picsum.photos/seed/${mockUser.id}/100/100`, // Use mock data or default placeholder
-    // Add new fields with mock data
     city: mockUser.city || 'Anytown',
     motivation: mockUser.motivation || 'Passionate about improving customer experiences.',
-    cvUrl: mockUser.cvUrl || null, // Start with null or empty string
+    cvUrl: mockUser.cvUrl || null,
+    birthYear: mockUser.birthYear || '', // Add birthYear
+    gender: mockUser.gender || 'prefer_not_say', // Add gender with default
   });
   const [profilePicPreview, setProfilePicPreview] = useState(userProfile.profilePicUrl);
   const [notifications, setNotifications] = useState({
@@ -52,10 +54,17 @@ export default function SettingsPage() {
     setIsDarkMode(initialDarkMode);
   }, []);
 
-  // Handle input changes for text fields (like city, motivation)
+  // Handle input changes for text fields (like city, motivation, birthYear)
   const handleInputChange = (event) => {
-    const { name, value } = event.target;
-    setUserProfile(prev => ({ ...prev, [name]: value }));
+    const { name, value, type } = event.target;
+    // Ensure birth year is treated as a number if the input type is number
+    const processedValue = type === 'number' ? parseInt(value, 10) || '' : value;
+    setUserProfile(prev => ({ ...prev, [name]: processedValue }));
+  };
+
+  // Handle gender change using Select
+  const handleGenderChange = (value) => {
+      setUserProfile(prev => ({ ...prev, gender: value }));
   };
 
   // Handle dark mode toggle
@@ -131,6 +140,8 @@ export default function SettingsPage() {
         city: userProfile.city,
         motivation: userProfile.motivation,
         cvUrl: userProfile.cvUrl,
+        birthYear: userProfile.birthYear,
+        gender: userProfile.gender,
     });
     await new Promise(resolve => setTimeout(resolve, 1000));
 
@@ -181,7 +192,7 @@ export default function SettingsPage() {
         <Card className="shadow-sm">
           <CardHeader>
             <CardTitle className="text-lg font-medium flex items-center gap-2">
-                <User className="w-5 h-5 text-primary"/> Profile Information
+                <User className="w-5 h-5 text-primary"/> Personal Details
             </CardTitle>
             <CardDescription>Manage your personal details and profile picture.</CardDescription>
           </CardHeader>
@@ -216,26 +227,31 @@ export default function SettingsPage() {
             </div>
 
              {/* Name and Email */}
-            <div className="space-y-1">
-              <Label htmlFor="name">Name</Label>
-              <Input
-                id="name"
-                value={userProfile.name}
-                readOnly
-                className="bg-secondary/50 cursor-not-allowed"
-              />
-            </div>
-            <div className="space-y-1">
-              <Label htmlFor="email">Email Address</Label>
-              <Input
-                id="email"
-                type="email"
-                value={userProfile.email}
-                readOnly
-                className="bg-secondary/50 cursor-not-allowed"
-              />
-               <p className="text-xs text-muted-foreground pt-1">Email is used for login and cannot be changed here.</p>
-            </div>
+             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div className="space-y-1">
+                <Label htmlFor="name">Full Name</Label>
+                <Input
+                    id="name"
+                    value={userProfile.name}
+                    readOnly
+                    className="bg-secondary/50 cursor-not-allowed"
+                />
+                 <p className="text-xs text-muted-foreground pt-1">Name is linked to your account.</p>
+                </div>
+                <div className="space-y-1">
+                <Label htmlFor="email">Email Address</Label>
+                <Input
+                    id="email"
+                    type="email"
+                    value={userProfile.email}
+                    readOnly
+                    className="bg-secondary/50 cursor-not-allowed"
+                />
+                 <p className="text-xs text-muted-foreground pt-1">Email is used for login.</p>
+                </div>
+             </div>
+
+            {/* Password Change Button */}
              <Button variant="outline" size="sm" disabled>Change Password (Coming Soon)</Button>
           </CardContent>
         </Card>
@@ -249,6 +265,45 @@ export default function SettingsPage() {
             <CardDescription>Complete your profile to increase your chances of getting missions.</CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
+              {/* Birth Year and Gender */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div className="space-y-1">
+                <Label htmlFor="birthYear" className="flex items-center gap-1">
+                    <Cake className="w-4 h-4 text-muted-foreground" /> Birth Year
+                </Label>
+                <Input
+                    id="birthYear"
+                    name="birthYear"
+                    type="number"
+                    placeholder="YYYY"
+                    min="1920"
+                    max={new Date().getFullYear() - 18} // Example: Minimum age 18
+                    value={userProfile.birthYear}
+                    onChange={handleInputChange}
+                />
+                 <p className="text-xs text-muted-foreground pt-1">Helps tailor mission opportunities.</p>
+                </div>
+
+                <div className="space-y-1">
+                 <Label htmlFor="gender" className="flex items-center gap-1">
+                     <Users className="w-4 h-4 text-muted-foreground" /> Gender
+                </Label>
+                 <Select name="gender" value={userProfile.gender} onValueChange={handleGenderChange}>
+                   <SelectTrigger id="gender">
+                     <SelectValue placeholder="Select gender" />
+                   </SelectTrigger>
+                   <SelectContent>
+                     <SelectItem value="female">Female</SelectItem>
+                     <SelectItem value="male">Male</SelectItem>
+                     <SelectItem value="other">Other</SelectItem>
+                     <SelectItem value="prefer_not_say">Prefer not to say</SelectItem>
+                   </SelectContent>
+                 </Select>
+                  <p className="text-xs text-muted-foreground pt-1">Optional demographic information.</p>
+                </div>
+            </div>
+
+            {/* City and Motivation */}
              <div className="space-y-1">
               <Label htmlFor="city" className="flex items-center gap-1">
                   <MapPin className="w-4 h-4 text-muted-foreground" /> City / Location
@@ -276,6 +331,7 @@ export default function SettingsPage() {
                <p className="text-xs text-muted-foreground pt-1">Briefly describe your interest and relevant skills.</p>
             </div>
 
+             {/* CV Upload */}
             <div className="space-y-1">
                <Label htmlFor="cv-upload" className="flex items-center gap-1">
                   <FileText className="w-4 h-4 text-muted-foreground" /> Upload CV/Resume (Optional)
