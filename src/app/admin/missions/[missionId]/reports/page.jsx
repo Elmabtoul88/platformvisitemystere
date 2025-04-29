@@ -12,7 +12,7 @@ import { format } from 'date-fns';
 import Link from 'next/link';
 import Image from 'next/image';
 import { useToast } from '@/hooks/use-toast';
-import { approveReportAction, refuseReportAction } from '../../../actions/admin-actions.js'; // Import server actions using relative path
+import { approveReportAction, refuseReportAction } from '../../../../actions/admin-actions.js'; // Corrected import path
 import {
     ArrowLeft, CheckCircle, XCircle, Loader2, FileWarning, User, Calendar, Star,
     MessageSquare, Image as ImageIcon, Mic, MapPin, ListOrdered, CheckSquare as CheckSquareIcon, TextCursorInput
