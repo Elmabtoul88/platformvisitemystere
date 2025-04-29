@@ -3,11 +3,12 @@
 import { ReportSubmissionForm } from '@/components/report-submission-form';
 import { mockMissions, mockUser } from '@/lib/mock-data'; // Using mock data
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
-import { ArrowLeft, FileWarning } from "lucide-react";
+import { ArrowLeft, FileWarning, Ban, Info } from "lucide-react"; // Added Ban icon
 import Link from 'next/link';
 import { Button } from '@/components/ui/button';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from "@/components/ui/card"; // Added Card components
 import { Toaster } from '@/components/ui/toaster'; // Import Toaster
-import { submitReport } from '../../actions/report-actions'; // Import the server action using relative path
+import { submitReport } from '@/app/actions/report-actions'; // Import the server action
 
 // Simulate fetching mission data based on ID
 // This remains a server-side function
@@ -47,19 +48,36 @@ export default async function ReportSubmissionPage({ params }) {
 
    if (!canSubmit) {
      return (
-        <div className="container mx-auto py-8 px-4 flex flex-col items-center">
-             <Alert variant="default" className="max-w-lg bg-secondary border-secondary-foreground/10">
-               <FileWarning className="h-4 w-4" />
-               <AlertTitle>Cannot Submit Report</AlertTitle>
-               <AlertDescription>
-                 You cannot submit a report for this mission. It might not be assigned to you or is already completed. Check 'My Missions'.
-               </AlertDescription>
-            </Alert>
-             <Button asChild variant="link" className="mt-4">
-                <Link href="/"> <ArrowLeft className="w-4 h-4 mr-1" /> Back to Available Missions</Link>
-             </Button>
-             {/* Add link to 'My Missions' page if it exists */}
-             {/* <Button asChild variant="link" className="mt-2"><Link href="/my-missions">View My Missions</Link></Button> */}
+        <div className="container mx-auto py-16 px-4 flex flex-col items-center text-center">
+            <Card className="max-w-md w-full shadow-lg">
+                <CardHeader>
+                    <div className="mx-auto flex items-center justify-center h-12 w-12 rounded-full bg-secondary mb-4">
+                     <Ban className="h-6 w-6 text-muted-foreground" />
+                    </div>
+                    <CardTitle className="text-xl font-semibold text-foreground">Unable to Submit Report</CardTitle>
+                    <CardDescription className="text-muted-foreground">
+                        This action isn't available for the mission "{mission.title}".
+                    </CardDescription>
+                </CardHeader>
+                <CardContent className="space-y-2 text-sm">
+                   <p>
+                     This might be because the mission is not currently assigned to you, it's already been completed, or it's no longer active.
+                   </p>
+                   <p>
+                     Please check your assigned missions list for tasks ready for reporting.
+                   </p>
+                </CardContent>
+                <CardFooter className="flex flex-col sm:flex-row justify-center gap-3 pt-6">
+                     <Button asChild variant="outline">
+                        <Link href="/missions/assigned">
+                          <ArrowLeft className="w-4 h-4 mr-1" /> View My Assigned Missions
+                        </Link>
+                     </Button>
+                     <Button asChild variant="ghost">
+                         <Link href="/">Back to Available Missions</Link>
+                     </Button>
+                </CardFooter>
+            </Card>
         </div>
      );
    }
@@ -73,7 +91,7 @@ export default async function ReportSubmissionPage({ params }) {
                  <ArrowLeft className="w-4 h-4 mr-1" /> Back to Missions
                </Link>
              </Button>
-            {/* Pass the imported server action as the onSubmit prop */}
+            {/* Pass the imported server action as the onSubmitAction prop */}
             <ReportSubmissionForm mission={mission} onSubmitAction={submitReport} />
         </div>
          <Toaster /> {/* Add Toaster here for this page's toasts */}
