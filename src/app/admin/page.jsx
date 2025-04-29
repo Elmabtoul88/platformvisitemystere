@@ -1,9 +1,11 @@
+
 'use client';
 
 import React from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { BarChart as BarChartIcon, ListChecks, Users, PlusCircle, PieChart, LineChart, Bar, Pie, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, Cell } from 'lucide-react'; // Import chart icons and Recharts components
+import { BarChart as BarChartIcon, ListChecks, Users, PlusCircle, PieChart as PieChartIcon, LineChart as LineChartIcon } from 'lucide-react'; // Import chart icons
+import { Bar, Pie, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, Cell, PieChart as PieChartComponent, BarChart as BarChartComponent, LineChart as LineChartComponent } from 'recharts'; // Import Recharts components explicitly
 import Link from 'next/link';
 import { mockMissions, mockReports } from '@/lib/mock-data'; // Import mock data
 import { mockUsers } from './users/users-mock'; // Import mock user data
@@ -157,11 +159,11 @@ export default function AdminDashboardPage() {
           {/* Chart 1: Mission Status Distribution */}
           <Card className="col-span-1">
             <CardHeader>
-              <CardTitle className="text-base font-medium flex items-center gap-2"><PieChart className="w-4 h-4"/>Mission Status</CardTitle>
+              <CardTitle className="text-base font-medium flex items-center gap-2"><PieChartIcon className="w-4 h-4"/>Mission Status</CardTitle>
             </CardHeader>
             <CardContent className="h-60">
               <ResponsiveContainer width="100%" height="100%">
-                <PieChart>
+                <PieChartComponent>
                   <Pie data={missionStatusData} dataKey="value" nameKey="name" cx="50%" cy="50%" outerRadius={80} label>
                     {missionStatusData.map((entry, index) => (
                       <Cell key={`cell-${index}`} fill={COLORS_MISSION_STATUS[index % COLORS_MISSION_STATUS.length]} />
@@ -169,7 +171,7 @@ export default function AdminDashboardPage() {
                   </Pie>
                   <Tooltip />
                   <Legend />
-                </PieChart>
+                </PieChartComponent>
               </ResponsiveContainer>
             </CardContent>
           </Card>
@@ -177,11 +179,11 @@ export default function AdminDashboardPage() {
           {/* Chart 2: Report Status Distribution */}
            <Card className="col-span-1">
             <CardHeader>
-               <CardTitle className="text-base font-medium flex items-center gap-2"><PieChart className="w-4 h-4"/>Report Status</CardTitle>
+               <CardTitle className="text-base font-medium flex items-center gap-2"><PieChartIcon className="w-4 h-4"/>Report Status</CardTitle>
             </CardHeader>
             <CardContent className="h-60">
               <ResponsiveContainer width="100%" height="100%">
-                <PieChart>
+                <PieChartComponent>
                   <Pie data={reportStatusData} dataKey="value" nameKey="name" cx="50%" cy="50%" innerRadius={40} outerRadius={80} label>
                     {reportStatusData.map((entry, index) => (
                       <Cell key={`cell-${index}`} fill={COLORS_REPORT_STATUS[index % COLORS_REPORT_STATUS.length]} />
@@ -189,7 +191,7 @@ export default function AdminDashboardPage() {
                   </Pie>
                   <Tooltip />
                   <Legend />
-                </PieChart>
+                </PieChartComponent>
               </ResponsiveContainer>
             </CardContent>
           </Card>
@@ -197,17 +199,17 @@ export default function AdminDashboardPage() {
           {/* Chart 3: New Shopper Registrations */}
            <Card className="col-span-1 lg:col-span-2 xl:col-span-1">
             <CardHeader>
-              <CardTitle className="text-base font-medium flex items-center gap-2"><LineChart className="w-4 h-4"/>New Shoppers / Month</CardTitle>
+              <CardTitle className="text-base font-medium flex items-center gap-2"><LineChartIcon className="w-4 h-4"/>New Shoppers / Month</CardTitle>
             </CardHeader>
             <CardContent className="h-60">
               <ResponsiveContainer width="100%" height="100%">
-                <LineChart data={registrationData}>
+                <LineChartComponent data={registrationData}>
                   <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="hsl(var(--border))" />
                   <XAxis dataKey="month" tick={{ fill: 'hsl(var(--muted-foreground))' }} fontSize={12} />
                   <YAxis tick={{ fill: 'hsl(var(--muted-foreground))' }} fontSize={12} />
                   <Tooltip />
                   <Line type="monotone" dataKey="shoppers" stroke="hsl(var(--primary))" strokeWidth={2} dot={{ r: 4, fill: 'hsl(var(--primary))' }} activeDot={{ r: 6 }} />
-                </LineChart>
+                </LineChartComponent>
               </ResponsiveContainer>
             </CardContent>
           </Card>
@@ -219,13 +221,13 @@ export default function AdminDashboardPage() {
                 </CardHeader>
                 <CardContent className="h-60">
                     <ResponsiveContainer width="100%" height="100%">
-                        <BarChart data={missionsByCategoryData} layout="vertical">
+                        <BarChartComponent data={missionsByCategoryData} layout="vertical">
                             <CartesianGrid strokeDasharray="3 3" horizontal={false} stroke="hsl(var(--border))" />
                             <XAxis type="number" tick={{ fill: 'hsl(var(--muted-foreground))' }} fontSize={12} />
                             <YAxis dataKey="name" type="category" width={80} tick={{ fill: 'hsl(var(--muted-foreground))' }} fontSize={12} />
                             <Tooltip cursor={{ fill: 'hsl(var(--accent))', opacity: 0.1 }}/>
                             <Bar dataKey="count" fill="hsl(var(--primary))" radius={[0, 4, 4, 0]} barSize={20} />
-                        </BarChart>
+                        </BarChartComponent>
                     </ResponsiveContainer>
                 </CardContent>
             </Card>
@@ -237,13 +239,13 @@ export default function AdminDashboardPage() {
                 </CardHeader>
                 <CardContent className="h-60">
                     <ResponsiveContainer width="100%" height="100%">
-                        <BarChart data={averageRewardData} layout="vertical">
+                        <BarChartComponent data={averageRewardData} layout="vertical">
                             <CartesianGrid strokeDasharray="3 3" horizontal={false} stroke="hsl(var(--border))" />
                             <XAxis type="number" tickFormatter={(value) => `$${value}`} tick={{ fill: 'hsl(var(--muted-foreground))' }} fontSize={12} />
                             <YAxis dataKey="name" type="category" width={80} tick={{ fill: 'hsl(var(--muted-foreground))' }} fontSize={12} />
                             <Tooltip formatter={(value) => `$${value}`} cursor={{ fill: 'hsl(var(--accent))', opacity: 0.1 }}/>
                             <Bar dataKey="averageReward" fill="hsl(var(--accent))" radius={[0, 4, 4, 0]} barSize={20} />
-                        </BarChart>
+                        </BarChartComponent>
                     </ResponsiveContainer>
                 </CardContent>
             </Card>
@@ -251,11 +253,11 @@ export default function AdminDashboardPage() {
             {/* Chart 6: Completion Rate */}
             <Card className="col-span-1 lg:col-span-1">
                 <CardHeader>
-                    <CardTitle className="text-base font-medium flex items-center gap-2"><PieChart className="w-4 h-4"/>Mission Completion Rate</CardTitle>
+                    <CardTitle className="text-base font-medium flex items-center gap-2"><PieChartIcon className="w-4 h-4"/>Mission Completion Rate</CardTitle>
                 </CardHeader>
                 <CardContent className="h-60 flex flex-col items-center justify-center">
                      <ResponsiveContainer width="80%" height="80%">
-                        <PieChart>
+                        <PieChartComponent>
                           <Pie data={completionData} dataKey="value" nameKey="name" cx="50%" cy="50%" innerRadius={50} outerRadius={70} paddingAngle={5} labelLine={false}>
                             {completionData.map((entry, index) => (
                               <Cell key={`cell-${index}`} fill={COLORS_COMPLETION[index % COLORS_COMPLETION.length]} />
@@ -266,7 +268,7 @@ export default function AdminDashboardPage() {
                           <text x="50%" y="50%" textAnchor="middle" dominantBaseline="middle" fontSize="24" fontWeight="bold" fill="hsl(var(--foreground))">
                             {completionRate}%
                           </text>
-                        </PieChart>
+                        </PieChartComponent>
                      </ResponsiveContainer>
                      <p className="text-xs text-muted-foreground mt-2 text-center">
                         Percentage of assigned/submitted missions that were approved.
