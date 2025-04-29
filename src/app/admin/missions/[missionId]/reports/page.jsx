@@ -14,10 +14,10 @@ import { format } from 'date-fns';
 import Link from 'next/link';
 import Image from 'next/image';
 import { useToast } from '@/hooks/use-toast';
-import { approveReportAction, refuseReportAction } from '../../actions/admin-actions.js'; // Corrected import path
+import { approveReportAction, refuseReportAction } from '../../../actions/admin-actions.js'; // Corrected import path
 import {
     ArrowLeft, CheckCircle, XCircle, Loader2, FileWarning, User, Calendar, Star,
-    MessageSquare, Image as ImageIcon, Mic, MapPin, ListOrdered, CheckSquare as CheckSquareIcon, TextCursorInput
+    MessageSquare, Image as ImageIcon, Mic, MapPin, ListOrdered, CheckSquare as CheckSquareIcon, TextCursorInput as TextCursorInputIcon // Renamed imported icon
 } from 'lucide-react';
 import { Textarea } from '@/components/ui/textarea'; // Import Textarea for refusal reason
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'; // Import Avatar
@@ -26,7 +26,7 @@ import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'; //
 // Helper to get the correct icon based on question type
 const getIconForType = (type) => {
     switch(type) {
-        case 'text': return <TextCursorInput className="w-4 h-4 mr-1 text-muted-foreground" />;
+        case 'text': return <TextCursorInputIcon className="w-4 h-4 mr-1 text-muted-foreground" />;
         case 'multiple_choice': return <ListOrdered className="w-4 h-4 mr-1 text-muted-foreground" />;
         case 'checkboxes': return <CheckSquareIcon className="w-4 h-4 mr-1 text-muted-foreground" />;
         case 'rating': return <Star className="w-4 h-4 mr-1 text-muted-foreground" />;
@@ -119,6 +119,18 @@ const formatAnswerValue = (answer, question) => {
 // Helper to get user details from mock data
 const getUserById = (userId) => {
     return mockUsers.find(u => u.id === userId);
+};
+
+// Helper function for status badge variant
+const getStatusVariant = (status) => {
+    switch (status) {
+      case 'available': return 'secondary';
+      case 'assigned': return 'default';
+      case 'submitted': return 'outline'; // More neutral for pending
+      case 'approved': return 'default'; // Use default for completed/approved (often green via theme)
+      case 'refused': return 'destructive'; // Use destructive for refused
+      default: return 'secondary';
+    }
 };
 
 
@@ -484,12 +496,3 @@ export default function AdminReviewReportsPage() {
         </div>
     );
 }
-
-// Add missing icons if needed (ensure these don't cause conflicts if already defined)
-const TextCursorInput = (props) => (
-  <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" {...props}>
-    <path d="M5 4h1a3 3 0 0 1 3 3v10a3 3 0 0 1-3 3H5"/>
-    <path d="M19 4h-1a3 3 0 0 0-3 3v10a3 3 0 0 0 3 3h1"/>
-    <path d="M12 4v16"/>
-  </svg>
-);

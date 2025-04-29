@@ -1,3 +1,4 @@
+
 "use client";
 
 import { useForm, Controller } from "react-hook-form";
@@ -15,7 +16,7 @@ import {
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
-import { Star, Upload, Send, Loader2, MapPin, Mic, Image as ImageIcon, Trash2, AlertCircle, RadioGroupIndicator } from "lucide-react";
+import { Star, Upload, Send, Loader2, MapPin, Mic, Image as ImageIcon, Trash2, AlertCircle, RadioGroupIndicator, TextCursorInput, ListOrdered, CheckSquare } from "lucide-react"; // Import base icons
 import { useState, useEffect, useRef } from "react";
 import Image from 'next/image';
 import { useRouter } from 'next/navigation';
@@ -543,30 +544,3 @@ export function ReportSubmissionForm({ mission, surveyQuestions = [], onSubmitAc
     </Card>
   );
 }
-
-// Simple TextCursorInput icon if not directly available
-const TextCursorInput = (props) => (
-  <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" {...props}>
-    <path d="M5 4h1a3 3 0 0 1 3 3v10a3 3 0 0 1-3 3H5"/>
-    <path d="M19 4h-1a3 3 0 0 0-3 3v10a3 3 0 0 0 3 3h1"/>
-    <path d="M12 4v16"/>
-  </svg>
-);
-// Simple ListOrdered icon if not directly available
-const ListOrdered = (props) => (
-  <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" {...props}>
-    <line x1="10" x2="21" y1="6" y2="6"/>
-    <line x1="10" x2="21" y1="12" y2="12"/>
-    <line x1="10" x2="21" y1="18" y2="18"/>
-    <path d="M4 6h1v4"/>
-    <path d="M4 10h2"/>
-    <path d="M6 18H4c0-1 2-2 2-3s-1-1.5-2-1"/>
-  </svg>
-);
-// Simple CheckSquare icon if not directly available
-const CheckSquare = (props) => (
-  <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" {...props}>
-    <polyline points="9 11 12 14 22 4"/>
-    <path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/>
-  </svg>
-);
