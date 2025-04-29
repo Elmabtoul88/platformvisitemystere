@@ -8,7 +8,7 @@ import Link from 'next/link';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from "@/components/ui/card"; // Added Card components
 import { Toaster } from '@/components/ui/toaster'; // Import Toaster
-import { submitReport } from '@/app/actions/report-actions'; // Import the server action
+import { submitReport } from '../../actions/report-actions.js'; // Import the server action using relative path
 
 // Simulate fetching mission data based on ID
 // This remains a server-side function
@@ -49,31 +49,36 @@ export default async function ReportSubmissionPage({ params }) {
    if (!canSubmit) {
      return (
         <div className="container mx-auto py-16 px-4 flex flex-col items-center text-center">
-            <Card className="max-w-md w-full shadow-lg">
+            <Card className="max-w-md w-full shadow-lg bg-secondary border-border">
                 <CardHeader>
-                    <div className="mx-auto flex items-center justify-center h-12 w-12 rounded-full bg-secondary mb-4">
-                     <Ban className="h-6 w-6 text-muted-foreground" />
+                    <div className="mx-auto flex items-center justify-center h-12 w-12 rounded-full bg-background mb-4 border border-border shadow-sm">
+                     <Ban className="h-6 w-6 text-destructive" aria-hidden="true" />
                     </div>
-                    <CardTitle className="text-xl font-semibold text-foreground">Unable to Submit Report</CardTitle>
-                    <CardDescription className="text-muted-foreground">
-                        This action isn't available for the mission "{mission.title}".
+                    <CardTitle className="text-xl font-semibold text-foreground">Cannot Submit Report</CardTitle>
+                    <CardDescription className="text-muted-foreground pt-1">
+                         This mission ({mission.title}) isn't ready for your report just yet.
                     </CardDescription>
                 </CardHeader>
-                <CardContent className="space-y-2 text-sm">
+                <CardContent className="space-y-2 text-sm text-foreground/80">
                    <p>
-                     This might be because the mission is not currently assigned to you, it's already been completed, or it's no longer active.
+                     This could be because:
+                     <ul className="list-disc list-inside text-left pl-4 mt-1 space-y-1">
+                        <li>The mission isn't assigned to you.</li>
+                        <li>The mission has already been completed or cancelled.</li>
+                        <li>The submission deadline has passed.</li>
+                     </ul>
                    </p>
-                   <p>
-                     Please check your assigned missions list for tasks ready for reporting.
+                   <p className="pt-2">
+                     Please check your <Link href="/missions/assigned" className="text-primary underline hover:text-primary/80">Assigned Missions</Link> list for tasks ready for reporting.
                    </p>
                 </CardContent>
                 <CardFooter className="flex flex-col sm:flex-row justify-center gap-3 pt-6">
-                     <Button asChild variant="outline">
+                     <Button asChild>
                         <Link href="/missions/assigned">
                           <ArrowLeft className="w-4 h-4 mr-1" /> View My Assigned Missions
                         </Link>
                      </Button>
-                     <Button asChild variant="ghost">
+                     <Button asChild variant="outline">
                          <Link href="/">Back to Available Missions</Link>
                      </Button>
                 </CardFooter>
@@ -87,8 +92,8 @@ export default async function ReportSubmissionPage({ params }) {
     <main className="min-h-screen bg-background py-10 px-4">
        <div className="container mx-auto max-w-3xl">
              <Button asChild variant="outline" size="sm" className="mb-4">
-               <Link href="/">
-                 <ArrowLeft className="w-4 h-4 mr-1" /> Back to Missions
+               <Link href="/missions/assigned">
+                 <ArrowLeft className="w-4 h-4 mr-1" /> Back to Assigned Missions
                </Link>
              </Button>
             {/* Pass the imported server action as the onSubmitAction prop */}
