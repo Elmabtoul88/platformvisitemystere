@@ -371,7 +371,7 @@ export default function AdminMissionsPage() {
                                                      </Badge>
                                                      {/* Show pending count badge ONLY if reports are submitted */}
                                                      {mission.status === 'submitted' && submittedCount > 0 && (
-                                                        <Badge variant="destructive" className="text-xs px-1.5 py-0.5 flex items-center h-4"> {/* Fixed height */}
+                                                        <Badge variant="destructive" className="text-xs px-1.5 py-1 flex items-center h-fit"> {/* Adjusted padding/height */}
                                                              {submittedCount} Pending
                                                          </Badge>
                                                      )}
@@ -432,7 +432,7 @@ export default function AdminMissionsPage() {
                                                             <DropdownMenuItem onClick={() => handleReviewReports(mission.id)} disabled={isCurrentProcessing}>
                                                                  <FileCheck className="mr-2 h-4 w-4" /> Review Reports
                                                                  {submittedCount > 0 && mission.status === 'submitted' && (
-                                                                     <Badge variant="destructive" className="ml-auto text-[10px] px-1 py-0.5 flex items-center leading-none">{submittedCount}</Badge>
+                                                                     <Badge variant="destructive" className="ml-auto text-[10px] px-1.5 py-1 flex items-center leading-none h-fit">{submittedCount}</Badge>
                                                                  )}
                                                             </DropdownMenuItem>
                                                          )}
