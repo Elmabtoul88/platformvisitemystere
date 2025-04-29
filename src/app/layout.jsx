@@ -4,7 +4,7 @@ import { Geist, Geist_Mono } from 'next/font/google';
 import './globals.css';
 import Link from 'next/link';
 import { Button } from '@/components/ui/button';
-import { Home, ListChecks, CheckSquare, LogIn, Shield, Users, Settings as SettingsIcon } from 'lucide-react'; // Added Admin icons
+import { Home, ListChecks, CheckSquare, LogIn, Shield, Users, Settings as SettingsIcon, Map } from 'lucide-react'; // Added Admin icons & Map
 import { ProfileMenu } from '@/components/profile-menu';
 import React, { useEffect, useState } from 'react';
 import { AuthProvider, useAuth } from '@/context/auth-context'; // Import AuthProvider and useAuth
@@ -179,6 +179,12 @@ function AppLayout({ children }) {
                       <CheckSquare className="w-4 h-4" /> Completed
                     </Link>
                   </Button>
+                   {/* Map Link */}
+                   <Button variant={pathname === '/map' ? "secondary" : "ghost"} size="sm" asChild>
+                     <Link href="/map" className="flex items-center gap-1">
+                       <Map className="w-4 h-4" /> Map
+                     </Link>
+                   </Button>
                   {/* ProfileMenu handles its own dynamic links */}
                   <ProfileMenu />
                 </>
