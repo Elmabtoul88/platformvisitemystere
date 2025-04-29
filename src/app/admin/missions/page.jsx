@@ -185,7 +185,7 @@ export default function AdminMissionsPage() {
         setAssignDialogOpen(true);
     };
 
-     // Handle user selection toggle (called by CommandItem onSelect)
+     // Handle user selection toggle (called by CommandItem onSelect or Checkbox onCheckedChange)
      const handleUserSelectionChange = (userId) => {
         console.log("Toggling selection for user:", userId); // Keep this log
         setSelectedUsersForAssignment(prev =>
@@ -429,7 +429,7 @@ export default function AdminMissionsPage() {
                                             </TableCell>
                                         </TableRow>
                                     );
-                                }) // Added closing parenthesis
+                                })
                             ) : (
                                 <TableRow>
                                     <TableCell colSpan={8} className="h-24 text-center">
@@ -471,15 +471,12 @@ export default function AdminMissionsPage() {
                                         value={`${shopper.label} ${shopper.email}`} // Combine fields for better searching
                                         onSelect={() => handleUserSelectionChange(shopper.value)} // Toggle selection on item click
                                         className="flex items-center gap-2 cursor-pointer aria-selected:bg-accent/50"
-                                        // REMOVE data-disabled attribute - make item interactive
-                                        // data-disabled={selectedUsersForAssignment.includes(shopper.value)} // Mark as disabled visually if selected
                                     >
                                         {/* Checkbox is interactive */}
                                         <Checkbox
                                             id={`user-${shopper.value}`} // Add unique ID for label association
                                             checked={selectedUsersForAssignment.includes(shopper.value)}
-                                            // REMOVE disabled prop - make checkbox interactive
-                                            // onCheckedChange={() => handleUserSelectionChange(shopper.value)} // Rely on CommandItem onSelect
+                                            onCheckedChange={() => handleUserSelectionChange(shopper.value)} // Add explicit handler
                                             aria-label={`Select ${shopper.label}`} // Accessibility
                                          />
                                         <Label htmlFor={`user-${shopper.value}`} className="flex flex-col text-sm flex-grow cursor-pointer"> {/* Label for checkbox */}
