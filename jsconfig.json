@@ -8,9 +8,11 @@
       "@/ui/*": ["src/components/ui/*"],
       "@/hooks/*": ["src/hooks/*"],
       "@/ai/*": ["src/ai/*"],
-      "@/services/*": ["src/services/*"]
+      "@/services/*": ["src/services/*"],
+      "@/context/*": ["src/context/*"]
     }
   },
   "include": ["src/**/*", "next-env.d.ts"],
   "exclude": ["node_modules"]
 }
+
