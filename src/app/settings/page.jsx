@@ -7,9 +7,10 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
+import { Textarea } from "@/components/ui/textarea"; // Import Textarea
 import { useToast } from "@/hooks/use-toast";
 import { mockUser } from "@/lib/mock-data"; // Using mock user data
-import { ArrowLeft, User, Bell, Save, Camera, Moon, Sun, Share2, Linkedin, Facebook, Settings } from 'lucide-react'; // Added Settings icon
+import { ArrowLeft, User, Bell, Save, Camera, Moon, Sun, Share2, Linkedin, Facebook, Settings, Info, Upload, FileText, MapPin } from 'lucide-react'; // Added more icons
 import Link from 'next/link';
 import Image from 'next/image';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
@@ -28,6 +29,10 @@ export default function SettingsPage() {
     name: mockUser.name,
     email: `${mockUser.id}@example.com`, // Example email based on ID
     profilePicUrl: mockUser.profilePicUrl || `https://picsum.photos/seed/${mockUser.id}/100/100`, // Use mock data or default placeholder
+    // Add new fields with mock data
+    city: mockUser.city || 'Anytown',
+    motivation: mockUser.motivation || 'Passionate about improving customer experiences.',
+    cvUrl: mockUser.cvUrl || null, // Start with null or empty string
   });
   const [profilePicPreview, setProfilePicPreview] = useState(userProfile.profilePicUrl);
   const [notifications, setNotifications] = useState({
@@ -37,6 +42,7 @@ export default function SettingsPage() {
   });
   const [isSaving, setIsSaving] = useState(false);
   const [isDarkMode, setIsDarkMode] = useState(false); // State for dark mode
+  const [cvFileName, setCvFileName] = useState(null); // State to store the CV file name
 
   // Effect to check initial theme preference
   useEffect(() => {
@@ -45,6 +51,12 @@ export default function SettingsPage() {
     const initialDarkMode = storedTheme === 'dark' || (!storedTheme && prefersDark);
     setIsDarkMode(initialDarkMode);
   }, []);
+
+  // Handle input changes for text fields (like city, motivation)
+  const handleInputChange = (event) => {
+    const { name, value } = event.target;
+    setUserProfile(prev => ({ ...prev, [name]: value }));
+  };
 
   // Handle dark mode toggle
   const handleThemeChange = (checked) => {
@@ -92,10 +104,34 @@ export default function SettingsPage() {
     }
   };
 
+   // Handle CV file change
+   const handleCvChange = async (event) => {
+    const file = event.target.files?.[0];
+    if (file) {
+      setCvFileName(file.name); // Show file name
+      // Simulate CV upload
+      console.log("Simulating CV upload...");
+      await new Promise(resolve => setTimeout(resolve, 1500));
+      // In a real app, upload the file and get a URL
+      const placeholderCvUrl = `/path/to/simulated/${file.name}`;
+      setUserProfile(prev => ({ ...prev, cvUrl: placeholderCvUrl }));
+      toast({ title: "CV Uploaded (Simulated)", description: `File: ${file.name}` });
+    } else {
+        setCvFileName(null);
+        setUserProfile(prev => ({ ...prev, cvUrl: null }));
+    }
+  };
+
   // Simulate saving settings
   const handleSaveChanges = async () => {
     setIsSaving(true);
     console.log("Saving settings (simulated):", { userProfile, notifications, isDarkMode });
+    // Add new fields to the saved data log
+    console.log("Saving profile data:", {
+        city: userProfile.city,
+        motivation: userProfile.motivation,
+        cvUrl: userProfile.cvUrl,
+    });
     await new Promise(resolve => setTimeout(resolve, 1000));
 
     toast({
@@ -169,7 +205,7 @@ export default function SettingsPage() {
                     className="hidden" // Hide the default input
                   />
                   <Button asChild variant="outline" size="sm">
-                    <Label htmlFor="profile-picture-upload" className="cursor-pointer">
+                    <Label htmlFor="profile-picture-upload" className="cursor-pointer flex items-center">
                       <Camera className="w-4 h-4 mr-2" />
                       Change Photo
                     </Label>
@@ -203,6 +239,73 @@ export default function SettingsPage() {
              <Button variant="outline" size="sm" disabled>Change Password (Coming Soon)</Button>
           </CardContent>
         </Card>
+
+         {/* Additional Profile Information Section */}
+        <Card className="shadow-sm">
+          <CardHeader>
+            <CardTitle className="text-lg font-medium flex items-center gap-2">
+              <Info className="w-5 h-5 text-primary" /> Additional Information
+            </CardTitle>
+            <CardDescription>Complete your profile to increase your chances of getting missions.</CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-4">
+             <div className="space-y-1">
+              <Label htmlFor="city" className="flex items-center gap-1">
+                  <MapPin className="w-4 h-4 text-muted-foreground" /> City / Location
+              </Label>
+              <Input
+                id="city"
+                name="city"
+                placeholder="Enter your city"
+                value={userProfile.city}
+                onChange={handleInputChange}
+              />
+              <p className="text-xs text-muted-foreground pt-1">Helps us find missions near you.</p>
+            </div>
+
+            <div className="space-y-1">
+              <Label htmlFor="motivation">Your Motivation</Label>
+              <Textarea
+                id="motivation"
+                name="motivation"
+                placeholder="Tell us why you want to be a mystery shopper..."
+                className="resize-y min-h-[80px]"
+                value={userProfile.motivation}
+                onChange={handleInputChange}
+              />
+               <p className="text-xs text-muted-foreground pt-1">Briefly describe your interest and relevant skills.</p>
+            </div>
+
+            <div className="space-y-1">
+               <Label htmlFor="cv-upload" className="flex items-center gap-1">
+                  <FileText className="w-4 h-4 text-muted-foreground" /> Upload CV/Resume (Optional)
+              </Label>
+               <div className="flex items-center gap-2">
+                    <Input
+                        id="cv-upload"
+                        type="file"
+                        accept=".pdf,.doc,.docx" // Accept common document formats
+                        onChange={handleCvChange}
+                        className="hidden" // Hide default input
+                    />
+                     <Button asChild variant="outline" size="sm">
+                       <Label htmlFor="cv-upload" className="cursor-pointer flex items-center">
+                           <Upload className="w-4 h-4 mr-2"/> Choose File
+                       </Label>
+                     </Button>
+                     {cvFileName && (
+                        <span className="text-sm text-muted-foreground italic">{cvFileName}</span>
+                     )}
+               </div>
+               {userProfile.cvUrl && !cvFileName && (
+                   <p className="text-xs text-muted-foreground pt-1">Current file: <Link href={userProfile.cvUrl} target="_blank" rel="noopener noreferrer" className="underline text-primary hover:text-primary/80">{userProfile.cvUrl.split('/').pop()}</Link></p>
+               )}
+                <p className="text-xs text-muted-foreground pt-1">Upload your CV (PDF, DOC, DOCX).</p>
+            </div>
+
+          </CardContent>
+        </Card>
+
 
          {/* Appearance Section */}
         <Card className="shadow-sm">

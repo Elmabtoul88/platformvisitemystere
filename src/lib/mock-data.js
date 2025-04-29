@@ -100,4 +100,7 @@ export const mockUser = {
   name: 'Alex Shopper',
   role: 'shopper',
   profilePicUrl: null, // Set to null initially, or provide a default URL like 'https://picsum.photos/seed/user-shopper-1/100/100'
+  city: 'Anytown', // Added city
+  motivation: 'Passionate about improving customer experiences and providing detailed feedback.', // Added motivation
+  cvUrl: null, // Added cvUrl, initially null
 };
