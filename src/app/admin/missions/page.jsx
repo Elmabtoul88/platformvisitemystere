@@ -1,3 +1,4 @@
+
 'use client';
 
 import React, { useState, useMemo, startTransition, useEffect } from 'react';
@@ -8,8 +9,8 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { Badge } from '@/components/ui/badge';
 import { Label } from '@/components/ui/label';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
-import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog"; // Added AlertDialogTrigger
-import { PlusCircle, MoreHorizontal, Search, Edit, Trash2, FileCheck, FileText, Loader2, UserPlus, Award, MapPin as MapPinIcon, Users as UsersIcon } from 'lucide-react'; // Added UsersIcon
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
+import { PlusCircle, MoreHorizontal, Search, Edit, Trash2, FileCheck, FileText, Loader2, UserPlus, Award, MapPin as MapPinIcon, Users as UsersIcon } from 'lucide-react';
 import { mockMissions, mockReports } from '@/lib/mock-data';
 import { mockUsers } from '../users/users-mock.js';
 import { assignMissionAction, deleteMissionAction } from '../../actions/admin-actions.js'; // Corrected import path
@@ -26,8 +27,8 @@ import {
   CommandItem,
   CommandList,
 } from "@/components/ui/command";
-import { Checkbox } from "@/components/ui/checkbox"; // Import Checkbox
-import { ScrollArea } from "@/components/ui/scroll-area"; // For scrollable list
+import { Checkbox } from "@/components/ui/checkbox";
+import { ScrollArea } from "@/components/ui/scroll-area";
 
 // Helper function for status badge variant
 const getStatusVariant = (status) => {
@@ -180,9 +181,9 @@ export default function AdminMissionsPage() {
         setAssignDialogOpen(true);
     };
 
-     // Handle checkbox change or item click in assignment dialog
+     // Handle user selection toggle (called by CommandItem onSelect)
      const handleUserSelectionChange = (userId) => {
-        console.log("Toggling selection for user:", userId); // Debug log
+        console.log("Toggling selection for user:", userId);
         setSelectedUsersForAssignment(prev =>
              prev.includes(userId)
                  ? prev.filter(id => id !== userId) // Remove if already selected
@@ -214,11 +215,14 @@ export default function AdminMissionsPage() {
                        if (missionIndex !== -1) {
                            mockMissions[missionIndex].status = 'assigned';
                             // In a real DB, you'd likely have an assignments table
-                           // For simulation, store assigned users in an array (or just the first one)
+                           // For simulation, store assigned users in an array
                            if (!Array.isArray(mockMissions[missionIndex].assignedTo)) {
                                mockMissions[missionIndex].assignedTo = [];
                            }
-                            mockMissions[missionIndex].assignedTo.push(userId);
+                            // Add only if not already present (handles multiple calls for same user)
+                            if (!mockMissions[missionIndex].assignedTo.includes(userId)) {
+                                mockMissions[missionIndex].assignedTo.push(userId);
+                            }
                            console.log(`Mock mission ${missionId} status updated to assigned for user ${userId}.`);
                        }
                   }
@@ -235,9 +239,17 @@ export default function AdminMissionsPage() {
          if (successes.length > 0) {
              startTransition(() => {
                  // Update the mission in the local React state
-                 setMissions(prev => prev.map(m =>
-                    m.id === missionId ? { ...m, status: 'assigned', assignedTo: selectedUsersForAssignment } : m
-                ));
+                 // Ensure assignedTo is merged correctly
+                 setMissions(prev => prev.map(m => {
+                     if (m.id === missionId) {
+                         // Get existing assigned users, ensure it's an array
+                         const existingAssignees = Array.isArray(m.assignedTo) ? m.assignedTo : (m.assignedTo ? [m.assignedTo] : []);
+                         // Combine existing with newly selected, removing duplicates
+                         const newAssignees = [...new Set([...existingAssignees, ...selectedUsersForAssignment])];
+                         return { ...m, status: 'assigned', assignedTo: newAssignees };
+                     }
+                     return m;
+                 }));
              });
          }
 
@@ -377,7 +389,7 @@ export default function AdminMissionsPage() {
                                                             <AlertDialogTrigger asChild>
                                                                 <DropdownMenuItem
                                                                     className="text-destructive focus:text-destructive focus:bg-destructive/10"
-                                                                    onSelect={(e) => e.preventDefault()}
+                                                                    onSelect={(e) => e.preventDefault()} // Prevent dropdown closing on trigger click
                                                                     disabled={isCurrentProcessing || mission.status === 'assigned' || mission.status === 'submitted'}
                                                                     title={mission.status === 'assigned' || mission.status === 'submitted' ? "Cannot delete assigned/submitted missions" : ""}
                                                                 >
@@ -450,17 +462,17 @@ export default function AdminMissionsPage() {
                                     <CommandItem
                                         key={shopper.value}
                                         value={`${shopper.label} ${shopper.email}`} // Combine fields for better searching
-                                        // Remove onSelect here - selection handled by checkbox directly
-                                        className="flex items-center gap-2 cursor-pointer aria-selected:bg-accent/50" // Style selected items
+                                        onSelect={() => handleUserSelectionChange(shopper.value)} // Toggle selection on item click
+                                        className="flex items-center gap-2 cursor-pointer aria-selected:bg-accent/50"
                                     >
-                                        {/* Use onCheckedChange on Checkbox for direct toggle */}
+                                        {/* Use disabled Checkbox purely for visual indication */}
                                         <Checkbox
-                                            id={`shopper-${shopper.value}`}
                                             checked={selectedUsersForAssignment.includes(shopper.value)}
-                                            onCheckedChange={() => handleUserSelectionChange(shopper.value)} // Direct toggle via checkbox click
-                                            aria-labelledby={`shopper-label-${shopper.value}`}
+                                            aria-hidden="true" // Hide from assistive tech as item itself is interactive
+                                            tabIndex={-1} // Prevent focus
+                                            className="pointer-events-none" // Disable direct interaction
                                          />
-                                        <div id={`shopper-label-${shopper.value}`} className="flex flex-col text-sm flex-grow">
+                                        <div className="flex flex-col text-sm flex-grow">
                                              <span>{shopper.label}</span> {/* Name */}
                                             <span className="text-xs text-muted-foreground">{shopper.email}</span> {/* Email */}
                                             <div className="flex items-center gap-2 text-xs text-muted-foreground mt-1">
@@ -496,4 +508,5 @@ export default function AdminMissionsPage() {
         </div>
     );
 }
+
     
