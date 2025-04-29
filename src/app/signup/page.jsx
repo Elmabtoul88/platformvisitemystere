@@ -1,3 +1,4 @@
+
 'use client';
 
 import React, { useState } from 'react';
@@ -6,14 +7,16 @@ import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle }
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { useToast } from "@/hooks/use-toast";
-import { UserPlus, Loader2, ArrowLeft } from 'lucide-react';
+import { UserPlus, Loader2, ArrowLeft, Phone, User as UserIcon } from 'lucide-react'; // Added Phone and UserIcon
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 
 export default function SignUpPage() {
   const { toast } = useToast();
   const router = useRouter();
+  const [completeName, setCompleteName] = useState(''); // Added state for complete name
   const [email, setEmail] = useState('');
+  const [telephone, setTelephone] = useState(''); // Added state for telephone
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
   const [isLoading, setIsLoading] = useState(false);
@@ -23,7 +26,7 @@ export default function SignUpPage() {
     setIsLoading(true);
 
     // --- Simulate Sign Up ---
-    console.log(`Simulating sign up for email: ${email}`);
+    console.log(`Simulating sign up for: Name: ${completeName}, Email: ${email}, Phone: ${telephone}`);
 
     // Basic validation
     if (password !== confirmPassword) {
@@ -31,6 +34,17 @@ export default function SignUpPage() {
         variant: "destructive",
         title: "Sign Up Failed",
         description: "Passwords do not match. Please try again.",
+      });
+      setIsLoading(false);
+      return;
+    }
+
+    // Add validation for complete name
+    if (!completeName.trim()) {
+       toast({
+        variant: "destructive",
+        title: "Sign Up Failed",
+        description: "Please enter your complete name.",
       });
       setIsLoading(false);
       return;
@@ -71,6 +85,18 @@ export default function SignUpPage() {
         <form onSubmit={handleSignUp}>
           <CardContent className="space-y-4">
             <div className="space-y-2">
+              <Label htmlFor="completeName" className="flex items-center gap-1"> <UserIcon className="w-3 h-3"/> Complete Name</Label> {/* Added field */}
+              <Input
+                id="completeName"
+                type="text"
+                placeholder="John Doe"
+                required
+                value={completeName}
+                onChange={(e) => setCompleteName(e.target.value)}
+                disabled={isLoading}
+              />
+            </div>
+            <div className="space-y-2">
               <Label htmlFor="email">Email</Label>
               <Input
                 id="email"
@@ -83,12 +109,24 @@ export default function SignUpPage() {
               />
             </div>
             <div className="space-y-2">
+              <Label htmlFor="telephone" className="flex items-center gap-1"><Phone className="w-3 h-3"/> Telephone (Optional)</Label> {/* Added field */}
+              <Input
+                id="telephone"
+                type="tel" // Use tel type for phone numbers
+                placeholder="+1234567890"
+                value={telephone}
+                onChange={(e) => setTelephone(e.target.value)}
+                disabled={isLoading}
+              />
+            </div>
+            <div className="space-y-2">
                 <Label htmlFor="password">Password</Label>
               <Input
                 id="password"
                 type="password"
                 placeholder="********"
                 required
+                minLength={6} // Enforce min length in HTML
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
                 disabled={isLoading}
@@ -101,6 +139,7 @@ export default function SignUpPage() {
                 type="password"
                 placeholder="********"
                 required
+                minLength={6} // Enforce min length in HTML
                 value={confirmPassword}
                 onChange={(e) => setConfirmPassword(e.target.value)}
                 disabled={isLoading}
@@ -131,3 +170,4 @@ export default function SignUpPage() {
     </div>
   );
 }
+
