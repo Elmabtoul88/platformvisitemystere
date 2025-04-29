@@ -55,15 +55,20 @@ export default function CreateMissionPage() {
             return;
         }
 
-        // Simulate API call
+        // Simulate API call to create the mission
         await new Promise(resolve => setTimeout(resolve, 1500));
+
+        // Simulate getting a new mission ID from the backend
+        const newMissionId = `mission-${Date.now()}`; // Replace with actual ID from response
+        console.log("Simulated mission creation successful. New ID:", newMissionId);
 
         // On success:
         toast({
-            title: "Mission Created Successfully",
-            description: `Mission "${formData.title}" has been created (simulated).`,
+            title: "Mission Created",
+            description: `Proceed to create the survey for "${formData.title}".`,
         });
-        router.push('/admin/missions'); // Redirect back to the missions list
+        // Redirect to the survey creation page for the new mission
+        router.push(`/admin/missions/${newMissionId}/survey/create`);
 
         // On error:
         // toast({
@@ -71,7 +76,7 @@ export default function CreateMissionPage() {
         //     title: "Failed to Create Mission",
         //     description: "An error occurred. Please try again.",
         // });
-        // setIsSubmitting(false);
+        // setIsSubmitting(false); // Keep this line if handling errors
     };
 
     return (
@@ -84,8 +89,8 @@ export default function CreateMissionPage() {
 
             <Card className="shadow-lg">
                 <CardHeader>
-                    <CardTitle className="text-xl font-semibold text-primary">Create New Mission</CardTitle>
-                    <CardDescription>Enter the details for the new mystery shopping mission.</CardDescription>
+                    <CardTitle className="text-xl font-semibold text-primary">Step 1: Create New Mission</CardTitle>
+                    <CardDescription>Enter the basic details for the new mystery shopping mission.</CardDescription>
                 </CardHeader>
                 <form onSubmit={handleSubmit}>
                     <CardContent className="space-y-4">
@@ -146,7 +151,7 @@ export default function CreateMissionPage() {
                                 </>
                             ) : (
                                 <>
-                                    <Save className="mr-2 h-4 w-4" /> Create Mission
+                                    <Save className="mr-2 h-4 w-4" /> Create Mission & Add Survey
                                 </>
                             )}
                         </Button>
