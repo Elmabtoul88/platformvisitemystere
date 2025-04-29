@@ -7,7 +7,7 @@ import { ArrowLeft, FileWarning } from "lucide-react";
 import Link from 'next/link';
 import { Button } from '@/components/ui/button';
 import { Toaster } from '@/components/ui/toaster'; // Import Toaster
-import { submitReport } from '@/app/actions/report-actions'; // Import the server action
+import { submitReport } from '../../actions/report-actions'; // Import the server action using relative path
 
 // Simulate fetching mission data based on ID
 // This remains a server-side function
