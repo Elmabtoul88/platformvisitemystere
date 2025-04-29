@@ -16,8 +16,10 @@ export function MissionList() {
   const [filters, setFilters] = useState({ location: '', date: '', category: '' });
 
   const availableCategories = useMemo(() => {
-    return [...new Set(mockMissions.map(m => m.category))];
+    // Filter out null or empty categories before creating the Set
+    return [...new Set(mockMissions.map(m => m.category).filter(Boolean))];
   }, []); // Calculate once based on mock data
+
 
   const filteredMissions = useMemo(() => {
     return missions.filter(mission => {
@@ -41,8 +43,8 @@ export function MissionList() {
   };
 
    const handleViewDetails = (missionId) => {
-    // Navigate to the report submission page for the specific mission
-    router.push(`/report/${missionId}`);
+    // Navigate to a dedicated mission details page for available missions
+    router.push(`/missions/${missionId}/details`);
   };
 
   return (
@@ -63,8 +65,8 @@ export function MissionList() {
             <MissionCard
               key={mission.id}
               mission={mission}
-              onApply={handleApply}
-              onViewDetails={handleViewDetails} // Pass handler to navigate
+              onApply={handleApply} // For the "Apply Now" button
+              onViewDetails={handleViewDetails} // Changed to navigate to details page
               showApplyButton={true}
             />
           ))}

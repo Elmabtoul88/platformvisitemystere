@@ -8,7 +8,7 @@ import Link from 'next/link';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from "@/components/ui/card"; // Added Card components
 import { Toaster } from '@/components/ui/toaster'; // Import Toaster
-import { submitReport } from '../../actions/report-actions.js'; // Import the server action using relative path
+import { submitReport } from '../../actions/report-actions.js'; // Corrected path
 
 // Simulate fetching mission data based on ID
 // This remains a server-side function
@@ -55,9 +55,14 @@ export default async function ReportSubmissionPage({ params }) {
     );
   }
 
-   // Check if the mission is actually assigned to the current user (using mock user for now)
-   // or if it's in a state allowing report submission (e.g., 'assigned')
-   const canSubmit = mission.status === 'assigned' && mission.assignedTo === mockUser.id;
+   // Check if the mission is assigned to the current user and allows submission
+   // Handles both single string and array for assignedTo
+   const isAssignedToUser = Array.isArray(mission.assignedTo)
+        ? mission.assignedTo.includes(mockUser.id)
+        : mission.assignedTo === mockUser.id;
+
+   const canSubmit = (mission.status === 'assigned' || mission.status === 'submitted') && isAssignedToUser;
+
 
    if (!canSubmit) {
      return (
@@ -73,7 +78,7 @@ export default async function ReportSubmissionPage({ params }) {
                     </CardDescription>
                 </CardHeader>
                 <CardContent className="space-y-2 text-sm text-foreground/80">
-                   {/* Removed invalid <p> wrapping <ul>, added div for structure */}
+                   {/* Wrapped list in a div */}
                    <div className="text-left">
                      <p className="mb-1">This could be because:</p>
                      <ul className="list-disc list-inside pl-4 mt-1 space-y-1">

@@ -14,13 +14,13 @@ export default function AssignedMissionsPage() {
   // Filter missions assigned to the mock user
   const assignedMissions = useMemo(() => {
     return mockMissions.filter(mission =>
-        (mission.status === 'assigned' || mission.status === 'submitted') // Show assigned and submitted but not yet approved
-         && mission.assignedTo === mockUser.id
+        (mission.status === 'assigned' || mission.status === 'submitted') // Show assigned and submitted but not yet approved/refused
+         && (Array.isArray(mission.assignedTo) ? mission.assignedTo.includes(mockUser.id) : mission.assignedTo === mockUser.id) // Handle array or single ID
     );
   }, []); // Dependency array is empty as mock data doesn't change
 
-  const handleStartReport = (missionId) => {
-    // Navigate to the report submission page
+  const handleStartOrViewReport = (missionId) => {
+    // Navigate to the report submission/view page regardless of status (assigned or submitted)
     router.push(`/report/${missionId}`);
   };
 
@@ -42,9 +42,11 @@ export default function AssignedMissionsPage() {
             <MissionCard
               key={mission.id}
               mission={mission}
-              // Use onViewDetails handler to navigate to report submission
-              onViewDetails={handleStartReport}
+              // Use onViewDetails to navigate to the report page
+              onViewDetails={handleStartOrViewReport}
               showApplyButton={false} // Don't show apply button for assigned missions
+              // Customize button text based on status
+              detailsButtonText={mission.status === 'submitted' ? 'View Report' : 'Start Report'}
             />
           ))}
         </div>
