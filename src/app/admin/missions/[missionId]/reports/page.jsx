@@ -1,4 +1,5 @@
 
+
 'use client';
 
 import React, { useState, useEffect, useTransition } from 'react';
@@ -9,7 +10,7 @@ import { Badge } from '@/components/ui/badge';
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
 import { mockMissions, mockReports, mockSurveyQuestions } from '@/lib/mock-data'; // Use mock data for now
-import { mockUsers } from '../../../users/users-mock.js'; // Corrected import path using relative path
+import { mockUsers } from '../../users/users-mock.js'; // Corrected import path using relative path
 import { format } from 'date-fns';
 import Link from 'next/link';
 import Image from 'next/image';
@@ -103,13 +104,23 @@ const formatAnswerValue = (answer, question) => {
             return <span className="text-muted-foreground italic">Location not captured</span>;
         case 'audio_recording':
             const audioUrl = answer.value;
-            if (audioUrl && typeof audioUrl === 'string') {
+             // Check if it's a simulated placeholder URL
+             if (audioUrl && typeof audioUrl === 'string' && audioUrl.startsWith('/audio/simulated_')) {
+                 return (
+                     <div className="flex items-center gap-2 text-muted-foreground text-sm italic">
+                         <Mic className="w-4 h-4" />
+                         <span>Audio recorded (simulation: {audioUrl.split('/').pop()})</span>
+                     </div>
+                 );
+             }
+             // If it's a real URL (in the future), render the player
+             else if (audioUrl && typeof audioUrl === 'string') {
                  return (
                      <audio controls src={audioUrl} className="w-full max-w-xs h-10">
                          Your browser does not support the audio element.
                      </audio>
                 );
-            }
+             }
             return <span className="text-muted-foreground italic">Audio not recorded</span>;
         default:
             return <span>{String(answer.value)}</span>;
@@ -496,3 +507,4 @@ export default function AdminReviewReportsPage() {
         </div>
     );
 }
+

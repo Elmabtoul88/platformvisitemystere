@@ -1,4 +1,5 @@
 
+
 "use client";
 
 import { useForm, Controller } from "react-hook-form";
@@ -475,14 +476,22 @@ export function ReportSubmissionForm({ mission, surveyQuestions = [], onSubmitAc
                                                         )}
                                                     </div>
                                                     {audioData[q.id]?.url && (
-                                                        <div className="flex items-center gap-2 p-2 border rounded bg-secondary">
-                                                            <audio controls src={audioData[q.id].url} className="w-full max-w-xs h-10">
-                                                                Your browser does not support the audio element.
-                                                            </audio>
-                                                            <Button type="button" variant="ghost" size="icon" className="text-destructive" onClick={() => removeAudio(q.id)}>
-                                                                <Trash2 className="w-4 h-4"/>
-                                                            </Button>
-                                                        </div>
+                                                         <div className="flex items-center gap-2 p-2 border rounded bg-secondary">
+                                                             {/* Check if it's a simulated URL before rendering the player */}
+                                                             {audioData[q.id].url.startsWith('/audio/simulated_') ? (
+                                                                 <div className="flex items-center gap-2 text-muted-foreground text-sm italic flex-grow">
+                                                                     <Mic className="w-4 h-4" />
+                                                                     <span>Audio recorded (simulation: {audioData[q.id].url.split('/').pop()})</span>
+                                                                 </div>
+                                                             ) : (
+                                                                 <audio controls src={audioData[q.id].url} className="w-full max-w-xs h-10 flex-grow">
+                                                                     Your browser does not support the audio element.
+                                                                 </audio>
+                                                             )}
+                                                             <Button type="button" variant="ghost" size="icon" className="text-destructive" onClick={() => removeAudio(q.id)}>
+                                                                 <Trash2 className="w-4 h-4"/>
+                                                             </Button>
+                                                         </div>
                                                     )}
                                                     {audioData[q.id]?.status === 'error' && (
                                                         <p className="text-sm text-destructive">Audio recording failed.</p>
@@ -530,3 +539,4 @@ export function ReportSubmissionForm({ mission, surveyQuestions = [], onSubmitAc
     </Card>
   );
 }
+
