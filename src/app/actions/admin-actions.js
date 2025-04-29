@@ -31,6 +31,8 @@ export async function approveReportAction(reportId, missionId) {
   const missionIndex = mockMissions.findIndex(m => m.id === missionId);
   if (missionIndex !== -1) {
       mockMissions[missionIndex].status = 'approved';
+      // Optionally remove assignedTo if needed after approval? Depends on flow.
+      // mockMissions[missionIndex].assignedTo = null;
   }
   // --- End Mock Data Update ---
 
@@ -80,6 +82,7 @@ export async function refuseReportAction(reportId, missionId, reason) {
   const missionIndex = mockMissions.findIndex(m => m.id === missionId);
   if (missionIndex !== -1) {
       mockMissions[missionIndex].status = 'refused';
+      // Keep assignedTo so the shopper knows which mission was refused.
   }
   // --- End Mock Data Update ---
 
@@ -89,7 +92,7 @@ export async function refuseReportAction(reportId, missionId, reason) {
   revalidatePath(`/admin/missions/${missionId}/reports`);
   revalidatePath('/admin/missions');
   // Revalidate shopper's assigned missions if they need to resubmit or view refusal
-  revalidatePath('/missions/assigned');
+  revalidatePath('/missions/assigned'); // Also revalidate assigned list
 
   return { success: true, message: "Report refused and shopper notified (simulated)." };
 
@@ -105,6 +108,14 @@ export async function refuseReportAction(reportId, missionId, reason) {
  */
 export async function deleteMissionAction(missionId) {
     console.log(`Server Action: Deleting mission ${missionId}`);
+
+    // --- Prevent deletion if assigned/submitted (optional server-side check) ---
+    const missionToDelete = mockMissions.find(m => m.id === missionId);
+    if (missionToDelete && (missionToDelete.status === 'assigned' || missionToDelete.status === 'submitted')) {
+        console.error(`Server Action: Cannot delete mission ${missionId} because it is currently ${missionToDelete.status}.`);
+        return { success: false, message: `Cannot delete mission while it is ${missionToDelete.status}.` };
+    }
+    // ---
 
     // Simulate network delay
     await new Promise(resolve => setTimeout(resolve, 500));
@@ -218,4 +229,47 @@ export async function updateUserAction(userId, userData) {
         console.error(`Server Action: Failed to update user ${userId} (simulated).`);
         return { success: false, message: `Failed to update user ${userId} (simulated server error).` };
     }
+}
+
+/**
+ * Server Action to assign a mission to a specific user.
+ * Updates mock data for simulation.
+ *
+ * @param {string} missionId - The ID of the mission to assign.
+ * @param {string} userId - The ID of the user to assign the mission to.
+ * @returns {Promise<{success: boolean, message: string}>} - Result of the assignment operation.
+ */
+export async function assignMissionAction(missionId, userId) {
+  console.log(`Server Action: Assigning mission ${missionId} to user ${userId}`);
+
+  // Simulate network delay
+  await new Promise(resolve => setTimeout(resolve, 500));
+
+  // --- Update Mock Data ---
+  const missionIndex = mockMissions.findIndex(m => m.id === missionId);
+
+  if (missionIndex === -1) {
+    console.error("Server Action: Mission not found.");
+    return { success: false, message: "Mission not found." };
+  }
+
+  if (mockMissions[missionIndex].status !== 'available') {
+    console.error(`Server Action: Mission ${missionId} is not available for assignment (status: ${mockMissions[missionIndex].status}).`);
+    return { success: false, message: `Mission is not available for assignment.` };
+  }
+
+  // TODO: Add check if user exists and is active/shopper
+
+  mockMissions[missionIndex].status = 'assigned';
+  mockMissions[missionIndex].assignedTo = userId;
+  // --- End Mock Data Update ---
+
+  console.log(`Server Action: Mission ${missionId} assigned to user ${userId} successfully (simulated).`);
+
+  // Revalidate relevant paths
+  revalidatePath('/admin/missions'); // Admin list
+  revalidatePath('/'); // Shopper available list (mission should disappear)
+  revalidatePath('/missions/assigned'); // Shopper assigned list (mission should appear)
+
+  return { success: true, message: `Mission assigned to user ${userId} successfully (simulated).` };
 }
