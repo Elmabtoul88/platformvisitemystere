@@ -2,32 +2,42 @@
 
 import React, { useState, useMemo, startTransition, useEffect } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { Button, buttonVariants } from '@/components/ui/button'; // Import buttonVariants
+import { Button, buttonVariants } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
-import { Label } from '@/components/ui/label'; // Import Label
+import { Label } from '@/components/ui/label';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
-import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog"; // Added AlertDialogTrigger
-import { PlusCircle, MoreHorizontal, Search, Edit, Trash2, FileCheck, FileText, Loader2, UserPlus, Award, MapPin as MapPinIcon } from 'lucide-react'; // Added UserPlus, Award, MapPinIcon icon
-import { mockMissions, mockReports } from '@/lib/mock-data'; // Use mock data for now
-import { mockUsers } from '../users/users-mock.js'; // Import mock users for assignment
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
+import { PlusCircle, MoreHorizontal, Search, Edit, Trash2, FileCheck, FileText, Loader2, UserPlus, Award, MapPin as MapPinIcon, Users as UsersIcon } from 'lucide-react'; // Added UsersIcon
+import { mockMissions, mockReports } from '@/lib/mock-data';
+import { mockUsers } from '../users/users-mock.js';
 import { format } from 'date-fns';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useToast } from '@/hooks/use-toast';
-import { deleteMissionAction, assignMissionAction } from '../../actions/admin-actions.js'; // Import actions
-import { Combobox } from '@/components/ui/combobox'; // Import the Combobox component
+import { deleteMissionAction, assignMissionAction } from '../../actions/admin-actions.js';
+// Import Command components for multi-select autocomplete
+import {
+  Command,
+  CommandEmpty,
+  CommandGroup,
+  CommandInput,
+  CommandItem,
+  CommandList,
+} from "@/components/ui/command";
+import { Checkbox } from "@/components/ui/checkbox"; // Import Checkbox
+import { ScrollArea } from "@/components/ui/scroll-area"; // For scrollable list
 
 // Helper function for status badge variant
 const getStatusVariant = (status) => {
     switch (status) {
       case 'available': return 'secondary';
-      case 'assigned': return 'default'; // Or 'outline' if preferred
-      case 'submitted': return 'destructive'; // Highlight that reports are pending
-      case 'approved': return 'default'; // Use default for completed/approved
-      case 'refused': return 'outline'; // Indicate refused reports
-      case 'completed': return 'default'; // Treat completed same as approved
+      case 'assigned': return 'default';
+      case 'submitted': return 'destructive';
+      case 'approved': return 'default';
+      case 'refused': return 'outline';
+      case 'completed': return 'default';
       default: return 'secondary';
     }
 };
@@ -49,29 +59,29 @@ export default function AdminMissionsPage() {
     const { toast } = useToast();
     const [searchTerm, setSearchTerm] = useState('');
     const [missions, setMissions] = useState([]);
-    const [reports, setReports] = useState([]); // Store reports to check pending count
-    const [shoppers, setShoppers] = useState([]); // Renamed users state to shoppers for clarity
+    const [reports, setReports] = useState([]);
+    const [shoppers, setShoppers] = useState([]);
     const [isLoading, setIsLoading] = useState(true);
-    const [isProcessing, setIsProcessing] = useState(null); // Track which mission is being deleted/assigned
-    const [assignDialogOpen, setAssignDialogOpen] = useState(false); // Control assign dialog visibility
-    const [selectedMissionForAssignment, setSelectedMissionForAssignment] = useState(null); // For assignment dialog
-    const [selectedUserForAssignment, setSelectedUserForAssignment] = useState(''); // For assignment dialog Combobox value (user ID)
+    const [isProcessing, setIsProcessing] = useState(null);
+    const [assignDialogOpen, setAssignDialogOpen] = useState(false);
+    const [selectedMissionForAssignment, setSelectedMissionForAssignment] = useState(null);
+    // State for multi-select
+    const [selectedUsersForAssignment, setSelectedUsersForAssignment] = useState([]); // Array of user IDs
+    const [shopperSearchTerm, setShopperSearchTerm] = useState(''); // State for CommandInput
 
     // Fetch initial data
     useEffect(() => {
         setIsLoading(true);
-        // Simulate fetching data
         setTimeout(() => {
-            // Set state using startTransition for potential concurrent updates
             startTransition(() => {
                 setMissions(mockMissions);
                 setReports(mockReports);
-                // Filter for only shoppers to assign and format for Combobox
                 setShoppers(mockUsers
                     .filter(u => u.role === 'shopper' && u.status === 'active')
                     .map(u => ({
                         value: u.id,
-                        label: `${u.name} (${u.email})`,
+                        label: u.name, // Just name for simplicity in display
+                        email: u.email,
                         city: u.city || 'N/A',
                         completedMissions: u.completedMissions ?? 0,
                      }))
@@ -92,7 +102,16 @@ export default function AdminMissionsPage() {
         );
     }, [missions, searchTerm]);
 
-    // Calculate pending reports count for each mission
+    // Filter shoppers based on search term for Command list
+     const filteredShoppers = useMemo(() => {
+        if (!shopperSearchTerm) return shoppers;
+        return shoppers.filter(shopper =>
+            shopper.label.toLowerCase().includes(shopperSearchTerm.toLowerCase()) ||
+            shopper.email.toLowerCase().includes(shopperSearchTerm.toLowerCase())
+        );
+    }, [shoppers, shopperSearchTerm]);
+
+
     const pendingReportsCount = useMemo(() => {
         const counts = {};
         reports.forEach(report => {
@@ -117,7 +136,7 @@ export default function AdminMissionsPage() {
     };
 
     const handleDeleteMission = async (missionId) => {
-        setIsProcessing(missionId); // Indicate processing for this mission ID
+        setIsProcessing(missionId);
         console.log(`Admin: Deleting mission ${missionId}`);
 
         try {
@@ -134,7 +153,7 @@ export default function AdminMissionsPage() {
         } catch (error) {
             toast({ variant: "destructive", title: "Error", description: error.message });
         } finally {
-            setIsProcessing(null); // Clear processing state
+            setIsProcessing(null);
         }
     };
 
@@ -142,66 +161,86 @@ export default function AdminMissionsPage() {
         router.push(`/admin/missions/${missionId}/reports`);
     };
 
-     // --- Assign Mission Logic ---
+     // --- Assign Mission Logic (Updated for Multi-Select) ---
     const openAssignDialog = (mission) => {
         if (mission.status !== 'available') {
             toast({ variant: "destructive", title: "Cannot Assign", description: "Mission is not available for assignment." });
             return;
         }
         setSelectedMissionForAssignment(mission);
-        setSelectedUserForAssignment(''); // Reset selected user
-        setAssignDialogOpen(true); // Open the dialog
+        setSelectedUsersForAssignment([]); // Reset selected users array
+        setShopperSearchTerm(''); // Reset search term
+        setAssignDialogOpen(true);
     };
 
-     const handleAssignMission = async () => {
-        if (!selectedMissionForAssignment || !selectedUserForAssignment) {
-            toast({ variant: "destructive", title: "Selection Required", description: "Please select a user to assign the mission." });
+    const handleAssignMission = async () => {
+        if (!selectedMissionForAssignment || selectedUsersForAssignment.length === 0) {
+            toast({ variant: "destructive", title: "Selection Required", description: "Please select at least one user to assign the mission." });
             return;
         }
         const missionId = selectedMissionForAssignment.id;
-        setIsProcessing(missionId); // Indicate processing
-        console.log(`Admin: Assigning mission ${missionId} to user ${selectedUserForAssignment}`);
+        setIsProcessing(missionId);
+        console.log(`Admin: Assigning mission ${missionId} to users: ${selectedUsersForAssignment.join(', ')}`);
 
-        try {
-            const result = await assignMissionAction(missionId, selectedUserForAssignment);
-            if (result.success) {
-                 startTransition(() => {
-                    // Update local mission state
-                     setMissions(prev => prev.map(m =>
-                        m.id === missionId ? { ...m, status: 'assigned', assignedTo: selectedUserForAssignment } : m
-                    ));
-                      // Update mockMissions directly for simulation persistence
-                     const missionIndex = mockMissions.findIndex(m => m.id === missionId);
-                     if (missionIndex !== -1) {
-                        mockMissions[missionIndex].status = 'assigned';
-                        mockMissions[missionIndex].assignedTo = selectedUserForAssignment;
-                     }
-                });
-                toast({ title: "Mission Assigned", description: result.message });
-                setAssignDialogOpen(false); // Close dialog
-                setSelectedMissionForAssignment(null);
-            } else {
-                throw new Error(result.message || "Failed to assign mission.");
-            }
-        } catch (error) {
-            toast({ variant: "destructive", title: "Assignment Failed", description: error.message });
-        } finally {
-            setIsProcessing(null); // Clear processing state
-        }
+        // Array to hold results of each assignment attempt
+        const results = [];
+        // Sequentially assign to each selected user (could be parallelized, but sequential is simpler for simulation)
+        for (const userId of selectedUsersForAssignment) {
+             try {
+                 const result = await assignMissionAction(missionId, userId);
+                 results.push({ userId, success: result.success, message: result.message });
+             } catch (error) {
+                 results.push({ userId, success: false, message: error.message || "Failed to assign." });
+             }
+         }
+
+         const successes = results.filter(r => r.success);
+         const failures = results.filter(r => !r.success);
+
+         // Update local state only if at least one assignment was successful
+         if (successes.length > 0) {
+             startTransition(() => {
+                // For simplicity in mock data, just update status and ONE assignedTo (or handle array later)
+                 setMissions(prev => prev.map(m =>
+                    m.id === missionId ? { ...m, status: 'assigned', assignedTo: successes[0].userId } : m // Simplified update for now
+                ));
+                // Update mockMissions directly for simulation persistence
+                 const missionIndex = mockMissions.findIndex(m => m.id === missionId);
+                 if (missionIndex !== -1) {
+                     mockMissions[missionIndex].status = 'assigned';
+                      // In a real scenario, assignedTo might be an array or a separate relation table
+                     mockMissions[missionIndex].assignedTo = successes[0].userId; // Simplified update for now
+                 }
+             });
+         }
+
+         // Display feedback based on results
+          if (failures.length === 0) {
+             toast({ title: "Mission Assigned", description: `Successfully assigned to ${successes.length} user(s).` });
+          } else {
+              toast({
+                 variant: "destructive",
+                 title: "Partial Assignment Failure",
+                 description: `Assigned to ${successes.length} user(s). Failed for ${failures.length} user(s). Check logs for details.`,
+                 duration: 5000, // Longer duration for error messages
+             });
+             console.error("Assignment Failures:", failures);
+          }
+
+         setAssignDialogOpen(false);
+         setSelectedMissionForAssignment(null);
+         setSelectedUsersForAssignment([]);
+         setIsProcessing(null); // Clear processing state
      };
 
-     // Custom renderer for Combobox options
-     const renderShopperOption = (option) => (
-        <div className="flex flex-col text-sm">
-          <span>{option.label.split('(')[0]}</span> {/* Name */}
-          <span className="text-xs text-muted-foreground">{option.label.split('(')[1].replace(')', '')}</span> {/* Email */}
-          <div className="flex items-center gap-2 text-xs text-muted-foreground mt-1">
-            <span className="flex items-center gap-1"><MapPinIcon className="w-3 h-3"/> {option.city}</span>
-            <span className="flex items-center gap-1"><Award className="w-3 h-3"/> {option.completedMissions} done</span>
-          </div>
-        </div>
-      );
+    // Handle checkbox change in assignment dialog
+    const handleUserSelectionChange = (userId, checked) => {
+         setSelectedUsersForAssignment(prev =>
+             checked ? [...prev, userId] : prev.filter(id => id !== userId)
+         );
+     };
      // --- End Assign Mission Logic ---
+
 
      if (isLoading) {
         return (
@@ -256,7 +295,7 @@ export default function AdminMissionsPage() {
                                 filteredMissions.map((mission) => {
                                     const pendingCount = pendingReportsCount[mission.id] || 0;
                                     const assignedShopper = shoppers.find(u => u.value === mission.assignedTo);
-                                    const assignedUserName = assignedShopper ? assignedShopper.label.split('(')[0].trim() : mission.assignedTo || 'N/A';
+                                    const assignedUserName = assignedShopper ? assignedShopper.label : mission.assignedTo || 'N/A';
                                     const isCurrentProcessing = isProcessing === mission.id;
 
                                     return (
@@ -272,8 +311,9 @@ export default function AdminMissionsPage() {
                                                 </Badge>
                                             </TableCell>
                                             <TableCell className="text-xs">
+                                                 {/* Simplified display if multiple assigned, or show first */}
                                                 {mission.status === 'assigned' || mission.status === 'submitted' || mission.status === 'approved' || mission.status === 'refused'
-                                                    ? assignedUserName
+                                                    ? assignedUserName + (Array.isArray(mission.assignedTo) && mission.assignedTo.length > 1 ? ` (+${mission.assignedTo.length - 1})` : '')
                                                     : <span className="text-muted-foreground">Not Assigned</span>
                                                 }
                                             </TableCell>
@@ -289,7 +329,7 @@ export default function AdminMissionsPage() {
                                                         <DropdownMenuLabel>Actions</DropdownMenuLabel>
                                                         {mission.status === 'available' && (
                                                             <DropdownMenuItem onClick={() => openAssignDialog(mission)} disabled={isCurrentProcessing}>
-                                                                <UserPlus className="mr-2 h-4 w-4" /> Assign to Shopper
+                                                                <UserPlus className="mr-2 h-4 w-4" /> Assign to Shopper(s)
                                                             </DropdownMenuItem>
                                                         )}
                                                         {(mission.status === 'submitted' || mission.status === 'approved' || mission.status === 'refused') && (
@@ -355,35 +395,76 @@ export default function AdminMissionsPage() {
                 </CardContent>
             </Card>
 
-            {/* Assign User Dialog */}
+             {/* Assign User Dialog (Updated for Multi-Select Autocomplete) */}
             <AlertDialog open={assignDialogOpen} onOpenChange={setAssignDialogOpen}>
-                <AlertDialogContent>
+                <AlertDialogContent className="sm:max-w-lg"> {/* Wider dialog */}
                     <AlertDialogHeader>
                         <AlertDialogTitle>Assign Mission: {selectedMissionForAssignment?.title}</AlertDialogTitle>
                         <AlertDialogDescription>
-                            Select an active shopper to assign this mission to. The shopper will be notified.
+                            Select one or more active shoppers to assign this mission to. They will be notified.
                         </AlertDialogDescription>
                     </AlertDialogHeader>
                     <div className="py-4 space-y-2">
-                        <Label htmlFor="shopper-combobox">Select Shopper</Label>
-                        <Combobox
-                            options={shoppers}
-                            value={selectedUserForAssignment}
-                            onValueChange={setSelectedUserForAssignment}
+                        <Label htmlFor="shopper-search">Select Shopper(s)</Label>
+                         <Command className="rounded-lg border shadow-sm">
+                          <CommandInput
+                            id="shopper-search"
                             placeholder="Search by name or email..."
-                            searchPlaceholder="Search shopper..."
-                            emptyMessage="No active shoppers found."
-                            renderOption={renderShopperOption}
-                        />
+                            value={shopperSearchTerm}
+                            onValueChange={setShopperSearchTerm}
+                          />
+                          <CommandList>
+                            <CommandEmpty>No shoppers found.</CommandEmpty>
+                             {/* Wrap list in ScrollArea */}
+                             <ScrollArea className="h-[200px]"> {/* Adjust height as needed */}
+                                <CommandGroup>
+                                {filteredShoppers.map((shopper) => (
+                                    <CommandItem
+                                        key={shopper.value}
+                                        value={`${shopper.label} ${shopper.email}`} // Combine fields for better searching
+                                        onSelect={(e) => {
+                                            // Prevent Command's default selection closing the dialog
+                                            e.preventDefault();
+                                             // Toggle selection manually using checkbox handler
+                                            handleUserSelectionChange(shopper.value, !selectedUsersForAssignment.includes(shopper.value));
+                                        }}
+                                        className="flex items-center gap-2 cursor-pointer"
+                                    >
+                                        <Checkbox
+                                            id={`shopper-${shopper.value}`}
+                                            checked={selectedUsersForAssignment.includes(shopper.value)}
+                                            onCheckedChange={(checked) => handleUserSelectionChange(shopper.value, checked)}
+                                            aria-labelledby={`shopper-label-${shopper.value}`}
+                                         />
+                                        <div id={`shopper-label-${shopper.value}`} className="flex flex-col text-sm flex-grow">
+                                             <span>{shopper.label}</span> {/* Name */}
+                                            <span className="text-xs text-muted-foreground">{shopper.email}</span> {/* Email */}
+                                            <div className="flex items-center gap-2 text-xs text-muted-foreground mt-1">
+                                                 <span className="flex items-center gap-1"><MapPinIcon className="w-3 h-3"/> {shopper.city}</span>
+                                                 <span className="flex items-center gap-1"><Award className="w-3 h-3"/> {shopper.completedMissions} done</span>
+                                             </div>
+                                        </div>
+                                    </CommandItem>
+                                ))}
+                                </CommandGroup>
+                             </ScrollArea>
+                          </CommandList>
+                        </Command>
+                        {/* Display selected users */}
+                        {selectedUsersForAssignment.length > 0 && (
+                             <div className="pt-2 text-xs text-muted-foreground">
+                                 Selected: {selectedUsersForAssignment.map(id => shoppers.find(s => s.value === id)?.label).join(', ')}
+                             </div>
+                         )}
                     </div>
                     <AlertDialogFooter>
                         <AlertDialogCancel onClick={() => setAssignDialogOpen(false)} disabled={isProcessing === selectedMissionForAssignment?.id}>Cancel</AlertDialogCancel>
                         <AlertDialogAction
                             onClick={handleAssignMission}
-                            disabled={isProcessing === selectedMissionForAssignment?.id || !selectedUserForAssignment}
+                            disabled={isProcessing === selectedMissionForAssignment?.id || selectedUsersForAssignment.length === 0}
                         >
                             {isProcessing === selectedMissionForAssignment?.id ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
-                            Assign Mission
+                            Assign Mission{selectedUsersForAssignment.length > 1 ? 's' : ''}
                         </AlertDialogAction>
                     </AlertDialogFooter>
                 </AlertDialogContent>
