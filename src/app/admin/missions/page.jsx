@@ -64,8 +64,9 @@ const getStatusInfo = (status) => {
   };
 
 // Helper to count submitted reports for a specific mission
-const countSubmittedReports = (missionId, reportsData) => {
-    return reportsData.filter(r => r.missionId === missionId && r.status === 'submitted').length;
+// Updated to use the imported mockReports directly for accurate counting
+const countSubmittedReports = (missionId) => {
+    return mockReports.filter(r => r.missionId === missionId && r.status === 'submitted').length;
 };
 
 // Helper to get user details from mock data
@@ -79,7 +80,8 @@ export default function AdminMissionsPage() {
     const { toast } = useToast();
     const [searchTerm, setSearchTerm] = useState('');
     const [missions, setMissions] = useState([]);
-    const [reports, setReports] = useState([]);
+    // Removed reports state as countSubmittedReports uses mockReports directly
+    // const [reports, setReports] = useState([]);
     const [shoppers, setShoppers] = useState([]); // State to hold formatted shopper data
     const [isLoading, setIsLoading] = useState(true);
     const [isProcessing, setIsProcessing] = useState(null); // Track processing state for various actions (e.g., delete, assign)
@@ -99,7 +101,8 @@ export default function AdminMissionsPage() {
             startTransition(() => {
                 // Ensure mockMissions is initialized correctly
                 setMissions(Array.isArray(mockMissions) ? mockMissions : []);
-                setReports(Array.isArray(mockReports) ? mockReports : []);
+                // Removed setReports as it's no longer needed locally
+                // setReports(Array.isArray(mockReports) ? mockReports : []);
                  // Filter and format shopper data ONLY ONCE here
                  const activeShoppers = (Array.isArray(mockUsers) ? mockUsers : [])
                     .filter(u => u.role === 'shopper' && u.status === 'active')
@@ -161,7 +164,12 @@ export default function AdminMissionsPage() {
              if (result.success) {
                  startTransition(() => {
                    setMissions(prev => prev.filter(m => m.id !== missionId));
-                   setReports(prev => prev.filter(r => r.missionId !== missionId));
+                   // Also remove reports associated with this mission from mock data
+                    const updatedReports = mockReports.filter(r => r.missionId !== missionId);
+                    // Update mockReports directly (only for simulation)
+                    mockReports.length = 0;
+                    mockReports.push(...updatedReports);
+
                     // Also remove from mockMissions for simulation persistence
                    const index = mockMissions.findIndex(m => m.id === missionId);
                    if (index > -1) mockMissions.splice(index, 1);
@@ -245,7 +253,7 @@ export default function AdminMissionsPage() {
                            }
                             // Add only if not already present (handles multiple calls for same user)
                             if (!currentMission.assignedTo.includes(userId)) {
-                                currentMission.assignedTo.push(userId);
+                               currentMission.assignedTo.push(userId);
                             }
                            console.log(`Mock mission ${missionId} status updated to ${currentMission.status} for user ${userId}. Assignees: ${currentMission.assignedTo.join(', ')}`);
                        }
@@ -345,10 +353,10 @@ export default function AdminMissionsPage() {
                             </TableRow>
                         </TableHeader>
                         <TableBody>
-                            <TooltipProvider>
+                             <TooltipProvider> {/* Ensure TooltipProvider wraps the rows */}
                             {filteredMissions.length > 0 ? (
                                 filteredMissions.map((mission) => {
-                                    const submittedCount = countSubmittedReports(mission.id, reports);
+                                    const submittedCount = countSubmittedReports(mission.id); // Use updated helper
                                     // Handle assignedTo being potentially an array or single ID
                                     const assignedUserIds = Array.isArray(mission.assignedTo) ? mission.assignedTo : (mission.assignedTo ? [mission.assignedTo] : []);
                                      // Get details for assigned shoppers
@@ -365,13 +373,13 @@ export default function AdminMissionsPage() {
                                             <TableCell>${mission.reward}</TableCell>
                                             <TableCell>
                                                  {/* Improved Status Display */}
-                                                 <div className="flex items-center gap-1"> {/* Decreased gap */}
-                                                     <Badge variant={getStatusVariant(mission.status)} className={`capitalize px-2 py-0.5 ${statusInfo.className}`}> {/* Reduced padding */}
+                                                 <div className="flex items-center gap-1.5"> {/* Adjusted gap */}
+                                                     <Badge variant={getStatusVariant(mission.status)} className={`capitalize px-2 py-0.5 ${statusInfo.className}`}> {/* Base status */}
                                                          {statusInfo.text}
                                                      </Badge>
                                                      {/* Show pending count badge ONLY if reports are submitted */}
                                                      {mission.status === 'submitted' && submittedCount > 0 && (
-                                                        <Badge variant="destructive" className="text-xs px-1.5 py-1 flex items-center h-fit"> {/* Adjusted padding/height */}
+                                                        <Badge variant="destructive" className="text-xs px-2 py-1 h-fit leading-none flex items-center"> {/* Increased padding */}
                                                              {submittedCount} Pending
                                                          </Badge>
                                                      )}
@@ -402,6 +410,7 @@ export default function AdminMissionsPage() {
                                                                     </Avatar>
                                                                 </TooltipTrigger>
                                                                  <TooltipContent>
+                                                                     {/* Display all remaining names */}
                                                                      <p>{assignedShoppers.slice(3).map(s => s.name).join(', ')}</p>
                                                                  </TooltipContent>
                                                             </Tooltip>
@@ -432,7 +441,7 @@ export default function AdminMissionsPage() {
                                                             <DropdownMenuItem onClick={() => handleReviewReports(mission.id)} disabled={isCurrentProcessing}>
                                                                  <FileCheck className="mr-2 h-4 w-4" /> Review Reports
                                                                  {submittedCount > 0 && mission.status === 'submitted' && (
-                                                                     <Badge variant="destructive" className="ml-auto text-[10px] px-1.5 py-1 flex items-center leading-none h-fit">{submittedCount}</Badge>
+                                                                     <Badge variant="destructive" className="ml-auto text-xs px-1.5 py-1 flex items-center leading-none h-fit">{submittedCount}</Badge>
                                                                  )}
                                                             </DropdownMenuItem>
                                                          )}
