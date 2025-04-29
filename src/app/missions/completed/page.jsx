@@ -5,8 +5,8 @@ import React, { useMemo } from 'react';
 import { MissionCard } from '@/components/mission-card';
 import { mockMissions, mockReports, mockUser } from '@/lib/mock-data'; // Using mock data
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
-import { CheckCircle, SearchX, ArrowLeft, DollarSign } from 'lucide-react'; // Added DollarSign
-import { Card } from '@/components/ui/card';
+import { CheckCircle, SearchX, ArrowLeft, DollarSign, Wallet } from 'lucide-react'; // Added Wallet icon
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'; // Added CardHeader, CardTitle
 import { format } from 'date-fns';
 import Image from 'next/image';
 import { Button } from '@/components/ui/button';
@@ -34,6 +34,11 @@ export default function CompletedMissionsPage() {
     );
   }, []); // Dependency array ensures this runs once based on mock data
 
+  // Calculate total payment
+  const totalPayment = useMemo(() => {
+    return completedMissions.reduce((sum, mission) => sum + mission.reward, 0);
+  }, [completedMissions]);
+
   return (
     <div className="container mx-auto py-8 px-4">
        <Button asChild variant="outline" size="sm" className="mb-6">
@@ -44,6 +49,23 @@ export default function CompletedMissionsPage() {
       <h1 className="text-2xl font-bold mb-6 text-primary flex items-center gap-2">
         <CheckCircle className="w-6 h-6" /> My Completed Missions
       </h1>
+
+      {/* Total Payment Card */}
+      <Card className="mb-6 shadow-sm bg-primary/5 border-primary/20">
+        <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+          <CardTitle className="text-sm font-medium text-primary flex items-center gap-2">
+            <Wallet className="w-4 h-4" /> Total Earnings
+          </CardTitle>
+          {/* Optional icon or detail */}
+        </CardHeader>
+        <CardContent>
+          <div className="text-2xl font-bold text-primary">${totalPayment.toFixed(2)}</div>
+          <p className="text-xs text-primary/80">
+            Total earnings from all approved missions.
+          </p>
+        </CardContent>
+      </Card>
+
 
       {completedMissions.length > 0 ? (
         <div className="space-y-6">
@@ -73,7 +95,7 @@ export default function CompletedMissionsPage() {
                                             </Badge>
                                         </h3>
                                         <p className="text-sm text-muted-foreground">
-                                            Submitted on: {format(report.submittedAt, 'PPP')}
+                                            Submitted on: {format(new Date(report.submittedAt), 'PPp')}
                                         </p>
                                     </div>
 
@@ -83,7 +105,7 @@ export default function CompletedMissionsPage() {
                                             <DollarSign className="w-4 h-4"/> Payment Status
                                         </h4>
                                         <p className="text-sm text-green-700 font-medium">
-                                            Paid: ${mission.reward}
+                                            Paid: ${mission.reward.toFixed(2)} {/* Ensure 2 decimal places */}
                                         </p>
                                         <p className="text-xs text-muted-foreground mt-1">
                                             Payment processed upon report approval (simulated).
