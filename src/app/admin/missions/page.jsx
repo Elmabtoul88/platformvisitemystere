@@ -9,7 +9,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { Badge } from '@/components/ui/badge';
 import { Label } from '@/components/ui/label';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
-import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog"; // Added AlertDialogTrigger
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
 import { PlusCircle, MoreHorizontal, Search, Edit, Trash2, FileCheck, FileText, Loader2, UserPlus, Award, MapPin as MapPinIcon, Users as UsersIcon } from 'lucide-react';
 import { mockMissions, mockReports } from '@/lib/mock-data';
 import { mockUsers } from '../users/users-mock.js';
@@ -187,13 +187,16 @@ export default function AdminMissionsPage() {
 
      // Handle user selection toggle (called by CommandItem onSelect or Checkbox onCheckedChange)
      const handleUserSelectionChange = (userId) => {
-        console.log("Toggling selection for user:", userId); // Keep this log
-        setSelectedUsersForAssignment(prev =>
-             prev.includes(userId)
-                 ? prev.filter(id => id !== userId) // Remove if already selected
-                 : [...prev, userId] // Add if not selected
-         );
+         console.log("Toggling selection for user:", userId); // Keep this log
+         setSelectedUsersForAssignment(prevSelected => {
+             const newSelected = prevSelected.includes(userId)
+                 ? prevSelected.filter(id => id !== userId) // Remove if already selected
+                 : [...prevSelected, userId]; // Add if not selected
+             console.log("New selection state:", newSelected); // Log the updated state
+             return newSelected;
+         });
      };
+
 
     const handleAssignMission = async () => {
         if (!selectedMissionForAssignment || selectedUsersForAssignment.length === 0) {
@@ -469,17 +472,26 @@ export default function AdminMissionsPage() {
                                     <CommandItem
                                         key={shopper.value}
                                         value={`${shopper.label} ${shopper.email}`} // Combine fields for better searching
-                                        onSelect={() => handleUserSelectionChange(shopper.value)} // Toggle selection on item click
+                                        onSelect={() => {
+                                            // Prevent default CMDK selection behavior if needed
+                                            // This might not be necessary if Checkbox handler works
+                                            console.log(`CommandItem selected: ${shopper.label}`);
+                                        }}
                                         className="flex items-center gap-2 cursor-pointer aria-selected:bg-accent/50"
+                                        // Removed disabled attribute from CommandItem, let Checkbox handle it
                                     >
                                         {/* Checkbox is interactive */}
                                         <Checkbox
                                             id={`user-${shopper.value}`} // Add unique ID for label association
                                             checked={selectedUsersForAssignment.includes(shopper.value)}
-                                            onCheckedChange={() => handleUserSelectionChange(shopper.value)} // Add explicit handler
+                                            // Use onCheckedChange for direct interaction with the checkbox
+                                            onCheckedChange={() => handleUserSelectionChange(shopper.value)}
                                             aria-label={`Select ${shopper.label}`} // Accessibility
+                                            // Ensure checkbox is not disabled visually unless intended
+                                            // disabled={isProcessing === selectedMissionForAssignment?.id} // Optional: disable during processing
                                          />
-                                        <Label htmlFor={`user-${shopper.value}`} className="flex flex-col text-sm flex-grow cursor-pointer"> {/* Label for checkbox */}
+                                        {/* Make Label clickable and associate it with the checkbox */}
+                                        <Label htmlFor={`user-${shopper.value}`} className="flex flex-col text-sm flex-grow cursor-pointer">
                                              <span>{shopper.label}</span> {/* Name */}
                                             <span className="text-xs text-muted-foreground">{shopper.email}</span> {/* Email */}
                                             <div className="flex items-center gap-2 text-xs text-muted-foreground mt-1">
