@@ -27,13 +27,17 @@ export async function approveReportAction(reportId, missionId) {
   }
 
   mockReports[reportIndex].status = 'approved';
-  // For simplicity, assume approving the report also marks the mission as approved.
-  // In a real scenario, you might check if all assigned reports are approved.
+
+  // Check if all reports for this mission (assuming multiple assignees) are approved
+  // For simplicity, we'll just update mission status if THIS report is approved for now.
+  // A real implementation might need more complex logic based on all assignees' reports.
   const missionIndex = mockMissions.findIndex(m => m.id === missionId);
   if (missionIndex !== -1) {
+      // We mark mission as approved once one report is approved.
+      // Adjust this logic based on actual requirements (e.g., all reports must be approved)
       mockMissions[missionIndex].status = 'approved';
-      // Optionally remove assignedTo if needed after approval? Depends on flow.
-      // mockMissions[missionIndex].assignedTo = null;
+       // Optionally clear assignedTo or move to a 'completedBy' array on approval.
+       // For now, we leave assignedTo intact.
   }
   // --- End Mock Data Update ---
 
@@ -79,7 +83,8 @@ export async function refuseReportAction(reportId, missionId, reason) {
   mockReports[reportIndex].status = 'refused';
   mockReports[reportIndex].refusalReason = reason;
 
-  // Update mission status to 'refused' as well.
+  // Update mission status to 'refused' if this report is refused.
+  // This might need refinement if multiple users can have reports for the same mission.
   const missionIndex = mockMissions.findIndex(m => m.id === missionId);
   if (missionIndex !== -1) {
       mockMissions[missionIndex].status = 'refused';
@@ -230,7 +235,8 @@ export async function updateUserAction(userId, userData) {
 
 /**
  * Server Action to assign a mission to a specific user.
- * Updates mock data for simulation. This might need adjustment if assigning to multiple users.
+ * This action is designed to be called for *each* user being assigned.
+ * Updates mock data for simulation, handling multiple assignees.
  *
  * @param {string} missionId - The ID of the mission to assign.
  * @param {string} userId - The ID of the user to assign the mission to.
@@ -251,32 +257,53 @@ export async function assignMissionAction(missionId, userId) {
     return { success: false, message: "Mission not found." };
   }
 
+  const mission = mockMissions[missionIndex];
+
   if (!userExists) {
        console.error(`Server Action: User ${userId} not found, not active, or not a shopper.`);
        return { success: false, message: `User ${userId} cannot be assigned.` };
    }
 
-  if (mockMissions[missionIndex].status !== 'available') {
-    console.error(`Server Action: Mission ${missionId} is not available for assignment (status: ${mockMissions[missionIndex].status}).`);
-    return { success: false, message: `Mission is not available for assignment.` };
+   // Ensure assignedTo is an array before pushing
+   if (!Array.isArray(mission.assignedTo)) {
+       // If it exists but is not an array, initialize it. If it doesn't exist, initialize it.
+       mission.assignedTo = mission.assignedTo ? [mission.assignedTo] : [];
+   }
+
+   // Check if user is already assigned
+   if (mission.assignedTo.includes(userId)) {
+        console.log(`Server Action: User ${userId} is already assigned to mission ${missionId}.`);
+       // Consider this a success, or return a specific message
+       return { success: true, message: `User ${userId} is already assigned.` };
+   }
+
+   // Allow assignment only if mission is 'available' OR 'assigned' (to add more users)
+   if (mission.status !== 'available' && mission.status !== 'assigned') {
+        console.error(`Server Action: Mission ${missionId} is not available or assigned (status: ${mission.status}). Cannot assign.`);
+        return { success: false, message: `Mission status (${mission.status}) prevents assignment.` };
+   }
+
+
+  // Update mission status to 'assigned' if it was 'available'
+  if (mission.status === 'available') {
+       mission.status = 'assigned';
   }
 
+   // Add user to the assignedTo array
+  mission.assignedTo.push(userId);
 
-  // Update mission status and assign it.
-  // For MULTIPLE assignments, the logic here and in the DB schema would need to change significantly.
-  // E.g., mission.assignedTo could become an array, or use a separate 'assignments' table.
-  // For simulation simplicity, we'll just assign to the ONE user passed.
-  // If called multiple times for different users, it will overwrite assignedTo here.
-  mockMissions[missionIndex].status = 'assigned';
-  mockMissions[missionIndex].assignedTo = userId;
+  // Update the mission in the mock array
+   mockMissions[missionIndex] = mission;
   // --- End Mock Data Update ---
 
-  console.log(`Server Action: Mission ${missionId} assigned to user ${userId} successfully (simulated).`);
+  console.log(`Server Action: Mission ${missionId} assigned to user ${userId} successfully. Current assignees: ${mission.assignedTo.join(', ')} (simulated).`);
 
   // Revalidate relevant paths
   revalidatePath('/admin/missions'); // Admin list
-  revalidatePath('/'); // Shopper available list (mission should disappear)
+  revalidatePath('/'); // Shopper available list (mission should disappear or show 'assigned')
   revalidatePath('/missions/assigned'); // Shopper assigned list (mission should appear)
 
   return { success: true, message: `Mission assigned to user ${userId} successfully (simulated).` };
 }
+
+    
