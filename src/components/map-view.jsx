@@ -1,6 +1,7 @@
+
 'use client';
 
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useMemo } from 'react'; // Import useMemo
 import { MapContainer, TileLayer, Marker, Popup, useMap } from 'react-leaflet';
 import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
@@ -57,6 +58,8 @@ export function MapView({ availableMissions = [], assignedMissions = [] }) {
   const [locationError, setLocationError] = useState(null);
   const [isLoadingLocation, setIsLoadingLocation] = useState(true);
   const [mapCenter, setMapCenter] = useState(null); // State to control map center
+  const [initialCenter, setInitialCenter] = useState([34.0522, -118.2437]); // Default center
+  const [isMapReady, setIsMapReady] = useState(false); // Track if initial center is set
   const mapRef = useRef(); // Ref for the map instance
 
   useEffect(() => {
@@ -69,30 +72,34 @@ export function MapView({ availableMissions = [], assignedMissions = [] }) {
             lng: position.coords.longitude,
           };
           setCurrentLocation(loc);
-          setMapCenter(loc); // Center map on current location initially
+          setMapCenter(loc); // Update mapCenter state
+          setInitialCenter(loc); // Set initial center based on current location
           setLocationError(null);
           setIsLoadingLocation(false);
+          setIsMapReady(true); // Map is ready once we have a center
           console.log('Current location:', loc);
         },
         (error) => {
           console.error("Error getting location:", error);
           setLocationError(`Error getting location: ${error.message}`);
-          // Set a default center if location fails
-          setMapCenter([34.0522, -118.2437]); // Default to LA
+          // Keep the default initial center if location fails
+          setMapCenter(initialCenter); // Update mapCenter to default
           setIsLoadingLocation(false);
+          setIsMapReady(true); // Map is ready even with default center
         },
         { enableHighAccuracy: true, timeout: 10000, maximumAge: 0 }
       );
     } else {
       setLocationError("Geolocation is not supported by this browser.");
-       setMapCenter([34.0522, -118.2437]); // Default to LA
-       setIsLoadingLocation(false);
+      setMapCenter(initialCenter); // Update mapCenter to default
+      setIsLoadingLocation(false);
+      setIsMapReady(true); // Map is ready even with default center
     }
-  }, []);
+  }, []); // Empty dependency array to run once on mount
 
   const handleRecenter = () => {
     if (currentLocation) {
-       setMapCenter(currentLocation); // Trigger map recentering
+       setMapCenter(currentLocation); // Trigger map recentering by updating the state
     } else if (!isLoadingLocation) {
       // Try getting location again if it failed initially
       setIsLoadingLocation(true);
@@ -102,7 +109,7 @@ export function MapView({ availableMissions = [], assignedMissions = [] }) {
             (position) => {
               const loc = { lat: position.coords.latitude, lng: position.coords.longitude };
               setCurrentLocation(loc);
-              setMapCenter(loc);
+              setMapCenter(loc); // Update mapCenter state
               setIsLoadingLocation(false);
             },
             (error) => {
@@ -157,53 +164,55 @@ export function MapView({ availableMissions = [], assignedMissions = [] }) {
     }).filter(Boolean);
   }, [assignedMissions]);
 
-  if (!mapCenter && isLoadingLocation) {
-    return (
-      <div className="flex justify-center items-center h-[500px] bg-secondary rounded-lg shadow">
-        <Loader2 className="h-8 w-8 animate-spin text-primary" />
-        <span className="ml-2">Loading Map & Location...</span>
-      </div>
-    );
-  }
-
   return (
     <div className="relative h-[calc(100vh-10rem)] w-full rounded-lg overflow-hidden shadow-lg border">
-      <MapContainer
-        center={mapCenter || [34.0522, -118.2437]} // Use mapCenter state or default
-        zoom={13}
-        style={{ height: '100%', width: '100%' }}
-        whenCreated={instance => { mapRef.current = instance; }} // Store map instance if needed
-      >
-        <TileLayer
-          url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
-          attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
-        />
-        {/* Use CenterMap component to handle centering */}
-        {mapCenter && <CenterMap center={mapCenter} />}
+      {isLoadingLocation || !isMapReady ? (
+        // Loading State
+        <div className="flex justify-center items-center h-full bg-secondary">
+          <Loader2 className="h-8 w-8 animate-spin text-primary" />
+          <span className="ml-2">Loading Map & Location...</span>
+        </div>
+      ) : (
+        // Map Container (renders only when ready)
+        <MapContainer
+          center={initialCenter} // Use the center determined on load
+          zoom={13}
+          style={{ height: '100%', width: '100%' }}
+          whenCreated={instance => { mapRef.current = instance; }} // Store map instance if needed
+        >
+          <TileLayer
+            url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
+            attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
+          />
+          {/* Use CenterMap component to handle centering */}
+          {mapCenter && <CenterMap center={mapCenter} />}
 
-        {/* Render Markers */}
-        {availableMarkers}
-        {assignedMarkers}
+          {/* Render Markers */}
+          {availableMarkers}
+          {assignedMarkers}
 
-        {/* Current Location Marker */}
-        {currentLocation && (
-          <Marker position={[currentLocation.lat, currentLocation.lng]} icon={blueIcon}>
-            <Popup>Your current location</Popup>
-          </Marker>
-        )}
-      </MapContainer>
-      {/* Recenter Button */}
-       <Button
-           variant="secondary"
-           size="icon"
-           onClick={handleRecenter}
-           className="absolute bottom-4 right-4 z-[1000] shadow-lg" // Ensure button is above map layers
-           aria-label="Recenter Map"
-           title="Recenter Map on Your Location"
-           disabled={isLoadingLocation}
-       >
-         {isLoadingLocation ? <Loader2 className="w-5 h-5 animate-spin"/> : <MapPin className="w-5 h-5" />}
-       </Button>
+          {/* Current Location Marker */}
+          {currentLocation && (
+            <Marker position={[currentLocation.lat, currentLocation.lng]} icon={blueIcon}>
+              <Popup>Your current location</Popup>
+            </Marker>
+          )}
+        </MapContainer>
+      )}
+      {/* Recenter Button (visible after map is ready) */}
+      {isMapReady && (
+        <Button
+          variant="secondary"
+          size="icon"
+          onClick={handleRecenter}
+          className="absolute bottom-4 right-4 z-[1000] shadow-lg" // Ensure button is above map layers
+          aria-label="Recenter Map"
+          title="Recenter Map on Your Location"
+          disabled={isLoadingLocation} // Disable if currently trying to load location
+        >
+          {isLoadingLocation ? <Loader2 className="w-5 h-5 animate-spin"/> : <MapPin className="w-5 h-5" />}
+        </Button>
+      )}
        {locationError && (
            <div className="absolute bottom-14 right-4 z-[1000] bg-destructive/90 text-destructive-foreground text-xs p-2 rounded shadow-lg max-w-xs">
                {locationError}
