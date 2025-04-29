@@ -7,7 +7,7 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Badge } from '@/components/ui/badge';
-import { Loader2, ArrowLeft, User, Mail, MapPin, Calendar, Briefcase, CheckCircle, Clock, Edit, FileText, Award, MessageSquare } from 'lucide-react';
+import { Loader2, ArrowLeft, User, Mail, MapPin, Calendar, Briefcase, CheckCircle, Clock, Edit, FileText, Award, MessageSquare, Download } from 'lucide-react'; // Added Download
 import { mockUsers } from '../users-mock'; // Use the shared mock data
 import { format } from 'date-fns';
 import { Alert, AlertTitle, AlertDescription } from '@/components/ui/alert';
@@ -157,11 +157,14 @@ export default function UserDetailPage() {
                           {user.cvUrl && (
                              <div className="space-y-2">
                                 <h3 className="text-lg font-semibold text-foreground border-b pb-1 flex items-center gap-1"> <FileText className="w-4 h-4"/> Curriculum Vitae (CV)</h3>
-                                <Button asChild variant="link" size="sm" className="p-0 h-auto">
-                                    <Link href={user.cvUrl} target="_blank" rel="noopener noreferrer">
-                                       View Submitted CV ({user.cvUrl.split('/').pop()})
-                                     </Link>
-                                </Button>
+                                <div className="flex items-center gap-2">
+                                    <Button asChild variant="outline" size="sm">
+                                         <a href={user.cvUrl} target="_blank" rel="noopener noreferrer" download>
+                                            <Download className="w-4 h-4 mr-2" /> Download CV
+                                         </a>
+                                    </Button>
+                                    <span className="text-sm text-muted-foreground italic">({user.cvUrl.split('/').pop()})</span>
+                                </div>
                              </div>
                          )}
 
