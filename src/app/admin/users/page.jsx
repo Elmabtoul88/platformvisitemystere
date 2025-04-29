@@ -1,16 +1,19 @@
 'use client';
 
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useTransition } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
-import { MoreHorizontal, Search, Edit, Eye, UserX, CheckCircle, Clock } from 'lucide-react';
+import { MoreHorizontal, Search, Edit, Eye, UserX, CheckCircle, Clock, Loader2 } from 'lucide-react';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { mockUser as mockSingleUser, mockMissions } from '@/lib/mock-data'; // Using mock data
 import { format } from 'date-fns'; // To format dates if needed
+import { useRouter } from 'next/navigation'; // Import useRouter
+import { useToast } from '@/hooks/use-toast'; // Import useToast
+import { toggleUserStatusAction } from '../../actions/admin-actions'; // Import the server action
 
 // Generate more mock users for the list
 const generateMockUsers = (count) => {
@@ -35,7 +38,7 @@ const generateMockUsers = (count) => {
         usedIds.add(userId);
     }
 
-    // Add the original mock user (Alex Shopper) with a potentially modified ID if it conflicts
+    // Add the original mock user (Alex Shopper)
     const alexUserId = mockSingleUser.id; // Original ID: 'user-shopper-1'
     if (!usedIds.has(alexUserId)) {
         users.push({
@@ -86,8 +89,12 @@ const generateMockUsers = (count) => {
 const mockUsers = generateMockUsers(15); // Generate 15 mock shoppers + potentially Alex + 1 admin
 
 export default function AdminUsersPage() {
+    const router = useRouter(); // Initialize useRouter
+    const { toast } = useToast(); // Initialize useToast
     const [searchTerm, setSearchTerm] = useState('');
     const [users, setUsers] = useState(mockUsers); // Replace with API call
+    const [isToggling, setIsToggling] = useState(null); // Track which user status is being toggled
+    const [isTransitioning, startTransition] = useTransition(); // For optimistic updates
 
     const filteredUsers = useMemo(() => {
         return users.filter(user =>
@@ -101,24 +108,55 @@ export default function AdminUsersPage() {
 
     const handleViewUser = (userId) => {
         console.log(`Admin: View user ${userId}`);
-        // Navigate to user detail page: router.push(`/admin/users/${userId}`);
-         alert(`Simulating view details for user ${userId}`);
+        // Placeholder: Navigate to a user detail page (not implemented)
+        toast({
+            title: "View User",
+            description: `Navigation to user detail page for ${userId} is not implemented yet.`
+        });
+        // router.push(`/admin/users/${userId}`); // Future implementation
     };
 
      const handleEditUser = (userId) => {
         console.log(`Admin: Edit user ${userId}`);
-        // Navigate to user edit page: router.push(`/admin/users/edit/${userId}`);
-         alert(`Simulating edit for user ${userId}`);
+        // Placeholder: Navigate to a user edit page (not implemented)
+        toast({
+            title: "Edit User",
+            description: `Navigation to user edit page for ${userId} is not implemented yet.`
+        });
+        // router.push(`/admin/users/edit/${userId}`); // Future implementation
     };
 
-    const handleToggleStatus = (userId) => {
-        console.log(`Admin: Toggle status for user ${userId}`);
-         // Simulate status toggle
-         setUsers(prevUsers => prevUsers.map(user =>
-            user.id === userId ? { ...user, status: user.status === 'active' ? 'inactive' : 'active' } : user
-        ));
-         alert(`Simulated status toggle for user ${userId}.`);
-        // TODO: Call API to update user status
+    const handleToggleStatus = async (userId, currentStatus) => {
+        setIsToggling(userId);
+        console.log(`Admin: Toggling status for user ${userId} from ${currentStatus}`);
+
+        try {
+            // Call server action
+            const result = await toggleUserStatusAction(userId, currentStatus);
+
+            if (result.success) {
+                // Optimistically update the UI
+                startTransition(() => {
+                    setUsers(prevUsers => prevUsers.map(user =>
+                        user.id === userId ? { ...user, status: result.newStatus } : user
+                    ));
+                });
+                toast({
+                    title: "Status Updated",
+                    description: result.message,
+                });
+            } else {
+                throw new Error(result.message || "Failed to toggle user status.");
+            }
+        } catch (error) {
+            toast({
+                variant: "destructive",
+                title: "Error",
+                description: error.message,
+            });
+        } finally {
+            setIsToggling(null); // Stop loading indicator
+        }
     };
 
     return (
@@ -157,7 +195,7 @@ export default function AdminUsersPage() {
                         <TableBody>
                             {filteredUsers.length > 0 ? (
                                 filteredUsers.map((user) => (
-                                    <TableRow key={user.id}> {/* Ensure user.id is unique */}
+                                    <TableRow key={user.id} className={isToggling === user.id ? 'opacity-50' : ''}>
                                         <TableCell className="font-medium">
                                             <div className="flex items-center gap-2">
                                                 <Avatar className="h-8 w-8 border">
@@ -184,27 +222,34 @@ export default function AdminUsersPage() {
                                         <TableCell className="text-right">
                                             <DropdownMenu>
                                                 <DropdownMenuTrigger asChild>
-                                                    <Button variant="ghost" className="h-8 w-8 p-0">
+                                                    <Button variant="ghost" className="h-8 w-8 p-0" disabled={isToggling === user.id}>
+                                                        {isToggling === user.id ? <Loader2 className="h-4 w-4 animate-spin" /> : <MoreHorizontal className="h-4 w-4" />}
                                                         <span className="sr-only">Open menu</span>
-                                                        <MoreHorizontal className="h-4 w-4" />
                                                     </Button>
                                                 </DropdownMenuTrigger>
                                                 <DropdownMenuContent align="end">
                                                     <DropdownMenuLabel>Actions</DropdownMenuLabel>
-                                                     <DropdownMenuItem onClick={() => handleViewUser(user.id)}>
+                                                     <DropdownMenuItem onClick={() => handleViewUser(user.id)} disabled={isToggling === user.id}>
                                                          <Eye className="mr-2 h-4 w-4" /> View Details
                                                      </DropdownMenuItem>
                                                     {/* Only allow editing/status change for non-admins or self? Adjust logic as needed */}
                                                     {user.role !== 'admin' && (
                                                         <>
-                                                            <DropdownMenuItem onClick={() => handleEditUser(user.id)}>
+                                                            <DropdownMenuItem onClick={() => handleEditUser(user.id)} disabled={isToggling === user.id}>
                                                                 <Edit className="mr-2 h-4 w-4" /> Edit User
                                                             </DropdownMenuItem>
-                                                            <DropdownMenuItem onClick={() => handleToggleStatus(user.id)}>
+                                                            <DropdownMenuItem onClick={() => handleToggleStatus(user.id, user.status)} disabled={isToggling === user.id}>
                                                                  <UserX className="mr-2 h-4 w-4" />
                                                                  {user.status === 'active' ? 'Deactivate' : 'Activate'} User
                                                             </DropdownMenuItem>
                                                         </>
+                                                     )}
+                                                    {/* Prevent admin from deactivating self */}
+                                                     {user.role === 'admin' && (
+                                                         <DropdownMenuItem disabled={true}>
+                                                            <UserX className="mr-2 h-4 w-4 opacity-50" />
+                                                            <span className="opacity-50">(Cannot change status)</span>
+                                                         </DropdownMenuItem>
                                                      )}
                                                 </DropdownMenuContent>
                                             </DropdownMenu>

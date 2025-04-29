@@ -123,3 +123,40 @@ export async function deleteMissionAction(missionId) {
         return { success: false, message: `Failed to delete mission ${missionId} (simulated server error).` };
     }
 }
+
+
+/**
+ * Server Action to toggle a user's status (active/inactive).
+ *
+ * @param {string} userId - The ID of the user to update.
+ * @param {string} currentStatus - The current status ('active' or 'inactive').
+ * @returns {Promise<{success: boolean, message: string, newStatus?: string}>} - Result of the toggle operation.
+ */
+export async function toggleUserStatusAction(userId, currentStatus) {
+  console.log(`Server Action: Toggling status for user ${userId} from ${currentStatus}`);
+
+  const newStatus = currentStatus === 'active' ? 'inactive' : 'active';
+
+  // Simulate network delay
+  await new Promise(resolve => setTimeout(resolve, 1000));
+
+  // --- TODO: Replace simulation with actual backend logic ---
+  // 1. Validate userId.
+  // 2. Check permissions (ensure current user is admin).
+  // 3. Fetch the user from the database.
+  // 4. Update the user's status field in the database to `newStatus`.
+  // 5. Handle potential errors during database operations.
+  // ---
+
+  // Simulate success
+  const success = true;
+
+  if (success) {
+    console.log(`Server Action: User ${userId} status updated to ${newStatus} (simulated).`);
+    revalidatePath('/admin/users'); // Revalidate the user list page
+    return { success: true, message: `User ${userId} status updated to ${newStatus} (simulated).`, newStatus };
+  } else {
+    console.error(`Server Action: Failed to toggle status for user ${userId} (simulated).`);
+    return { success: false, message: `Failed to toggle status for user ${userId} (simulated server error).` };
+  }
+}
