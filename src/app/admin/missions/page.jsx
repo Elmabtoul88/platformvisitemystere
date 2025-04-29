@@ -63,7 +63,8 @@ export default function AdminMissionsPage() {
     const [reports, setReports] = useState([]);
     const [shoppers, setShoppers] = useState([]); // State to hold formatted shopper data
     const [isLoading, setIsLoading] = useState(true);
-    const [isProcessing, setIsProcessing] = useState(null); // Track processing state for various actions
+    const [isProcessing, setIsProcessing] = useState(null); // Track processing state for various actions (e.g., delete, assign)
+    const [isAssigning, setIsAssigning] = useState(false); // Specific state for assignment action button loading
     const [assignDialogOpen, setAssignDialogOpen] = useState(false);
     const [selectedMissionForAssignment, setSelectedMissionForAssignment] = useState(null);
     // State for multi-select
@@ -143,7 +144,7 @@ export default function AdminMissionsPage() {
     };
 
     const handleDeleteMission = async (missionId) => {
-        setIsProcessing(missionId); // Use generic processing state
+        setIsProcessing(missionId); // Use generic processing state for row opacity/disable
         console.log(`Admin: Deleting mission ${missionId}`);
 
         try {
@@ -206,7 +207,7 @@ export default function AdminMissionsPage() {
             return;
         }
         const missionId = selectedMissionForAssignment.id;
-        setIsProcessing(missionId); // Set processing state for the specific mission
+        setIsAssigning(true); // Set assigning state for button loading
         console.log(`Admin: Assigning mission ${missionId} to users: ${selectedUsersForAssignment.join(', ')}`);
 
         // Array to hold results of each assignment attempt
@@ -279,7 +280,7 @@ export default function AdminMissionsPage() {
          setAssignDialogOpen(false);
          setSelectedMissionForAssignment(null);
          setSelectedUsersForAssignment([]);
-         setIsProcessing(null); // Clear processing state
+         setIsAssigning(false); // Clear assigning state
      };
 
      // --- End Assign Mission Logic ---
@@ -342,7 +343,7 @@ export default function AdminMissionsPage() {
                                      // Use the pre-formatted shoppers state to find names
                                     const assignedShoppers = assignedUserIds.map(id => shoppers.find(u => u.value === id)).filter(Boolean);
                                     const assignedNames = assignedShoppers.map(s => s.label).join(', ');
-                                    const isCurrentProcessing = isProcessing === mission.id;
+                                    const isCurrentProcessing = isProcessing === mission.id; // Used for delete/row disabling
 
                                     return (
                                         <TableRow key={mission.id} className={isCurrentProcessing ? 'opacity-50 pointer-events-none' : ''}>
@@ -483,16 +484,16 @@ export default function AdminMissionsPage() {
                                              setShopperSearchTerm(""); // Clear search on select
                                         }}
                                         className="flex items-center gap-2 cursor-pointer aria-selected:bg-accent/50"
-                                        // IMPORTANT: Do NOT disable CommandItem. Checkbox handles interaction.
+                                        // IMPORTANT: CommandItem itself should not be disabled for search functionality
                                     >
-                                        {/* Checkbox is interactive and NOT disabled */}
+                                        {/* Checkbox is interactive and NOT disabled during selection */}
                                         <Checkbox
                                             id={`user-${shopper.value}`} // Add unique ID for label association
                                             checked={selectedUsersForAssignment.includes(shopper.value)}
                                             onCheckedChange={() => handleUserSelectionChange(shopper.value)}
                                             aria-label={`Select ${shopper.label}`} // Accessibility
-                                            // Ensure checkbox is not disabled visually
-                                            disabled={isProcessing === selectedMissionForAssignment?.id} // Only disable during final assignment processing
+                                            // Disable the checkbox ONLY when the assignment action is processing
+                                            disabled={isAssigning}
                                          />
                                         {/* Make Label clickable and associate it with the checkbox */}
                                         <Label htmlFor={`user-${shopper.value}`} className="flex flex-col text-sm flex-grow cursor-pointer">
@@ -519,13 +520,13 @@ export default function AdminMissionsPage() {
                          )}
                     </div>
                     <AlertDialogFooter>
-                        <AlertDialogCancel onClick={() => setAssignDialogOpen(false)} disabled={isProcessing === selectedMissionForAssignment?.id}>Cancel</AlertDialogCancel>
+                        <AlertDialogCancel onClick={() => setAssignDialogOpen(false)} disabled={isAssigning}>Cancel</AlertDialogCancel>
                         <AlertDialogAction
                             onClick={handleAssignMission}
-                            disabled={isProcessing === selectedMissionForAssignment?.id || selectedUsersForAssignment.length === 0}
+                            disabled={isAssigning || selectedUsersForAssignment.length === 0}
                         >
-                            {isProcessing === selectedMissionForAssignment?.id ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
-                            Assign Mission{selectedUsersForAssignment.length > 1 ? 's' : ''}
+                            {isAssigning ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
+                            Assign Mission{selectedUsersForAssignment.length !== 1 ? 's' : ''}
                         </AlertDialogAction>
                     </AlertDialogFooter>
                 </AlertDialogContent>
