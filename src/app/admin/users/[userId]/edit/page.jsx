@@ -10,10 +10,10 @@ import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Textarea } from '@/components/ui/textarea';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
-import { Loader2, ArrowLeft, Save, User, Mail, MapPin, Briefcase, CheckCircle, Clock } from 'lucide-react';
-import { mockUsers } from '../users-mock'; // Use the shared mock data
+import { Loader2, ArrowLeft, Save, User, Mail, MapPin, Briefcase, CheckCircle, Clock, Cake, Users as UsersIcon } from 'lucide-react'; // Renamed Users to UsersIcon
+import { mockUsers } from '../users-mock.js'; // Corrected import path to relative and added extension
 import { useToast } from '@/hooks/use-toast';
-import { updateUserAction } from '../../../actions/admin-actions'; // Import the server action
+import { updateUserAction } from '../../../../actions/admin-actions.js'; // Corrected import path again
 
 export default function EditUserPage() {
     const params = useParams();
@@ -47,6 +47,10 @@ export default function EditUserPage() {
                     telephone: foundUser.telephone || '', // Added telephone
                     role: foundUser.role || 'shopper', // Default role
                     status: foundUser.status || 'active', // Default status
+                    // Add birthYear and gender to form data
+                    birthYear: foundUser.birthYear || '',
+                    gender: foundUser.gender || 'prefer_not_say',
+                    cvUrl: foundUser.cvUrl || null, // Include CV URL
                 });
             } else {
                 setError('User not found.');
@@ -187,6 +191,38 @@ export default function EditUserPage() {
                             <Label htmlFor="motivation">Motivation</Label>
                             <Textarea id="motivation" name="motivation" value={formData.motivation} onChange={handleInputChange} className="min-h-[80px]" disabled={isSaving} />
                         </div>
+
+                        {/* Added Birth Year and Gender */}
+                         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                             <div className="space-y-1">
+                                 <Label htmlFor="birthYear" className="flex items-center gap-1"><Cake className="w-3 h-3"/> Birth Year</Label>
+                                 <Input
+                                    id="birthYear"
+                                    name="birthYear"
+                                    type="number"
+                                    placeholder="YYYY"
+                                    value={formData.birthYear}
+                                    onChange={handleInputChange}
+                                    disabled={isSaving}
+                                />
+                             </div>
+                             <div className="space-y-1">
+                                 <Label htmlFor="gender" className="flex items-center gap-1"><UsersIcon className="w-3 h-3"/> Gender</Label>
+                                 <Select name="gender" value={formData.gender} onValueChange={(value) => handleSelectChange('gender', value)} disabled={isSaving}>
+                                    <SelectTrigger id="gender">
+                                        <SelectValue />
+                                    </SelectTrigger>
+                                    <SelectContent>
+                                        <SelectItem value="female">Female</SelectItem>
+                                        <SelectItem value="male">Male</SelectItem>
+                                        <SelectItem value="other">Other</SelectItem>
+                                        <SelectItem value="prefer_not_say">Prefer not to say</SelectItem>
+                                    </SelectContent>
+                                </Select>
+                             </div>
+                         </div>
+                         {/* CV is generally not edited by admin, maybe just displayed on detail page */}
+                         <p className="text-sm text-muted-foreground">CV/Resume managed by user via Settings page.</p>
 
                          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                              <div className="space-y-1">
