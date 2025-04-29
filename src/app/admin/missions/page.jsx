@@ -352,8 +352,7 @@ export default function AdminMissionsPage() {
                                 <TableHead className="text-right">Actions</TableHead>
                             </TableRow>
                         </TableHeader>
-                        <TableBody>
-                             <TooltipProvider> {/* Ensure TooltipProvider wraps the rows */}
+                        <TableBody><TooltipProvider> {/* Ensure TooltipProvider wraps the rows */}
                             {filteredMissions.length > 0 ? (
                                 filteredMissions.map((mission) => {
                                     const submittedCount = countSubmittedReports(mission.id); // Use updated helper
@@ -379,7 +378,7 @@ export default function AdminMissionsPage() {
                                                      </Badge>
                                                      {/* Show pending count badge ONLY if reports are submitted */}
                                                      {mission.status === 'submitted' && submittedCount > 0 && (
-                                                        <Badge variant="destructive" className="text-xs px-2 py-1 h-fit leading-none flex items-center"> {/* Increased padding */}
+                                                        <Badge variant="destructive" className="text-xs px-2 py-1 h-fit leading-tight flex items-center"> {/* Increased padding, adjusted leading */}
                                                              {submittedCount} Pending
                                                          </Badge>
                                                      )}
@@ -441,7 +440,7 @@ export default function AdminMissionsPage() {
                                                             <DropdownMenuItem onClick={() => handleReviewReports(mission.id)} disabled={isCurrentProcessing}>
                                                                  <FileCheck className="mr-2 h-4 w-4" /> Review Reports
                                                                  {submittedCount > 0 && mission.status === 'submitted' && (
-                                                                     <Badge variant="destructive" className="ml-auto text-xs px-1.5 py-1 flex items-center leading-none h-fit">{submittedCount}</Badge>
+                                                                     <Badge variant="destructive" className="ml-auto text-[10px] px-1 py-0.5 flex items-center leading-none">{submittedCount}</Badge>
                                                                  )}
                                                             </DropdownMenuItem>
                                                          )}
@@ -599,3 +598,4 @@ export default function AdminMissionsPage() {
         </div>
     );
 }
+
