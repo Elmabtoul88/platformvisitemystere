@@ -1,3 +1,4 @@
+
 'use server'; // Mark functions within this file that need server context
 
 import { ReportSubmissionForm } from '@/components/report-submission-form';
@@ -8,7 +9,7 @@ import Link from 'next/link';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from "@/components/ui/card"; // Added Card components
 import { Toaster } from '@/components/ui/toaster'; // Import Toaster
-import { submitReport } from '@/app/actions/report-actions.js'; // Import the server action
+import { submitReport } from '../../actions/report-actions.js'; // Import the server action using relative path
 
 // Simulate fetching mission data based on ID
 // This remains a server-side function
