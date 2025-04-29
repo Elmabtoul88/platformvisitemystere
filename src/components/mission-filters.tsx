@@ -1,3 +1,4 @@
+
 "use client";
 
 import React from 'react';
@@ -5,6 +6,8 @@ import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Button } from "@/components/ui/button";
 import { MapPin, Calendar, Tag, Search, X } from "lucide-react";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Label } from "@/components/ui/label";
 
 export interface MissionFiltersType {
   location: string;
@@ -24,13 +27,18 @@ export function MissionFilters({ filters, onFilterChange, categories }: MissionF
     onFilterChange({ ...filters, [name]: value });
   };
 
-  const handleSelectChange = (name: keyof MissionFiltersType) => (value: string) => {
-    onFilterChange({ ...filters, [name]: value });
+  const handleCategoryChange = (value: string) => {
+    // Map "all" back to an empty string for the filter state
+    const categoryValue = value === "all" ? "" : value;
+    onFilterChange({ ...filters, category: categoryValue });
   };
 
   const clearFilters = () => {
     onFilterChange({ location: '', date: '', category: '' });
   };
+
+  // Map empty category filter back to "all" for the Select component value
+  const selectCategoryValue = filters.category === '' ? 'all' : filters.category;
 
   return (
     <Card className="p-4 mb-6 shadow">
@@ -73,13 +81,15 @@ export function MissionFilters({ filters, onFilterChange, categories }: MissionF
              <Label htmlFor="category" className="text-xs font-medium text-muted-foreground flex items-center gap-1">
                <Tag className="w-3 h-3" /> Category
              </Label>
-            <Select name="category" value={filters.category} onValueChange={handleSelectChange('category')}>
+            <Select name="category" value={selectCategoryValue} onValueChange={handleCategoryChange}>
               <SelectTrigger className="h-9 text-sm">
                 <SelectValue placeholder="All Categories" />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="">All Categories</SelectItem>
+                {/* Use "all" as the value for the placeholder item */}
+                <SelectItem value="all">All Categories</SelectItem>
                 {categories.map((cat) => (
+                  // Ensure category values are unique and non-empty
                   <SelectItem key={cat} value={cat}>{cat}</SelectItem>
                 ))}
               </SelectContent>
@@ -93,7 +103,3 @@ export function MissionFilters({ filters, onFilterChange, categories }: MissionF
     </Card>
   );
 }
-
-// Add imports for missing components
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Label } from "@/components/ui/label";
