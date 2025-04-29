@@ -18,13 +18,6 @@ export async function submitReport(formData, missionId, userId) {
   // Simulate network delay for submission
   await new Promise(resolve => setTimeout(resolve, 1000));
 
-  // Simulate potential error
-  if (Math.random() > 0.8) { // 20% chance of error
-    console.error("Server Action: Simulated submission error");
-    // Throw an error that the client component can catch
-    throw new Error("Simulated submission error from server action");
-  }
-
   // --- TODO: Replace simulation with actual backend logic ---
   // 1. Validate missionId and userId again on the server.
   // 2. Verify the user is assigned to this mission and it's in the correct status.
