@@ -2,7 +2,8 @@ import { Geist, Geist_Mono } from 'next/font/google';
 import './globals.css';
 import Link from 'next/link';
 import { Button } from '@/components/ui/button';
-import { Home, ListChecks, CheckSquare, User } from 'lucide-react'; // Import icons
+import { Home, ListChecks, CheckSquare } from 'lucide-react'; // Removed User icon, it's in ProfileMenu now
+import { ProfileMenu } from '@/components/profile-menu'; // Import the new ProfileMenu component
 
 const geistSans = Geist({
   variable: '--font-geist-sans',
@@ -50,11 +51,8 @@ export default function RootLayout({
                    <CheckSquare className="w-4 h-4" /> Completed
                  </Link>
                </Button>
-               {/* Placeholder for Profile/Auth */}
-                <Button variant="outline" size="icon" className="h-8 w-8">
-                    <User className="w-4 h-4" />
-                    <span className="sr-only">Profile</span>
-                </Button>
+               {/* Replace static button with ProfileMenu component */}
+               <ProfileMenu />
             </div>
           </nav>
         </header>
