@@ -1,11 +1,12 @@
+
 'use server';
 
 import { revalidatePath } from 'next/cache';
-import { mockMissions, mockReports } from '@/lib/mock-data'; // Import mock data to manipulate
+import { mockMissions, mockReports, mockUsers } from '@/lib/mock-data'; // Import all necessary mock data
 
 /**
  * Server Action to approve a submitted report.
- * Updates mock data for simulation.
+ * Updates mock data for simulation. Ensures mission status reflects approval.
  *
  * @param {string} reportId - The ID of the report to approve.
  * @param {string} missionId - The ID of the associated mission.
@@ -25,32 +26,36 @@ export async function approveReportAction(reportId, missionId) {
       return { success: false, message: "Report not found or cannot be approved." };
   }
 
+  // Update report status
   mockReports[reportIndex].status = 'approved';
-  // For simplicity, assume approving the report also marks the mission as approved.
-  // In a real scenario, you might check if all assigned reports are approved.
+
+  // Update mission status - mark mission as 'approved' if ANY report is approved.
+  // Adjust this logic based on requirements (e.g., all reports must be approved).
   const missionIndex = mockMissions.findIndex(m => m.id === missionId);
   if (missionIndex !== -1) {
       mockMissions[missionIndex].status = 'approved';
-      // Optionally remove assignedTo if needed after approval? Depends on flow.
-      // mockMissions[missionIndex].assignedTo = null;
+      // Optionally: Clear assignedTo or manage completed users if needed.
+      // For simplicity, we keep assignedTo intact for now.
+  } else {
+      console.warn(`Server Action: Mission ${missionId} not found during report approval.`);
   }
   // --- End Mock Data Update ---
 
   console.log("Server Action: Report approved successfully (simulated).");
 
-  // Revalidate relevant paths
-  revalidatePath(`/admin/missions/${missionId}/reports`);
-  revalidatePath('/admin/missions');
+  // Revalidate paths for both admin and shopper views
+  revalidatePath(`/admin/missions/${missionId}/reports`); // Admin report review page
+  revalidatePath('/admin/missions'); // Admin mission list
   revalidatePath('/missions/completed'); // Shopper's completed list
-  revalidatePath('/'); // Main mission list for shopper
+  revalidatePath('/missions/assigned'); // Shopper's assigned list (mission should disappear)
+  revalidatePath('/'); // Shopper available list (should not show approved missions)
 
   return { success: true, message: "Report approved and payment processed (simulated)." };
-
 }
 
 /**
  * Server Action to refuse a submitted report.
- * Updates mock data for simulation.
+ * Updates mock data for simulation. Marks mission as refused if this report is refused.
  *
  * @param {string} reportId - The ID of the report to refuse.
  * @param {string} missionId - The ID of the associated mission.
@@ -61,6 +66,7 @@ export async function refuseReportAction(reportId, missionId, reason) {
   console.log(`Server Action: Refusing report ${reportId} for mission ${missionId}. Reason: ${reason}`);
 
   if (!reason || reason.trim().length === 0) {
+      console.error("Server Action: Refusal reason cannot be empty.");
       return { success: false, message: "Refusal reason cannot be empty." };
   }
 
@@ -75,27 +81,31 @@ export async function refuseReportAction(reportId, missionId, reason) {
       return { success: false, message: "Report not found or cannot be refused." };
   }
 
+  // Update report status and reason
   mockReports[reportIndex].status = 'refused';
   mockReports[reportIndex].refusalReason = reason;
 
-  // Update mission status to 'refused' as well.
+  // Update mission status to 'refused'.
+  // This logic assumes refusing one report refuses the mission for that user.
+  // More complex logic might be needed if multiple assignees can retry.
   const missionIndex = mockMissions.findIndex(m => m.id === missionId);
   if (missionIndex !== -1) {
       mockMissions[missionIndex].status = 'refused';
       // Keep assignedTo so the shopper knows which mission was refused.
+  } else {
+      console.warn(`Server Action: Mission ${missionId} not found during report refusal.`);
   }
   // --- End Mock Data Update ---
 
   console.log("Server Action: Report refused successfully (simulated).");
 
-  // Revalidate relevant paths
-  revalidatePath(`/admin/missions/${missionId}/reports`);
-  revalidatePath('/admin/missions');
-  // Revalidate shopper's assigned missions if they need to resubmit or view refusal
-  revalidatePath('/missions/assigned'); // Also revalidate assigned list
+  // Revalidate paths for both admin and shopper views
+  revalidatePath(`/admin/missions/${missionId}/reports`); // Admin report review page
+  revalidatePath('/admin/missions'); // Admin mission list
+  revalidatePath('/missions/assigned'); // Shopper assigned list (mission might remain or change status)
+  // Consider revalidating a potential "Refused Missions" page for shoppers if it exists
 
   return { success: true, message: "Report refused and shopper notified (simulated)." };
-
 }
 
 
@@ -109,49 +119,46 @@ export async function refuseReportAction(reportId, missionId, reason) {
 export async function deleteMissionAction(missionId) {
     console.log(`Server Action: Deleting mission ${missionId}`);
 
-    // --- Prevent deletion if assigned/submitted (optional server-side check) ---
-    const missionToDelete = mockMissions.find(m => m.id === missionId);
-    if (missionToDelete && (missionToDelete.status === 'assigned' || missionToDelete.status === 'submitted')) {
-        console.error(`Server Action: Cannot delete mission ${missionId} because it is currently ${missionToDelete.status}.`);
-        return { success: false, message: `Cannot delete mission while it is ${missionToDelete.status}.` };
+    const missionIndex = mockMissions.findIndex(m => m.id === missionId);
+    if (missionIndex === -1) {
+        console.error(`Server Action: Mission ${missionId} not found.`);
+        return { success: false, message: "Mission not found." };
     }
-    // ---
+
+    const missionToDelete = mockMissions[missionIndex];
+
+    // Prevent deletion if assigned/submitted (can be adjusted based on rules)
+    if (missionToDelete.status === 'assigned' || missionToDelete.status === 'submitted') {
+        console.error(`Server Action: Cannot delete mission ${missionId} because it is currently ${missionToDelete.status}.`);
+        return { success: false, message: `Cannot delete mission while it is ${missionToDelete.status}. Consider refusing or completing first.` };
+    }
 
     // Simulate network delay
     await new Promise(resolve => setTimeout(resolve, 500));
 
     // --- Update Mock Data ---
-    const initialMissionLength = mockMissions.length;
-    const initialReportLength = mockReports.length;
+    // Remove the mission
+    mockMissions.splice(missionIndex, 1);
 
-    // Filter out the mission
-    const updatedMissions = mockMissions.filter(m => m.id !== missionId);
-    // Filter out associated reports
-    const updatedReports = mockReports.filter(r => r.missionId !== missionId);
-
-    // Check if anything was actually deleted
-    const missionDeleted = updatedMissions.length < initialMissionLength;
-
-    // Update the original arrays (note: this direct mutation is for simulation only)
-    mockMissions.length = 0;
-    mockMissions.push(...updatedMissions);
-    mockReports.length = 0;
-    mockReports.push(...updatedReports);
+    // Remove associated reports (more efficient than filter+reassign)
+    let i = mockReports.length;
+    while (i--) {
+        if (mockReports[i].missionId === missionId) {
+            mockReports.splice(i, 1);
+        }
+    }
     // --- End Mock Data Update ---
 
+    console.log(`Server Action: Mission ${missionId} and associated reports deleted successfully (simulated).`);
 
-    if (missionDeleted) {
-        console.log(`Server Action: Mission ${missionId} and associated reports deleted successfully (simulated).`);
-        // Revalidate the main admin missions list
-        revalidatePath('/admin/missions');
-        // Revalidate relevant report review pages just in case
-        revalidatePath(`/admin/missions/${missionId}/reports`);
+    // Revalidate paths for both admin and relevant shopper views
+    revalidatePath('/admin/missions');
+    revalidatePath(`/admin/missions/${missionId}/reports`); // Revalidate specific admin report page
+    revalidatePath('/'); // Shopper available list
+    revalidatePath('/missions/assigned'); // Shopper assigned list
+    revalidatePath('/missions/completed'); // Shopper completed list
 
-        return { success: true, message: `Mission ${missionId} deleted successfully (simulated).` };
-    } else {
-        console.error(`Server Action: Failed to delete mission ${missionId} (simulated, not found).`);
-        return { success: false, message: `Failed to delete mission ${missionId} (Mission not found).` };
-    }
+    return { success: true, message: `Mission ${missionId} deleted successfully.` };
 }
 
 
@@ -170,25 +177,22 @@ export async function toggleUserStatusAction(userId, currentStatus) {
   // Simulate network delay
   await new Promise(resolve => setTimeout(resolve, 500));
 
-  // --- TODO: Replace simulation with actual backend logic ---
-  // 1. Validate userId.
-  // 2. Check permissions (ensure current user is admin).
-  // 3. Fetch the user from the database.
-  // 4. Update the user's status field in the database to `newStatus`.
-  // 5. Handle potential errors during database operations.
-  // ---
+  // --- Update Mock Data ---
+   const userIndex = mockUsers.findIndex(u => u.id === userId);
+   if (userIndex === -1) {
+       console.error("Server Action: User not found.");
+       return { success: false, message: "User not found." };
+   }
+   mockUsers[userIndex].status = newStatus;
+   // --- End Mock Data Update ---
 
-  // Simulate success
-  const success = true;
+  console.log(`Server Action: User ${userId} status updated to ${newStatus} (simulated).`);
 
-  if (success) {
-    console.log(`Server Action: User ${userId} status updated to ${newStatus} (simulated).`);
-    revalidatePath('/admin/users'); // Revalidate the user list page
-    return { success: true, message: `User ${userId} status updated to ${newStatus} (simulated).`, newStatus };
-  } else {
-    console.error(`Server Action: Failed to toggle status for user ${userId} (simulated).`);
-    return { success: false, message: `Failed to toggle status for user ${userId} (simulated server error).` };
-  }
+  // Revalidate only the admin user list page
+  revalidatePath('/admin/users');
+  // Revalidate mission assignment dialog's user list implicitly via mission page revalidation if needed
+
+  return { success: true, message: `User ${userId} status updated to ${newStatus}.`, newStatus };
 }
 
 /**
@@ -204,36 +208,34 @@ export async function updateUserAction(userId, userData) {
     // Simulate network delay
     await new Promise(resolve => setTimeout(resolve, 500));
 
-    // --- TODO: Replace simulation with actual backend logic ---
-    // 1. Validate userId and userData.
-    // 2. Check permissions (ensure current user is admin).
-    // 3. Fetch the user from the database.
-    // 4. Update the user's fields in the database with the provided `userData`.
-    //    - Be careful about which fields are allowed to be updated (e.g., updating email might require verification).
-    //    - Handle role and status changes appropriately.
-    // 5. Handle potential errors during database operations.
-    // ---
-
-    // Simulate success
-    const success = true;
-
-    if (success) {
-        console.log(`Server Action: User ${userId} updated successfully (simulated).`);
-        // Revalidate relevant paths
-        revalidatePath('/admin/users'); // Revalidate the user list
-        revalidatePath(`/admin/users/${userId}`); // Revalidate the user detail page
-        revalidatePath(`/admin/users/${userId}/edit`); // Revalidate the edit page itself
-
-        return { success: true, message: `User ${userId} updated successfully (simulated).` };
-    } else {
-        console.error(`Server Action: Failed to update user ${userId} (simulated).`);
-        return { success: false, message: `Failed to update user ${userId} (simulated server error).` };
+    // --- Update Mock Data ---
+    const userIndex = mockUsers.findIndex(u => u.id === userId);
+    if (userIndex === -1) {
+        console.error("Server Action: User not found for update.");
+        return { success: false, message: "User not found." };
     }
+
+    // Update the user object, preserving read-only fields like email
+    mockUsers[userIndex] = {
+        ...mockUsers[userIndex], // Start with existing data
+        ...userData, // Apply updates from form
+        email: mockUsers[userIndex].email, // Ensure email is not changed
+    };
+    // --- End Mock Data Update ---
+
+    console.log(`Server Action: User ${userId} updated successfully (simulated).`);
+
+    // Revalidate relevant admin user pages
+    revalidatePath('/admin/users'); // User list
+    revalidatePath(`/admin/users/${userId}`); // User detail page
+    revalidatePath(`/admin/users/${userId}/edit`); // Edit page itself
+
+    return { success: true, message: `User ${userId} updated successfully.` };
 }
 
 /**
  * Server Action to assign a mission to a specific user.
- * Updates mock data for simulation.
+ * Handles multiple assignees by ensuring `assignedTo` is an array.
  *
  * @param {string} missionId - The ID of the mission to assign.
  * @param {string} userId - The ID of the user to assign the mission to.
@@ -245,31 +247,59 @@ export async function assignMissionAction(missionId, userId) {
   // Simulate network delay
   await new Promise(resolve => setTimeout(resolve, 500));
 
-  // --- Update Mock Data ---
+  // --- Validate Input and Mission Status ---
   const missionIndex = mockMissions.findIndex(m => m.id === missionId);
-
   if (missionIndex === -1) {
     console.error("Server Action: Mission not found.");
     return { success: false, message: "Mission not found." };
   }
 
-  if (mockMissions[missionIndex].status !== 'available') {
-    console.error(`Server Action: Mission ${missionId} is not available for assignment (status: ${mockMissions[missionIndex].status}).`);
-    return { success: false, message: `Mission is not available for assignment.` };
+  const mission = mockMissions[missionIndex];
+
+  // Allow assignment only if mission is 'available' OR 'assigned' (to add more users)
+   if (mission.status !== 'available' && mission.status !== 'assigned') {
+        console.error(`Server Action: Mission ${missionId} is not available or assigned (status: ${mission.status}). Cannot assign.`);
+        return { success: false, message: `Mission status (${mission.status}) prevents assignment.` };
+   }
+
+  // Validate User
+   const userExists = mockUsers.some(u => u.id === userId && u.role === 'shopper' && u.status === 'active');
+   if (!userExists) {
+       console.error(`Server Action: User ${userId} not found, not active, or not a shopper.`);
+       return { success: false, message: `User ${userId} cannot be assigned.` };
+   }
+  // --- End Validation ---
+
+  // --- Update Mock Data ---
+   // Ensure assignedTo is an array
+   if (!Array.isArray(mission.assignedTo)) {
+       mission.assignedTo = mission.assignedTo ? [mission.assignedTo] : []; // Initialize if not array or doesn't exist
+   }
+
+   // Check if user is already assigned
+   if (mission.assignedTo.includes(userId)) {
+        console.log(`Server Action: User ${userId} is already assigned to mission ${missionId}.`);
+       return { success: true, message: `User ${userId} is already assigned.` }; // Treat as success
+   }
+
+   // Update mission status to 'assigned' if it was 'available'
+  if (mission.status === 'available') {
+       mission.status = 'assigned';
   }
 
-  // TODO: Add check if user exists and is active/shopper
+   // Add user to the assignedTo array
+  mission.assignedTo.push(userId);
 
-  mockMissions[missionIndex].status = 'assigned';
-  mockMissions[missionIndex].assignedTo = userId;
+  // Update the mission in the mock array (optional, as we mutated directly)
+  // mockMissions[missionIndex] = mission; // This line is technically redundant if mutating directly
   // --- End Mock Data Update ---
 
-  console.log(`Server Action: Mission ${missionId} assigned to user ${userId} successfully (simulated).`);
+  console.log(`Server Action: Mission ${missionId} assigned to user ${userId}. Current assignees: ${mission.assignedTo.join(', ')} (simulated).`);
 
-  // Revalidate relevant paths
-  revalidatePath('/admin/missions'); // Admin list
+  // Revalidate paths for both admin and shopper views
+  revalidatePath('/admin/missions'); // Admin mission list
   revalidatePath('/'); // Shopper available list (mission should disappear)
   revalidatePath('/missions/assigned'); // Shopper assigned list (mission should appear)
 
-  return { success: true, message: `Mission assigned to user ${userId} successfully (simulated).` };
+  return { success: true, message: `Mission assigned to user ${userId} successfully.` };
 }

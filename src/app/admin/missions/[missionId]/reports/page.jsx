@@ -1,5 +1,4 @@
 
-
 'use client';
 
 import React, { useState, useEffect, useTransition } from 'react';
@@ -10,12 +9,12 @@ import { Badge } from '@/components/ui/badge';
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
 import { mockMissions, mockReports, mockSurveyQuestions } from '@/lib/mock-data'; // Use mock data for now
-import { mockUsers } from '../../users/users-mock.js'; // Corrected import path using relative path
+import { mockUsers } from '@/lib/mock-data'; // Import users from the central mock data source
 import { format } from 'date-fns';
 import Link from 'next/link';
 import Image from 'next/image';
 import { useToast } from '@/hooks/use-toast';
-import { approveReportAction, refuseReportAction } from '../../../../actions/admin-actions.js'; // Corrected import path
+import { approveReportAction, refuseReportAction } from '@/app/actions/admin-actions.js'; // Corrected import path to top-level actions
 import {
     ArrowLeft, CheckCircle, XCircle, Loader2, FileWarning, User, Calendar, Star,
     MessageSquare, Image as ImageIcon, Mic, MapPin, ListOrdered, CheckSquare as CheckSquareIcon, TextCursorInput as TextCursorInputIcon // Renamed imported icon
@@ -207,23 +206,17 @@ export default function AdminReviewReportsPage() {
 
                       // Check if all reports for this mission are now approved/refused
                       const updatedReportsForMission = mockReports.filter(r => r.missionId === missionId);
-                      const allReportsProcessed = updatedReportsForMission.every(r => r.status === 'approved' || r.status === 'refused');
+                      // Logic: If ANY report is approved, mark mission as approved.
                       const anyReportApproved = updatedReportsForMission.some(r => r.status === 'approved');
 
                       // Update the corresponding mission status
                      const missionIndex = mockMissions.findIndex(m => m.id === missionId);
                       if (missionIndex !== -1) {
-                           // Logic: If ANY report is approved, mark mission as approved.
-                           // Adjust this if requirements are different (e.g., ALL must be approved)
                            if (anyReportApproved) {
                                mockMissions[missionIndex].status = 'approved';
                                setMission(prev => prev ? { ...prev, status: 'approved' } : null);
-                           } else if (allReportsProcessed && !anyReportApproved) {
-                                // If all are processed but none approved (i.e., all refused)
-                                mockMissions[missionIndex].status = 'refused';
-                                setMission(prev => prev ? { ...prev, status: 'refused' } : null);
-                            }
-                            // Otherwise, mission status remains 'submitted' or 'assigned'
+                           }
+                           // Removed the 'refused' update here, handle refusal separately if needed
                        }
                 });
 
@@ -261,24 +254,13 @@ export default function AdminReviewReportsPage() {
                         mockReports[reportIndex].refusalReason = refusalReason;
                       }
 
-                       // Check if all reports for this mission are now processed
-                       const updatedReportsForMission = mockReports.filter(r => r.missionId === missionId);
-                       const allReportsProcessed = updatedReportsForMission.every(r => r.status === 'approved' || r.status === 'refused');
-                       const anyReportApproved = updatedReportsForMission.some(r => r.status === 'approved');
-
-                       // Update mission status
+                       // Update mission status based on the refused report
                        const missionIndex = mockMissions.findIndex(m => m.id === missionId);
                        if (missionIndex !== -1) {
-                           if (allReportsProcessed && !anyReportApproved) {
-                                // If all processed and none approved, set mission to refused
-                                mockMissions[missionIndex].status = 'refused';
-                                setMission(prev => prev ? { ...prev, status: 'refused' } : null);
-                           } else if (anyReportApproved) {
-                               // If at least one is approved, mission status should be approved
-                               mockMissions[missionIndex].status = 'approved';
-                               setMission(prev => prev ? { ...prev, status: 'approved' } : null);
-                           }
-                            // Otherwise, remains 'submitted' or 'assigned'
+                           // Logic: If this report is refused, mark the mission as refused.
+                           // Adjust if multiple reports require different logic.
+                           mockMissions[missionIndex].status = 'refused';
+                           setMission(prev => prev ? { ...prev, status: 'refused' } : null);
                        }
                  });
                  setReportToRefuse(null); // Close the dialog
@@ -363,7 +345,8 @@ export default function AdminReviewReportsPage() {
                     {reports.map((report) => {
                          // Find user details using the helper function
                          const shopper = getUserById(report.userId);
-                         const shopperName = shopper ? shopper.name : `User ${report.userId}`;
+                         // Handle case where shopper might not be found (e.g., deleted user)
+                         const shopperName = shopper ? shopper.name : `User ID: ${report.userId}`;
                          const shopperAvatarUrl = shopper?.profilePicUrl;
                          const shopperAvatarFallback = shopperName?.charAt(0)?.toUpperCase() || 'U';
                          const isProcessing = processingReportId === report.id;
@@ -386,7 +369,8 @@ export default function AdminReviewReportsPage() {
                                                      Report from {shopperName}
                                                 </CardTitle>
                                                  <CardDescription className="text-xs mt-1 flex flex-wrap items-center gap-x-3 gap-y-1">
-                                                     <span>User ID: {report.userId}</span>
+                                                     {/* Conditionally display User ID if shopper object exists */}
+                                                     {shopper && <span>User ID: {report.userId}</span>}
                                                     <span className="flex items-center gap-1"><Calendar className="w-3 h-3"/> Submitted: {format(new Date(report.submittedAt), 'PPp')}</span>
                                                  </CardDescription>
                                              </div>
@@ -507,4 +491,3 @@ export default function AdminReviewReportsPage() {
         </div>
     );
 }
-

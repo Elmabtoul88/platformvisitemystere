@@ -1,6 +1,8 @@
+
 'use server';
 
 import { revalidatePath } from 'next/cache';
+import { mockSurveyQuestions } from '@/lib/mock-data'; // Import mock data to update
 
 /**
  * Server Action to save survey questions for a specific mission.
@@ -11,30 +13,40 @@ import { revalidatePath } from 'next/cache';
  */
 export async function saveSurvey(missionId, questions) {
   console.log(`Server Action: Saving survey for mission ${missionId}`);
-  // Log the full structure, including new question types and their configs
   console.log("Survey Questions:", JSON.stringify(questions, null, 2));
 
   // Simulate network delay
   await new Promise(resolve => setTimeout(resolve, 1000));
 
-  // --- TODO: Replace simulation with actual backend logic ---
-  // 1. Validate missionId.
-  // 2. Validate the questions structure again on the server (including new types like image, audio, gps).
-  // 3. Save the questions array to the database, associated with the missionId.
-  //    - Ensure database schema supports storing configurations for new types (e.g., maxImages, audioConstraints).
-  // 4. Handle potential errors during database operation.
-  // ---
+  // --- Update Mock Data ---
+  // Validate missionId (though in mock, we just use it as a key)
+  if (!missionId) {
+      return { success: false, message: "Invalid mission ID." };
+  }
 
-  // Simulate success
-  const success = true; // Change to false to simulate failure
+  // Validate questions structure (basic check)
+  if (!Array.isArray(questions)) {
+       return { success: false, message: "Invalid questions format." };
+   }
+
+   // Save the questions to the mock data structure
+   mockSurveyQuestions[missionId] = questions;
+   console.log("Mock survey questions updated for mission:", missionId);
+  // --- End Mock Data Update ---
+
+  const success = true; // Simulate success
 
   if (success) {
     console.log("Server Action: Survey saved successfully (simulated).");
-    // Revalidate relevant paths if needed (e.g., mission detail page if it shows survey info)
-    revalidatePath(`/admin/missions/${missionId}`);
-    revalidatePath('/admin/missions'); // Revalidate list in case status/indicator changes
 
-    return { success: true, message: "Survey saved successfully (simulated)." };
+    // Revalidate paths relevant to both admin and shoppers
+    revalidatePath(`/admin/missions/${missionId}`); // Admin mission detail page
+    revalidatePath('/admin/missions'); // Admin mission list (in case status indicator changes)
+    revalidatePath(`/report/${missionId}`); // Revalidate the shopper's report submission page
+    // Revalidating assigned list might be useful if survey availability affects the mission card
+    revalidatePath('/missions/assigned');
+
+    return { success: true, message: "Survey saved successfully." };
   } else {
     console.error("Server Action: Failed to save survey (simulated).");
     return { success: false, message: "Failed to save the survey due to a simulated server error." };

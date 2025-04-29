@@ -1,8 +1,8 @@
+
 'use server';
 
 import { revalidatePath } from 'next/cache';
-// Potentially import mock data manipulation functions or real API calls here in the future
-// For now, we just log and simulate delay/error
+import { mockMissions, mockReports } from '@/lib/mock-data'; // Import mock data
 
 /**
  * Server Action to handle report submission with dynamic survey answers.
@@ -14,40 +14,70 @@ import { revalidatePath } from 'next/cache';
  */
 export async function submitReport(submittedData, missionId, userId) {
   console.log(`Server Action: Submitting report for mission ${missionId} by user ${userId}`);
-  // Log the structured answers received
   console.log("Submitted Data:", JSON.stringify(submittedData, null, 2));
 
   // Simulate network delay for submission
   await new Promise(resolve => setTimeout(resolve, 1000));
 
-  // Simulate potential submission error (uncomment to test error handling)
+  // Simulate potential submission error
   const simulateError = false; // Set to true to test error path
   if (simulateError) {
     console.error("Server Action: Simulated submission error");
-    // Throw an error that the client component can catch
     throw new Error("Simulated submission error from server action.");
   }
 
+  // --- Update Mock Data ---
+  // 1. Find the mission
+  const missionIndex = mockMissions.findIndex(m => m.id === missionId);
+  if (missionIndex === -1) {
+    console.error("Server Action: Mission not found.");
+    throw new Error("Mission not found during report submission.");
+  }
 
-  // --- TODO: Replace simulation with actual backend logic ---
-  // 1. Validate missionId and userId again on the server.
-  // 2. Verify the user is assigned to this mission and it's in the correct status.
-  // 3. Validate the structure and content of `submittedData.answers` based on the actual survey for the mission.
-  // 4. Handle actual file uploads if URLs are temporary client-side placeholders (e.g., move from temp storage).
-  // 5. Save the report data (including the structured `answers`) to the database.
-  // 6. Update the mission status (e.g., to 'submitted' or 'completed').
-  // 7. Optionally, trigger notifications.
-  // ---
+  // 2. Check if user is assigned (handle array or single ID)
+  const mission = mockMissions[missionIndex];
+  const isAssigned = Array.isArray(mission.assignedTo) ? mission.assignedTo.includes(userId) : mission.assignedTo === userId;
+  if (!isAssigned) {
+      console.error(`Server Action: User ${userId} is not assigned to mission ${missionId}.`);
+      throw new Error("You are not assigned to this mission.");
+  }
+
+  // 3. Update Mission Status to 'submitted'
+  // This assumes submitting a report marks the mission as submitted (awaiting review)
+  mockMissions[missionIndex].status = 'submitted';
+
+  // 4. Create or Update the Report in mockReports
+   const reportIndex = mockReports.findIndex(r => r.missionId === missionId && r.userId === userId);
+   const newReportData = {
+        id: reportIndex > -1 ? mockReports[reportIndex].id : `report-${Date.now()}-${Math.random().toString(16).slice(2)}`, // Generate new ID if needed
+        missionId: missionId,
+        userId: userId,
+        answers: submittedData.answers || {},
+        submittedAt: new Date(),
+        status: 'submitted', // Report status is submitted
+        refusalReason: null,
+   };
+
+   if (reportIndex > -1) {
+       // Update existing report (e.g., if re-submitting)
+       mockReports[reportIndex] = newReportData;
+       console.log(`Server Action: Updated existing report ${newReportData.id}`);
+   } else {
+       // Add new report
+       mockReports.push(newReportData);
+       console.log(`Server Action: Created new report ${newReportData.id}`);
+   }
+  // --- End Mock Data Update ---
 
   console.log("Server Action: Report submission successful (simulated)");
 
-  // Revalidate relevant paths to update cached data after submission
-  // This ensures the user sees the updated mission/report lists
-  revalidatePath('/'); // Revalidate the main mission list
-  revalidatePath('/missions/assigned');
-  revalidatePath('/missions/completed');
-  revalidatePath(`/report/${missionId}`); // Revalidate the report page itself (though user is redirected)
+  // Revalidate relevant paths for both shopper and admin
+  revalidatePath('/'); // Shopper available list
+  revalidatePath('/missions/assigned'); // Shopper assigned list (mission status changes)
+  revalidatePath('/missions/completed'); // Shopper completed list
+  revalidatePath(`/report/${missionId}`); // Report page itself (though user is redirected)
+  revalidatePath('/admin/missions'); // Admin mission list (status changes)
+  revalidatePath(`/admin/missions/${missionId}/reports`); // Admin report review page
 
-  // Return a success status or relevant data if needed
   return { success: true, message: "Report submitted successfully (simulated)." };
 }
