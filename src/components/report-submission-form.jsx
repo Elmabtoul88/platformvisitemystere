@@ -245,17 +245,19 @@ export function ReportSubmissionForm({ mission, surveyQuestions = [], onSubmitAc
          const value = data[fieldName];
          if (q.isRequired) {
              if (q.type === 'checkboxes') {
-                 if (!value || Object.values(value).every(v => !v)) {
-                     form.setError(fieldName, { type: 'required', message: 'Please select at least one option.' });
-                     isValid = false;
+                 // Check if the value object exists and if at least one checkbox is true
+                 if (!value || !Object.values(value).some(v => v === true)) {
+                    form.setError(fieldName, { type: 'required', message: 'Please select at least one option.' });
+                    isValid = false;
                  }
-             } else if (!value && value !== 0) { // Check for empty values (allow 0 for rating)
+             } else if (value === undefined || value === null || value === '') { // Check for empty/null/undefined values
                  form.setError(fieldName, { type: 'required', message: 'This field is required.' });
                  isValid = false;
              }
          }
          // Add more specific validation if needed (e.g., text length for 'text' type)
      });
+
 
      if (!isValid) {
         toast({ variant: "destructive", title: "Validation Error", description: "Please fill in all required fields." });
@@ -305,37 +307,33 @@ export function ReportSubmissionForm({ mission, surveyQuestions = [], onSubmitAc
                 {surveyQuestions.map((q, index) => {
                      const fieldName = getFieldName(q);
                      return (
-                        <FormItem key={q.id} className="border-t pt-6 first:border-t-0 first:pt-0">
-                             {/* Question Label with Type Icon */}
-                             <FormLabel className="font-semibold text-md flex items-center gap-2">
-                                {getIconForType(q.type)}
-                                {index + 1}. {q.text}
-                                {q.isRequired && <span className="text-destructive text-xs ml-1">*</span>}
-                             </FormLabel>
-                             {/* Optional Description */}
-                             {q.description && (
-                                <FormDescription className="text-sm ml-6">{q.description}</FormDescription>
-                              )}
-
-                            {/* Render input based on question type */}
-                            <FormControl className="pl-6 mt-2">
-                                <>
-                                    {q.type === 'text' && (
-                                        <Controller
-                                            name={fieldName}
-                                            control={form.control}
-                                            rules={{ required: q.isRequired }}
-                                            render={({ field }) => <Textarea placeholder="Your answer..." {...field} />}
-                                        />
+                        <FormField
+                            control={form.control}
+                            name={fieldName} // Use the main field name for the top-level Field
+                            rules={{ required: q.isRequired }}
+                            key={q.id}
+                            render={({ field }) => ( // field here represents the top-level RHF field state
+                                <FormItem className="border-t pt-6 first:border-t-0 first:pt-0">
+                                    {/* Question Label with Type Icon */}
+                                    <FormLabel className="font-semibold text-md flex items-center gap-2">
+                                        {getIconForType(q.type)}
+                                        {index + 1}. {q.text}
+                                        {q.isRequired && <span className="text-destructive text-xs ml-1">*</span>}
+                                    </FormLabel>
+                                    {/* Optional Description */}
+                                    {q.description && (
+                                        <FormDescription className="text-sm ml-6">{q.description}</FormDescription>
                                     )}
 
-                                    {q.type === 'rating' && (
-                                        <Controller
-                                            name={fieldName}
-                                            control={form.control}
-                                            rules={{ required: q.isRequired }}
-                                            defaultValue={3} // Default rating
-                                            render={({ field }) => (
+                                    {/* Render input based on question type */}
+                                    <FormControl className="pl-6 mt-2">
+                                        {/* Wrap content in a div to receive props from Slot */}
+                                        <div>
+                                            {q.type === 'text' && (
+                                                <Textarea placeholder="Your answer..." {...field} />
+                                            )}
+
+                                            {q.type === 'rating' && (
                                                 <div className="flex space-x-1 items-center">
                                                     <span className="text-xs mr-2 text-muted-foreground">{q.minLabel || 'Poor'}</span>
                                                     {[...Array(q.maxRating || 5).keys()].map((i) => {
@@ -347,7 +345,7 @@ export function ReportSubmissionForm({ mission, surveyQuestions = [], onSubmitAc
                                                                 variant={field.value >= ratingValue ? "default" : "outline"}
                                                                 size="icon"
                                                                 className={`h-8 w-8 ${field.value >= ratingValue ? 'bg-accent text-accent-foreground border-accent' : 'text-muted-foreground'} hover:bg-accent/80 hover:text-accent-foreground transition-colors`}
-                                                                onClick={() => field.onChange(ratingValue)}
+                                                                onClick={() => form.setValue(fieldName, ratingValue, { shouldValidate: true })} // Use form.setValue to trigger RHF update
                                                             >
                                                                 <Star className="w-5 h-5" fill={field.value >= ratingValue ? 'currentColor' : 'none'} />
                                                             </Button>
@@ -356,164 +354,152 @@ export function ReportSubmissionForm({ mission, surveyQuestions = [], onSubmitAc
                                                     <span className="text-xs ml-2 text-muted-foreground">{q.maxLabel || 'Excellent'}</span>
                                                 </div>
                                             )}
-                                        />
-                                    )}
 
-                                     {q.type === 'multiple_choice' && (
-                                        <Controller
-                                            name={fieldName}
-                                            control={form.control}
-                                            rules={{ required: q.isRequired }}
-                                            render={({ field }) => (
-                                                 <RadioGroup
-                                                    onValueChange={field.onChange}
-                                                    value={field.value}
+                                            {q.type === 'multiple_choice' && (
+                                                <RadioGroup
+                                                    onValueChange={field.onChange} // RHF's onChange handles the update
+                                                    value={field.value} // RHF controls the value
                                                     className="space-y-2"
-                                                 >
+                                                >
                                                     {q.options?.map((opt) => (
                                                         <FormItem key={opt.id} className="flex items-center space-x-3 space-y-0">
-                                                             <FormControl>
+                                                            <FormControl>
                                                                 <RadioGroupItem value={opt.text} />
-                                                             </FormControl>
+                                                            </FormControl>
                                                             <FormLabel className="font-normal">{opt.text}</FormLabel>
                                                         </FormItem>
                                                     ))}
                                                 </RadioGroup>
                                             )}
-                                        />
-                                    )}
 
-                                     {q.type === 'checkboxes' && (
-                                        <div className="space-y-2">
-                                            {q.options?.map((opt) => (
-                                                <Controller
-                                                    key={opt.id}
-                                                    name={`${fieldName}.${opt.id}`} // Use unique name per checkbox
-                                                    control={form.control}
-                                                    render={({ field }) => (
-                                                        <FormItem className="flex items-center space-x-3 space-y-0">
-                                                             <FormControl>
-                                                                 <Checkbox
-                                                                     checked={field.value || false}
-                                                                     onCheckedChange={field.onChange}
-                                                                 />
-                                                             </FormControl>
-                                                            <FormLabel className="font-normal">{opt.text}</FormLabel>
-                                                        </FormItem>
-                                                    )}
-                                                />
-                                            ))}
-                                             {/* RHF validation message shown at the top level */}
-                                         </div>
-                                    )}
-
-                                     {q.type === 'image_upload' && (
-                                        <div className="space-y-3">
-                                             <Input
-                                                id={`q-img-${q.id}`}
-                                                type="file"
-                                                accept="image/*"
-                                                multiple={q.allowMultiple ?? true} // Default to true if undefined
-                                                onChange={(e) => handleImageChange(e, q.id, q.maxImages ?? 5, q.allowMultiple ?? true)}
-                                                disabled={(imagePreviews[q.id]?.length || 0) >= (q.maxImages ?? 5) && q.allowMultiple}
-                                                className="block w-full max-w-xs text-sm text-slate-500 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-primary/10 file:text-primary hover:file:bg-primary/20"
-                                            />
-                                            {(imagePreviews[q.id]?.length || 0) > 0 && (
-                                                <div className="mt-2 flex flex-wrap gap-2">
-                                                    {(imagePreviews[q.id] || []).map((url, index) => (
-                                                         <div key={index} className="relative group">
-                                                             <Image
-                                                                src={url}
-                                                                alt={`Preview ${index + 1}`}
-                                                                width={100}
-                                                                height={75}
-                                                                className="rounded-md object-cover border"
-                                                            />
-                                                             <Button
-                                                                type="button"
-                                                                variant="destructive"
-                                                                size="icon"
-                                                                className="absolute top-0 right-0 h-5 w-5 opacity-0 group-hover:opacity-100 transition-opacity"
-                                                                onClick={() => removeImage(q.id, index)}
-                                                             >
-                                                                <Trash2 className="h-3 w-3"/>
-                                                             </Button>
-                                                         </div>
+                                            {q.type === 'checkboxes' && (
+                                                <div className="space-y-2">
+                                                    {q.options?.map((opt) => (
+                                                        <FormField
+                                                            key={opt.id}
+                                                            control={form.control}
+                                                            name={`${fieldName}.${opt.id}`} // Nested field name
+                                                            render={({ field: checkboxField }) => ( // Use a different name for nested field
+                                                                <FormItem className="flex items-center space-x-3 space-y-0">
+                                                                    <FormControl>
+                                                                        <Checkbox
+                                                                            checked={checkboxField.value || false}
+                                                                            onCheckedChange={checkboxField.onChange}
+                                                                        />
+                                                                    </FormControl>
+                                                                    <FormLabel className="font-normal">{opt.text}</FormLabel>
+                                                                </FormItem>
+                                                            )}
+                                                        />
                                                     ))}
                                                 </div>
                                             )}
-                                             <FormDescription className="text-xs">
-                                                {q.allowMultiple ? `Upload up to ${q.maxImages ?? 5} images.` : `Upload 1 image.`} Allowed types: JPG, PNG.
-                                             </FormDescription>
-                                              {/* Hidden input managed internally by RHF */}
-                                              <Controller name={fieldName} control={form.control} render={() => null} />
-                                         </div>
-                                    )}
 
-                                    {q.type === 'gps_capture' && (
-                                         <div className="space-y-2">
-                                             <Button type="button" variant="outline" onClick={() => handleGpsCapture(q.id)} disabled={gpsCoords[q.id] === 'loading'}>
-                                                 <MapPin className="w-4 h-4 mr-2"/>
-                                                 {gpsCoords[q.id] === 'loading' && <Loader2 className="w-4 h-4 mr-2 animate-spin"/>}
-                                                 {gpsCoords[q.id] && typeof gpsCoords[q.id] === 'object' ? 'Recapture Location' : 'Capture Current Location'}
-                                             </Button>
-                                             {gpsCoords[q.id] && typeof gpsCoords[q.id] === 'object' && (
-                                                <p className="text-sm text-green-600">Location captured: Lat {gpsCoords[q.id].lat.toFixed(4)}, Lng {gpsCoords[q.id].lng.toFixed(4)}</p>
-                                             )}
-                                             {gpsCoords[q.id] === 'error' && (
-                                                <p className="text-sm text-destructive">Could not capture location.</p>
-                                             )}
-                                              {/* Hidden input managed internally by RHF */}
-                                              <Controller name={fieldName} control={form.control} render={() => null} />
-                                         </div>
-                                    )}
+                                            {q.type === 'image_upload' && (
+                                                <div className="space-y-3">
+                                                    <Input
+                                                        id={`q-img-${q.id}`}
+                                                        type="file"
+                                                        accept="image/*"
+                                                        multiple={q.allowMultiple ?? true} // Default to true if undefined
+                                                        onChange={(e) => handleImageChange(e, q.id, q.maxImages ?? 5, q.allowMultiple ?? true)}
+                                                        disabled={(imagePreviews[q.id]?.length || 0) >= (q.maxImages ?? 5) && q.allowMultiple}
+                                                        className="block w-full max-w-xs text-sm text-slate-500 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-primary/10 file:text-primary hover:file:bg-primary/20"
+                                                    />
+                                                    {(imagePreviews[q.id]?.length || 0) > 0 && (
+                                                        <div className="mt-2 flex flex-wrap gap-2">
+                                                            {(imagePreviews[q.id] || []).map((url, index) => (
+                                                                <div key={index} className="relative group">
+                                                                    <Image
+                                                                        src={url}
+                                                                        alt={`Preview ${index + 1}`}
+                                                                        width={100}
+                                                                        height={75}
+                                                                        className="rounded-md object-cover border"
+                                                                    />
+                                                                    <Button
+                                                                        type="button"
+                                                                        variant="destructive"
+                                                                        size="icon"
+                                                                        className="absolute top-0 right-0 h-5 w-5 opacity-0 group-hover:opacity-100 transition-opacity"
+                                                                        onClick={() => removeImage(q.id, index)}
+                                                                    >
+                                                                        <Trash2 className="h-3 w-3"/>
+                                                                    </Button>
+                                                                </div>
+                                                            ))}
+                                                        </div>
+                                                    )}
+                                                    <FormDescription className="text-xs">
+                                                        {q.allowMultiple ? `Upload up to ${q.maxImages ?? 5} images.` : `Upload 1 image.`} Allowed types: JPG, PNG.
+                                                    </FormDescription>
+                                                    {/* Hidden input managed internally by RHF */}
+                                                </div>
+                                            )}
 
-                                     {q.type === 'audio_recording' && (
-                                        <div className="space-y-3">
-                                            <div className="flex items-center gap-2">
-                                                 <Button
-                                                    type="button"
-                                                    variant="outline"
-                                                    onClick={() => startRecording(q.id, q.maxDurationSeconds ?? 60)}
-                                                    disabled={audioData[q.id]?.status === 'recording' || !!audioData[q.id]?.url}
-                                                 >
-                                                    <Mic className="w-4 h-4 mr-2"/> Start Recording
-                                                 </Button>
-                                                 {audioData[q.id]?.status === 'recording' && (
-                                                     <>
-                                                         <Button type="button" variant="destructive" onClick={() => stopRecording(q.id)}>
-                                                            <Loader2 className="w-4 h-4 mr-2 animate-spin"/> Stop Recording
+                                            {q.type === 'gps_capture' && (
+                                                <div className="space-y-2">
+                                                    <Button type="button" variant="outline" onClick={() => handleGpsCapture(q.id)} disabled={gpsCoords[q.id] === 'loading'}>
+                                                        <MapPin className="w-4 h-4 mr-2"/>
+                                                        {gpsCoords[q.id] === 'loading' && <Loader2 className="w-4 h-4 mr-2 animate-spin"/>}
+                                                        {gpsCoords[q.id] && typeof gpsCoords[q.id] === 'object' ? 'Recapture Location' : 'Capture Current Location'}
+                                                    </Button>
+                                                    {gpsCoords[q.id] && typeof gpsCoords[q.id] === 'object' && (
+                                                        <p className="text-sm text-green-600">Location captured: Lat {gpsCoords[q.id].lat.toFixed(4)}, Lng {gpsCoords[q.id].lng.toFixed(4)}</p>
+                                                    )}
+                                                    {gpsCoords[q.id] === 'error' && (
+                                                        <p className="text-sm text-destructive">Could not capture location.</p>
+                                                    )}
+                                                    {/* Hidden input managed internally by RHF */}
+                                                </div>
+                                            )}
+
+                                            {q.type === 'audio_recording' && (
+                                                <div className="space-y-3">
+                                                    <div className="flex items-center gap-2">
+                                                        <Button
+                                                            type="button"
+                                                            variant="outline"
+                                                            onClick={() => startRecording(q.id, q.maxDurationSeconds ?? 60)}
+                                                            disabled={audioData[q.id]?.status === 'recording' || !!audioData[q.id]?.url}
+                                                        >
+                                                            <Mic className="w-4 h-4 mr-2"/> Start Recording
                                                         </Button>
-                                                        <span className="text-xs text-muted-foreground italic">Recording...</span>
-                                                      </>
-                                                 )}
-                                            </div>
-                                             {audioData[q.id]?.url && (
-                                                 <div className="flex items-center gap-2 p-2 border rounded bg-secondary">
-                                                     <audio controls src={audioData[q.id].url} className="w-full max-w-xs h-10">
-                                                         Your browser does not support the audio element.
-                                                     </audio>
-                                                     <Button type="button" variant="ghost" size="icon" className="text-destructive" onClick={() => removeAudio(q.id)}>
-                                                         <Trash2 className="w-4 h-4"/>
-                                                     </Button>
-                                                 </div>
-                                             )}
-                                            {audioData[q.id]?.status === 'error' && (
-                                                 <p className="text-sm text-destructive">Audio recording failed.</p>
-                                             )}
-                                             <FormDescription className="text-xs">
-                                                 Record audio up to {q.maxDurationSeconds ?? 60} seconds.
-                                             </FormDescription>
-                                              {/* Hidden input managed internally by RHF */}
-                                              <Controller name={fieldName} control={form.control} render={() => null} />
-                                         </div>
-                                    )}
-
-                                </>
-                            </FormControl>
-                            {/* Validation Message */}
-                            <FormMessage className="pl-6" />
-                        </FormItem>
+                                                        {audioData[q.id]?.status === 'recording' && (
+                                                            <>
+                                                                <Button type="button" variant="destructive" onClick={() => stopRecording(q.id)}>
+                                                                    <Loader2 className="w-4 h-4 mr-2 animate-spin"/> Stop Recording
+                                                                </Button>
+                                                                <span className="text-xs text-muted-foreground italic">Recording...</span>
+                                                            </>
+                                                        )}
+                                                    </div>
+                                                    {audioData[q.id]?.url && (
+                                                        <div className="flex items-center gap-2 p-2 border rounded bg-secondary">
+                                                            <audio controls src={audioData[q.id].url} className="w-full max-w-xs h-10">
+                                                                Your browser does not support the audio element.
+                                                            </audio>
+                                                            <Button type="button" variant="ghost" size="icon" className="text-destructive" onClick={() => removeAudio(q.id)}>
+                                                                <Trash2 className="w-4 h-4"/>
+                                                            </Button>
+                                                        </div>
+                                                    )}
+                                                    {audioData[q.id]?.status === 'error' && (
+                                                        <p className="text-sm text-destructive">Audio recording failed.</p>
+                                                    )}
+                                                    <FormDescription className="text-xs">
+                                                        Record audio up to {q.maxDurationSeconds ?? 60} seconds.
+                                                    </FormDescription>
+                                                    {/* Hidden input managed internally by RHF */}
+                                                </div>
+                                            )}
+                                        </div>
+                                    </FormControl>
+                                    {/* Validation Message */}
+                                    <FormMessage className="pl-6" />
+                                </FormItem>
+                            )}
+                        />
                      );
                 })}
                 </CardContent>
