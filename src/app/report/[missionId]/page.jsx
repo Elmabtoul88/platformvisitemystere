@@ -62,8 +62,10 @@ export default async function ReportSubmissionPage({ params }) {
         : mission.assignedTo === mockUser.id; // Use the imported mockUser's ID
 
    // Corrected logic: canSubmit should be true if status is 'assigned' or 'submitted' AND assigned to the current user
+   // Allow submission even if 'submitted' to enable potential re-submission/editing if allowed by logic later
    const canSubmit = (mission.status === 'assigned' || mission.status === 'submitted') && isAssignedToUser;
 
+   // Debug Logs (keep them temporarily for verification)
    console.log("--- Report Page Debug ---");
    console.log("Mission ID:", missionId);
    console.log("Mission Status:", mission.status);
@@ -89,7 +91,7 @@ export default async function ReportSubmissionPage({ params }) {
                     </CardDescription>
                 </CardHeader>
                 <CardContent className="space-y-2 text-sm text-foreground/80">
-                   {/* Wrapped list in a div */}
+                   {/* Changed p containing ul to div */}
                    <div className="text-left">
                      <p className="mb-1">This could be because:</p>
                      <ul className="list-disc list-inside pl-4 mt-1 space-y-1">
