@@ -189,12 +189,12 @@ function AppLayout({ children }) {
                       <Shield className="w-4 h-4" /> Dashboard
                     </Link>
                   </Button>
-                  <Button variant={pathname === '/admin/missions' ? "secondary" : "ghost"} size="sm" asChild>
+                  <Button variant={pathname.startsWith('/admin/missions') ? "secondary" : "ghost"} size="sm" asChild>
                     <Link href="/admin/missions" className="flex items-center gap-1">
                       <ListChecks className="w-4 h-4" /> Manage Missions
                     </Link>
                   </Button>
-                  <Button variant={pathname === '/admin/users' ? "secondary" : "ghost"} size="sm" asChild>
+                  <Button variant={pathname.startsWith('/admin/users') ? "secondary" : "ghost"} size="sm" asChild>
                     <Link href="/admin/users" className="flex items-center gap-1">
                       <Users className="w-4 h-4" /> Manage Users
                     </Link>
