@@ -247,7 +247,7 @@ export default function AdminMissionsPage() {
                                 <TableHead>Deadline</TableHead>
                                 <TableHead>Reward</TableHead>
                                 <TableHead>Status</TableHead>
-                                <TableHead>Assigned To</TableHead> {/* Added Assigned To Column */}
+                                <TableHead>Assigned To</TableHead>
                                 <TableHead className="text-right">Actions</TableHead>
                             </TableRow>
                         </TableHeader>
@@ -257,22 +257,27 @@ export default function AdminMissionsPage() {
                                     const pendingCount = pendingReportsCount[mission.id] || 0;
                                     const assignedShopper = shoppers.find(u => u.value === mission.assignedTo);
                                     const assignedUserName = assignedShopper ? assignedShopper.label.split('(')[0].trim() : mission.assignedTo || 'N/A';
-                                    const isCurrentProcessing = isProcessing === mission.id; // Check if this mission is being processed
+                                    const isCurrentProcessing = isProcessing === mission.id;
 
                                     return (
                                         <TableRow key={mission.id} className={isCurrentProcessing ? 'opacity-50 pointer-events-none' : ''}>
-                                            <TableCell className="font-medium">{mission.title}</TableCell><TableCell>{mission.businessName || 'N/A'}</TableCell><TableCell>{mission.location}</TableCell><TableCell>{format(new Date(mission.deadline), 'PP')}</TableCell><TableCell>${mission.reward}</TableCell><TableCell>
+                                            <TableCell className="font-medium">{mission.title}</TableCell>
+                                            <TableCell>{mission.businessName || 'N/A'}</TableCell>
+                                            <TableCell>{mission.location}</TableCell>
+                                            <TableCell>{format(new Date(mission.deadline), 'PP')}</TableCell>
+                                            <TableCell>${mission.reward}</TableCell>
+                                            <TableCell>
                                                 <Badge variant={getStatusVariant(mission.status)} className="capitalize">
                                                      {getStatusText(mission.status)}
                                                 </Badge>
-                                            </TableCell>{/* Display Assigned User */}
+                                            </TableCell>
                                             <TableCell className="text-xs">
                                                 {mission.status === 'assigned' || mission.status === 'submitted' || mission.status === 'approved' || mission.status === 'refused'
                                                     ? assignedUserName
                                                     : <span className="text-muted-foreground">Not Assigned</span>
                                                 }
-                                            </TableCell><TableCell className="text-right">
-                                                {/* Removed AlertDialog wrapper, will use state */}
+                                            </TableCell>
+                                            <TableCell className="text-right">
                                                 <DropdownMenu>
                                                     <DropdownMenuTrigger asChild>
                                                         <Button variant="ghost" className="h-8 w-8 p-0" disabled={isCurrentProcessing}>
@@ -282,35 +287,30 @@ export default function AdminMissionsPage() {
                                                     </DropdownMenuTrigger>
                                                     <DropdownMenuContent align="end">
                                                         <DropdownMenuLabel>Actions</DropdownMenuLabel>
-                                                        {/* Assign User - Opens Dialog */}
                                                         {mission.status === 'available' && (
                                                             <DropdownMenuItem onClick={() => openAssignDialog(mission)} disabled={isCurrentProcessing}>
                                                                 <UserPlus className="mr-2 h-4 w-4" /> Assign to Shopper
                                                             </DropdownMenuItem>
                                                         )}
-                                                        {/* Review Reports */}
-                                                            {(mission.status === 'submitted' || mission.status === 'approved' || mission.status === 'refused') && (
+                                                        {(mission.status === 'submitted' || mission.status === 'approved' || mission.status === 'refused') && (
                                                             <DropdownMenuItem onClick={() => handleReviewReports(mission.id)} disabled={isCurrentProcessing}>
                                                                 <FileCheck className="mr-2 h-4 w-4" /> Review Reports
                                                                 {pendingCount > 0 && <Badge variant="destructive" className="ml-auto text-xs">{pendingCount} New</Badge>}
                                                             </DropdownMenuItem>
                                                             )}
-                                                        {/* Edit Mission Details */}
                                                         <DropdownMenuItem onClick={() => handleEditMission(mission.id)} disabled={isCurrentProcessing}>
                                                             <Edit className="mr-2 h-4 w-4" /> Edit Mission
                                                         </DropdownMenuItem>
-                                                        {/* Edit Survey */}
                                                         <DropdownMenuItem onClick={() => handleEditSurvey(mission.id)} disabled={isCurrentProcessing}>
                                                             <FileText className="mr-2 h-4 w-4" /> Edit Survey
                                                         </DropdownMenuItem>
                                                         <DropdownMenuSeparator />
-                                                        {/* Delete Mission - Uses nested AlertDialog */}
                                                         <AlertDialog>
                                                             <AlertDialogTrigger asChild>
                                                                 <DropdownMenuItem
                                                                     className="text-destructive focus:text-destructive focus:bg-destructive/10"
                                                                     onSelect={(e) => e.preventDefault()}
-                                                                    disabled={isCurrentProcessing || mission.status === 'assigned' || mission.status === 'submitted'} // Disable delete if assigned/submitted
+                                                                    disabled={isCurrentProcessing || mission.status === 'assigned' || mission.status === 'submitted'}
                                                                     title={mission.status === 'assigned' || mission.status === 'submitted' ? "Cannot delete assigned/submitted missions" : ""}
                                                                 >
                                                                     <Trash2 className="mr-2 h-4 w-4" /> Delete Mission
@@ -355,7 +355,7 @@ export default function AdminMissionsPage() {
                 </CardContent>
             </Card>
 
-            {/* Assign User Dialog - Controlled by state */}
+            {/* Assign User Dialog */}
             <AlertDialog open={assignDialogOpen} onOpenChange={setAssignDialogOpen}>
                 <AlertDialogContent>
                     <AlertDialogHeader>
@@ -373,7 +373,7 @@ export default function AdminMissionsPage() {
                             placeholder="Search by name or email..."
                             searchPlaceholder="Search shopper..."
                             emptyMessage="No active shoppers found."
-                            renderOption={renderShopperOption} // Pass the custom renderer
+                            renderOption={renderShopperOption}
                         />
                     </div>
                     <AlertDialogFooter>

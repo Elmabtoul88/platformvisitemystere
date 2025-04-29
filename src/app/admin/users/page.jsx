@@ -127,16 +127,22 @@ export default function AdminUsersPage() {
                                                 </Avatar>
                                                 <span>{user.name}</span>
                                             </div>
-                                        </TableCell><TableCell>{user.email}</TableCell><TableCell>
+                                        </TableCell>
+                                        <TableCell>{user.email}</TableCell>
+                                        <TableCell>
                                              <Badge variant={user.role === 'admin' ? 'destructive' : 'secondary'} className="capitalize">
                                                 {user.role}
                                             </Badge>
-                                        </TableCell><TableCell>
+                                        </TableCell>
+                                        <TableCell>
                                             <Badge variant={user.status === 'active' ? 'default' : 'outline'} className={`capitalize ${user.status === 'active' ? 'bg-green-100 text-green-800 border-green-300' : 'bg-red-100 text-red-800 border-red-300'}`}>
                                                  {user.status === 'active' ? <CheckCircle className="w-3 h-3 mr-1"/> : <Clock className="w-3 h-3 mr-1"/>}
                                                 {user.status}
                                             </Badge>
-                                        </TableCell><TableCell>{format(user.registrationDate, 'PP')}</TableCell><TableCell className="text-center">{user.role === 'shopper' ? user.completedMissions : 'N/A'}</TableCell><TableCell className="text-right">
+                                        </TableCell>
+                                        <TableCell>{format(user.registrationDate, 'PP')}</TableCell>
+                                        <TableCell className="text-center">{user.role === 'shopper' ? user.completedMissions : 'N/A'}</TableCell>
+                                        <TableCell className="text-right">
                                             <DropdownMenu>
                                                 <DropdownMenuTrigger asChild>
                                                     <Button variant="ghost" className="h-8 w-8 p-0" disabled={isToggling === user.id}>
