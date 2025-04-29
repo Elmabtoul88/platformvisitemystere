@@ -1,11 +1,12 @@
+
 "use client";
 
 import React, { useMemo } from 'react';
 import { MissionCard } from '@/components/mission-card';
 import { mockMissions, mockReports, mockUser } from '@/lib/mock-data'; // Using mock data
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
-import { CheckCircle, SearchX, ArrowLeft } from 'lucide-react';
-import { Card } from '@/components/ui/card'; // Removed unused components
+import { CheckCircle, SearchX, ArrowLeft, DollarSign } from 'lucide-react'; // Added DollarSign
+import { Card } from '@/components/ui/card';
 import { format } from 'date-fns';
 import Image from 'next/image';
 import { Button } from '@/components/ui/button';
@@ -15,7 +16,12 @@ import { Badge } from '@/components/ui/badge';
 
 // Helper to find the report for a completed mission
 const findReportForMission = (missionId) => {
-    return mockReports.find(report => report.missionId === missionId && report.userId === mockUser.id);
+    // Ensure the report belongs to the current mock user and is approved
+    return mockReports.find(report =>
+        report.missionId === missionId &&
+        report.userId === mockUser.id &&
+        report.status === 'approved' // Only find approved reports for completed list
+    );
 }
 
 export default function CompletedMissionsPage() {
@@ -23,9 +29,10 @@ export default function CompletedMissionsPage() {
   const completedMissions = useMemo(() => {
     return mockMissions.filter(mission =>
         (mission.status === 'completed' || mission.status === 'approved') // Show completed/approved
-        && mission.assignedTo === mockUser.id
+        && (Array.isArray(mission.assignedTo) ? mission.assignedTo.includes(mockUser.id) : mission.assignedTo === mockUser.id) // Check assignment
+        && findReportForMission(mission.id) // Ensure an approved report exists for this user
     );
-  }, []);
+  }, []); // Dependency array ensures this runs once based on mock data
 
   return (
     <div className="container mx-auto py-8 px-4">
@@ -41,7 +48,7 @@ export default function CompletedMissionsPage() {
       {completedMissions.length > 0 ? (
         <div className="space-y-6">
           {completedMissions.map(mission => {
-            const report = findReportForMission(mission.id);
+            const report = findReportForMission(mission.id); // Report will always be approved here due to filter
             return (
                 <Card key={mission.id} className="shadow-sm overflow-hidden">
                     <div className="grid md:grid-cols-3">
@@ -54,42 +61,66 @@ export default function CompletedMissionsPage() {
                               />
                          </div>
 
-                         {/* Report Summary Column */}
+                         {/* Report Summary & Payment Column */}
                          <div className="md:col-span-1 p-4 bg-secondary/50">
                             {report ? (
-                                <div className="space-y-3">
-                                    <h3 className="text-md font-semibold text-foreground flex items-center justify-between">
-                                      Submitted Report
-                                      <Badge variant={report.status === 'approved' ? 'default' : 'outline'} className="capitalize bg-green-100 text-green-800 border-green-300">
-                                        {report.status}
-                                      </Badge>
-                                    </h3>
-                                    <p className="text-sm text-muted-foreground">
-                                        {/* Format date without time to avoid hydration mismatch */}
-                                        Submitted on: {format(report.submittedAt, 'PPP')}
-                                    </p>
-                                    <div className="flex items-center gap-1">
-                                         {Array.from({ length: 5 }).map((_, i) => (
-                                          <CheckCircle /* Using CheckCircle as placeholder for Star */
-                                            key={i}
-                                            className={`w-4 h-4 ${i < report.rating ? 'text-accent fill-accent' : 'text-muted-foreground/50'}`}
-                                          />
-                                        ))}
-                                        <span className="text-sm font-medium ml-1">({report.rating}/5)</span>
-                                    </div>
-                                    <p className="text-sm text-foreground bg-card p-2 rounded border italic line-clamp-3">
-                                        "{report.comments}"
-                                    </p>
-                                    {report.photoUrl && (
+                                <div className="space-y-4"> {/* Increased spacing */}
                                     <div>
-                                        <p className="text-xs text-muted-foreground mb-1">Submitted Photo:</p>
-                                        <Image
-                                        src={report.photoUrl}
-                                        alt="Submitted photo"
-                                        width={100}
-                                        height={75}
-                                        className="rounded border object-cover"
-                                        />
+                                        <h3 className="text-md font-semibold text-foreground flex items-center justify-between mb-1">
+                                            Submitted Report
+                                            <Badge variant='default' className="capitalize bg-green-100 text-green-800 border-green-300">
+                                                <CheckCircle className="w-3 h-3 mr-1"/> Approved
+                                            </Badge>
+                                        </h3>
+                                        <p className="text-sm text-muted-foreground">
+                                            Submitted on: {format(report.submittedAt, 'PPP')}
+                                        </p>
+                                    </div>
+
+                                    {/* Payment Information Section */}
+                                    <div className="p-3 border rounded-md bg-background shadow-sm">
+                                        <h4 className="text-sm font-semibold text-primary flex items-center gap-1 mb-1">
+                                            <DollarSign className="w-4 h-4"/> Payment Status
+                                        </h4>
+                                        <p className="text-sm text-green-700 font-medium">
+                                            Paid: ${mission.reward}
+                                        </p>
+                                        <p className="text-xs text-muted-foreground mt-1">
+                                            Payment processed upon report approval (simulated).
+                                        </p>
+                                    </div>
+
+                                    {/* Optional Report Details (rating, comment, photo) */}
+                                    {(report.rating || report.comments || report.photoUrl) && (
+                                    <div className="space-y-2 pt-2 border-t mt-4">
+                                        {report.rating && (
+                                            <div className="flex items-center gap-1">
+                                                {Array.from({ length: 5 }).map((_, i) => (
+                                                    <CheckCircle /* Using CheckCircle as placeholder for Star */
+                                                        key={i}
+                                                        className={`w-4 h-4 ${i < report.rating ? 'text-accent fill-accent' : 'text-muted-foreground/50'}`}
+                                                    />
+                                                ))}
+                                                <span className="text-sm font-medium ml-1">({report.rating}/5)</span>
+                                            </div>
+                                        )}
+                                        {report.comments && (
+                                            <p className="text-sm text-foreground bg-card p-2 rounded border italic line-clamp-3">
+                                                "{report.comments}"
+                                            </p>
+                                        )}
+                                        {report.photoUrl && (
+                                        <div>
+                                            <p className="text-xs text-muted-foreground mb-1">Submitted Photo:</p>
+                                            <Image
+                                                src={report.photoUrl}
+                                                alt="Submitted photo"
+                                                width={100}
+                                                height={75}
+                                                className="rounded border object-cover"
+                                            />
+                                        </div>
+                                        )}
                                     </div>
                                     )}
                                 </div>
@@ -109,7 +140,7 @@ export default function CompletedMissionsPage() {
           <SearchX className="h-4 w-4" />
           <AlertTitle>No Completed Missions</AlertTitle>
           <AlertDescription>
-            You haven't completed any missions yet. Finish your assigned missions to see them here.
+            You haven't completed any missions yet. Finish your assigned missions and wait for approval to see them here.
           </AlertDescription>
         </Alert>
       )}
