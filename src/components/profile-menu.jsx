@@ -1,6 +1,6 @@
 'use client';
 
-import React from 'react';
+import React, { useState } from 'react'; // Import useState
 import Link from 'next/link';
 import { Button } from '@/components/ui/button';
 import {
@@ -11,6 +11,7 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
+import { Badge } from '@/components/ui/badge'; // Import Badge
 import { User, Settings, LogOut, MessageSquare } from 'lucide-react'; // Added MessageSquare
 import { useToast } from '@/hooks/use-toast';
 import { useRouter } from 'next/navigation';
@@ -20,6 +21,7 @@ export function ProfileMenu() {
   const { toast } = useToast();
   const router = useRouter();
   const { setIsAuthenticated } = useAuth(); // Get setIsAuthenticated from context
+  const [notificationCount, setNotificationCount] = useState(3); // Simulate notification count
 
   const handleLogout = () => {
     // Simulate logout action
@@ -37,10 +39,22 @@ export function ProfileMenu() {
   return (
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
-        <Button variant="outline" size="icon" className="h-8 w-8 rounded-full">
-          <User className="w-4 h-4" />
-          <span className="sr-only">Open user menu</span>
-        </Button>
+        {/* Wrap the Button in a relative div to position the badge */}
+        <div className="relative">
+          <Button variant="outline" size="icon" className="h-8 w-8 rounded-full">
+            <User className="w-4 h-4" />
+            <span className="sr-only">Open user menu</span>
+          </Button>
+           {/* Conditionally render the badge */}
+           {notificationCount > 0 && (
+            <Badge
+              variant="destructive" // Use destructive variant for red background
+              className="absolute -top-1 -right-1 h-4 min-w-[1rem] px-1 flex items-center justify-center rounded-full text-[10px]"
+            >
+              {notificationCount}
+            </Badge>
+          )}
+        </div>
       </DropdownMenuTrigger>
       <DropdownMenuContent align="end">
         <DropdownMenuLabel>My Account</DropdownMenuLabel>
@@ -50,6 +64,10 @@ export function ProfileMenu() {
           <Link href="/chat" className="flex items-center cursor-pointer">
             <MessageSquare className="mr-2 h-4 w-4" />
             <span>Chat</span>
+             {/* Optionally add a smaller badge inside the menu item too */}
+             {notificationCount > 0 && (
+                <Badge variant="destructive" className="ml-auto text-xs px-1.5 py-0.5">{notificationCount}</Badge>
+            )}
           </Link>
         </DropdownMenuItem>
          {/* Settings Item */}
