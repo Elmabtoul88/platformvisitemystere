@@ -60,14 +60,15 @@ export default async function ReportSubmissionPage({ params }) {
                     </CardDescription>
                 </CardHeader>
                 <CardContent className="space-y-2 text-sm text-foreground/80">
-                   <p>
-                     This could be because:
-                     <ul className="list-disc list-inside text-left pl-4 mt-1 space-y-1">
+                    {/* Removed invalid <p> wrapping <ul> */}
+                   <div className="text-left"> {/* Added a div for structure */}
+                     <p className="mb-1">This could be because:</p> {/* Put text in its own <p> */}
+                     <ul className="list-disc list-inside pl-4 mt-1 space-y-1">
                         <li>The mission isn't assigned to you.</li>
                         <li>The mission has already been completed or cancelled.</li>
                         <li>The submission deadline has passed.</li>
                      </ul>
-                   </p>
+                   </div>
                    <p className="pt-2">
                      Please check your <Link href="/missions/assigned" className="text-primary underline hover:text-primary/80">Assigned Missions</Link> list for tasks ready for reporting.
                    </p>
