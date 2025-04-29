@@ -7,7 +7,8 @@ export const mockMissions = [
     reward: 50,
     location: '123 Main St, Anytown',
     category: 'Restaurant',
-    status: 'available',
+    status: 'submitted', // Changed to submitted for testing
+    assignedTo: 'user-shopper-1', // Assign it for report
     businessName: 'Gourmet Place Inc.',
   },
   {
@@ -18,7 +19,7 @@ export const mockMissions = [
     reward: 35,
     location: '456 Oak Ave, Anytown',
     category: 'Retail',
-    status: 'assigned',
+    status: 'submitted', // Changed to submitted as report exists
     assignedTo: 'user-shopper-1',
     businessName: 'Fashion Forward Ltd.',
   },
@@ -30,7 +31,8 @@ export const mockMissions = [
     reward: 20,
     location: '789 Pine Ln, Anytown',
     category: 'Service',
-    status: 'available',
+    status: 'assigned', // Changed to assigned for testing
+    assignedTo: 'user-shopper-1', // Assign it
     businessName: 'Quick Coffee Co.',
   },
   {
@@ -64,7 +66,7 @@ export const mockMissions = [
     reward: 30,
     location: '333 Market St, Anytown',
     category: 'Retail',
-    status: 'assigned', // Example of another assigned mission
+    status: 'submitted', // Changed to submitted as report exists
     assignedTo: 'user-shopper-1',
     businessName: 'SuperMart Foods',
   },
@@ -75,7 +77,6 @@ export const mockReports = [
     id: 'report-1',
     missionId: 'mission-4', // Linked to the approved mission
     userId: 'user-shopper-1',
-    // Example of structured answers based on potential survey for mission-4
     answers: {
         'q_hotel_1_rating': { type: 'rating', value: 4 },
         'q_hotel_2_text': { type: 'text', value: 'Check-in was smooth, staff were polite. Lobby was clean but a bit dated.' },
@@ -88,7 +89,6 @@ export const mockReports = [
     id: 'report-2',
     missionId: 'mission-2', // Linked to an assigned mission with survey questions
     userId: 'user-shopper-1',
-    // Example answers matching mockSurveyQuestions['mission-2']
     answers: {
         'q_1700000000001_rating': { type: 'rating', value: 5 }, // Overall Store Rating
         'q_1700000000002_multiple_choice': { type: 'multiple_choice', value: 'Very Helpful' }, // Staff Helpfulness
@@ -98,7 +98,32 @@ export const mockReports = [
     submittedAt: new Date(Date.now() - 0.5 * 24 * 60 * 60 * 1000), // Submitted 12 hours ago
     status: 'submitted', // Report is submitted but not yet approved by business
   },
-  // Add more reports if needed for testing different states
+   {
+    id: 'report-3',
+    missionId: 'mission-1', // Linked to Gourmet Place mission
+    userId: 'user-shopper-1',
+    answers: { /* Add relevant answers based on survey (if any) or just basic info */
+        'q_gourmet_1_rating': { type: 'rating', value: 3 },
+        'q_gourmet_2_text': { type: 'text', value: 'Service was a bit slow, but the food (steak) was cooked perfectly. Ambiance was nice.'}
+    },
+    submittedAt: new Date(Date.now() - 0.2 * 24 * 60 * 60 * 1000), // Submitted a few hours ago
+    status: 'submitted',
+  },
+   {
+    id: 'report-4',
+    missionId: 'mission-6', // Linked to Grocery Store mission
+    userId: 'user-shopper-1',
+    answers: { /* Add relevant answers based on survey */
+        'q_1700000000010_rating': { type: 'rating', value: 4 },
+        'q_1700000000011_rating': { type: 'rating', value: 5 },
+        'q_1700000000012_checkboxes': { type: 'checkboxes', value: { '1': true, '2': true, '3': false, '4': false } },
+        'q_1700000000013_gps_capture': { type: 'gps_capture', value: { lat: 34.0522, lng: -118.2437 } },
+        'q_1700000000015_image_upload': { type: 'image_upload', value: ['https://picsum.photos/400/300?random=61', 'https://picsum.photos/400/300?random=62'] },
+        'q_1700000000016_text': { type: 'text', value: 'Checkout line moved quickly. Cashier was very friendly and efficient.'}
+    },
+    submittedAt: new Date(Date.now() - 0.1 * 24 * 60 * 60 * 1000), // Submitted very recently
+    status: 'submitted',
+  },
 ];
 
 // Mock user for context (replace with actual authentication data later)
@@ -134,5 +159,11 @@ export const mockSurveyQuestions = {
     { id: 1700000000015, type: 'image_upload', text: 'Upload photos of your receipt and purchased items (up to 3 images).', isRequired: true, allowMultiple: true, maxImages: 3 },
     { id: 1700000000016, type: 'text', text: 'Any suggestions for improvement?', isRequired: false },
   ],
-  // Add questions for other missions if needed
+   // Minimal questions for mission-1: Gourmet Place
+   'mission-1': [
+       { id: 'gourmet_1', type: 'rating', text: 'Rate the overall service quality.', isRequired: true, maxRating: 5, minLabel: 'Poor', maxLabel: 'Excellent' },
+       { id: 'gourmet_2', type: 'text', text: 'Comments on food and ambiance.', isRequired: true },
+       { id: 'gourmet_3', type: 'image_upload', text: 'Upload a photo of your main course.', isRequired: false, allowMultiple: false, maxImages: 1 },
+   ],
+   // No specific questions needed for mission-3 or mission-5 for now
 };

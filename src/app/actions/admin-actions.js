@@ -1,9 +1,11 @@
 'use server';
 
 import { revalidatePath } from 'next/cache';
+import { mockMissions, mockReports } from '@/lib/mock-data'; // Import mock data to manipulate
 
 /**
  * Server Action to approve a submitted report.
+ * Updates mock data for simulation.
  *
  * @param {string} reportId - The ID of the report to approve.
  * @param {string} missionId - The ID of the associated mission.
@@ -13,37 +15,40 @@ export async function approveReportAction(reportId, missionId) {
   console.log(`Server Action: Approving report ${reportId} for mission ${missionId}`);
 
   // Simulate network delay
-  await new Promise(resolve => setTimeout(resolve, 1000));
+  await new Promise(resolve => setTimeout(resolve, 500));
 
-  // --- TODO: Replace simulation with actual backend logic ---
-  // 1. Validate reportId and missionId.
-  // 2. Verify the report exists and is in 'submitted' status.
-  // 3. Update the report status to 'approved' in the database.
-  // 4. Optionally, update the mission status to 'approved' or 'completed' if this is the last/only report.
-  // 5. Trigger payment process for the shopper (e.g., credit account, initiate transfer).
-  // 6. Send notification to the shopper about the approval and payment.
-  // 7. Handle potential errors during database updates or payment processing.
-  // ---
+  // --- Update Mock Data ---
+  const reportIndex = mockReports.findIndex(r => r.id === reportId && r.missionId === missionId && r.status === 'submitted');
 
-  // Simulate success
-  const success = true; // Change to false to simulate failure
-
-  if (success) {
-    console.log("Server Action: Report approved successfully (simulated).");
-    // Revalidate relevant paths
-    revalidatePath(`/admin/missions/${missionId}/reports`);
-    revalidatePath('/admin/missions');
-    revalidatePath('/missions/completed'); // Shopper's completed list
-
-    return { success: true, message: "Report approved and payment processed (simulated)." };
-  } else {
-    console.error("Server Action: Failed to approve report (simulated).");
-    return { success: false, message: "Failed to approve the report due to a simulated server error." };
+  if (reportIndex === -1) {
+      console.error("Server Action: Report not found or not in 'submitted' status.");
+      return { success: false, message: "Report not found or cannot be approved." };
   }
+
+  mockReports[reportIndex].status = 'approved';
+  // For simplicity, assume approving the report also marks the mission as approved.
+  // In a real scenario, you might check if all assigned reports are approved.
+  const missionIndex = mockMissions.findIndex(m => m.id === missionId);
+  if (missionIndex !== -1) {
+      mockMissions[missionIndex].status = 'approved';
+  }
+  // --- End Mock Data Update ---
+
+  console.log("Server Action: Report approved successfully (simulated).");
+
+  // Revalidate relevant paths
+  revalidatePath(`/admin/missions/${missionId}/reports`);
+  revalidatePath('/admin/missions');
+  revalidatePath('/missions/completed'); // Shopper's completed list
+  revalidatePath('/'); // Main mission list for shopper
+
+  return { success: true, message: "Report approved and payment processed (simulated)." };
+
 }
 
 /**
  * Server Action to refuse a submitted report.
+ * Updates mock data for simulation.
  *
  * @param {string} reportId - The ID of the report to refuse.
  * @param {string} missionId - The ID of the associated mission.
@@ -58,39 +63,42 @@ export async function refuseReportAction(reportId, missionId, reason) {
   }
 
   // Simulate network delay
-  await new Promise(resolve => setTimeout(resolve, 1000));
+  await new Promise(resolve => setTimeout(resolve, 500));
 
-  // --- TODO: Replace simulation with actual backend logic ---
-  // 1. Validate reportId, missionId, and reason.
-  // 2. Verify the report exists and is in 'submitted' status.
-  // 3. Update the report status to 'refused' and store the refusalReason in the database.
-  // 4. Optionally, reset the mission status for the user if they need to resubmit (depends on workflow).
-  // 5. Send notification to the shopper about the refusal, including the reason.
-  // 6. Handle potential errors during database updates.
-  // ---
+  // --- Update Mock Data ---
+  const reportIndex = mockReports.findIndex(r => r.id === reportId && r.missionId === missionId && r.status === 'submitted');
 
-  // Simulate success
-  const success = true; // Change to false to simulate failure
-
-  if (success) {
-    console.log("Server Action: Report refused successfully (simulated).");
-    // Revalidate relevant paths
-    revalidatePath(`/admin/missions/${missionId}/reports`);
-    revalidatePath('/admin/missions');
-    // Potentially revalidate shopper's assigned missions if they need to resubmit
-    // revalidatePath('/missions/assigned');
-
-    return { success: true, message: "Report refused and shopper notified (simulated)." };
-  } else {
-    console.error("Server Action: Failed to refuse report (simulated).");
-    return { success: false, message: "Failed to refuse the report due to a simulated server error." };
+  if (reportIndex === -1) {
+      console.error("Server Action: Report not found or not in 'submitted' status.");
+      return { success: false, message: "Report not found or cannot be refused." };
   }
+
+  mockReports[reportIndex].status = 'refused';
+  mockReports[reportIndex].refusalReason = reason;
+
+  // Update mission status to 'refused' as well.
+  const missionIndex = mockMissions.findIndex(m => m.id === missionId);
+  if (missionIndex !== -1) {
+      mockMissions[missionIndex].status = 'refused';
+  }
+  // --- End Mock Data Update ---
+
+  console.log("Server Action: Report refused successfully (simulated).");
+
+  // Revalidate relevant paths
+  revalidatePath(`/admin/missions/${missionId}/reports`);
+  revalidatePath('/admin/missions');
+  // Revalidate shopper's assigned missions if they need to resubmit or view refusal
+  revalidatePath('/missions/assigned');
+
+  return { success: true, message: "Report refused and shopper notified (simulated)." };
+
 }
 
 
 /**
  * Server Action to delete a mission.
- * (Placeholder - Implement actual deletion logic)
+ * Updates mock data for simulation.
  *
  * @param {string} missionId - The ID of the mission to delete.
  * @returns {Promise<{success: boolean, message: string}>} - Result of the deletion operation.
@@ -99,28 +107,39 @@ export async function deleteMissionAction(missionId) {
     console.log(`Server Action: Deleting mission ${missionId}`);
 
     // Simulate network delay
-    await new Promise(resolve => setTimeout(resolve, 1000));
+    await new Promise(resolve => setTimeout(resolve, 500));
 
-    // --- TODO: Replace simulation with actual backend logic ---
-    // 1. Validate missionId.
-    // 2. Check permissions (ensure user is admin).
-    // 3. Delete the mission document/record from the database.
-    // 4. Delete associated survey questions.
-    // 5. Delete associated reports (or handle orphaned reports).
-    // 6. Handle potential errors during database operations.
-    // ---
+    // --- Update Mock Data ---
+    const initialMissionLength = mockMissions.length;
+    const initialReportLength = mockReports.length;
 
-    const success = true;
+    // Filter out the mission
+    const updatedMissions = mockMissions.filter(m => m.id !== missionId);
+    // Filter out associated reports
+    const updatedReports = mockReports.filter(r => r.missionId !== missionId);
 
-    if (success) {
-        console.log(`Server Action: Mission ${missionId} deleted successfully (simulated).`);
+    // Check if anything was actually deleted
+    const missionDeleted = updatedMissions.length < initialMissionLength;
+
+    // Update the original arrays (note: this direct mutation is for simulation only)
+    mockMissions.length = 0;
+    mockMissions.push(...updatedMissions);
+    mockReports.length = 0;
+    mockReports.push(...updatedReports);
+    // --- End Mock Data Update ---
+
+
+    if (missionDeleted) {
+        console.log(`Server Action: Mission ${missionId} and associated reports deleted successfully (simulated).`);
         // Revalidate the main admin missions list
         revalidatePath('/admin/missions');
-        // Optionally revalidate other paths if needed
+        // Revalidate relevant report review pages just in case
+        revalidatePath(`/admin/missions/${missionId}/reports`);
+
         return { success: true, message: `Mission ${missionId} deleted successfully (simulated).` };
     } else {
-        console.error(`Server Action: Failed to delete mission ${missionId} (simulated).`);
-        return { success: false, message: `Failed to delete mission ${missionId} (simulated server error).` };
+        console.error(`Server Action: Failed to delete mission ${missionId} (simulated, not found).`);
+        return { success: false, message: `Failed to delete mission ${missionId} (Mission not found).` };
     }
 }
 
@@ -138,7 +157,7 @@ export async function toggleUserStatusAction(userId, currentStatus) {
   const newStatus = currentStatus === 'active' ? 'inactive' : 'active';
 
   // Simulate network delay
-  await new Promise(resolve => setTimeout(resolve, 1000));
+  await new Promise(resolve => setTimeout(resolve, 500));
 
   // --- TODO: Replace simulation with actual backend logic ---
   // 1. Validate userId.
@@ -172,7 +191,7 @@ export async function updateUserAction(userId, userData) {
     console.log(`Server Action: Updating user ${userId} with data:`, userData);
 
     // Simulate network delay
-    await new Promise(resolve => setTimeout(resolve, 1000));
+    await new Promise(resolve => setTimeout(resolve, 500));
 
     // --- TODO: Replace simulation with actual backend logic ---
     // 1. Validate userId and userData.

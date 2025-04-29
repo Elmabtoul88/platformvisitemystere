@@ -162,17 +162,21 @@ export default function AdminReviewReportsPage() {
         console.log(`Admin: Approving report ${reportId}`);
         try {
             const result = await approveReportAction(reportId, missionId); // Call server action
-            // Simulate Server Action Call (removed as using actual action now)
-             // await new Promise(resolve => setTimeout(resolve, 1000));
-             // const result = { success: true, message: "Report approved successfully (simulated)." }; // Simulate success
 
             if (result.success) {
                 toast({ title: "Report Approved", description: result.message });
-                 // Update local state optimistically or refetch
+                 // Update local state optimistically
                 startTransition(() => {
                     setReports(prev => prev.map(r => r.id === reportId ? { ...r, status: 'approved' } : r));
-                     // Optionally update mission status if all reports are done?
-                     // setMission(prev => ({ ...prev, status: 'approved' })); // Example
+                     // Update mock data directly for persistence during simulation
+                     const reportIndex = mockReports.findIndex(r => r.id === reportId);
+                     if (reportIndex !== -1) mockReports[reportIndex].status = 'approved';
+
+                     // Also update the corresponding mission status if needed (e.g., if all reports approved)
+                     // This logic depends on requirements - assuming one report per mission for now
+                     const missionIndex = mockMissions.findIndex(m => m.id === missionId);
+                     if (missionIndex !== -1) mockMissions[missionIndex].status = 'approved';
+                     setMission(prev => prev ? { ...prev, status: 'approved' } : null);
                 });
 
             } else {
@@ -196,15 +200,22 @@ export default function AdminReviewReportsPage() {
 
         try {
             const result = await refuseReportAction(reportId, missionId, refusalReason); // Call server action
-             // Simulate Server Action Call (removed)
-             // await new Promise(resolve => setTimeout(resolve, 1000));
-             // const result = { success: true, message: "Report refused successfully (simulated)." }; // Simulate success
 
             if (result.success) {
                 toast({ title: "Report Refused", description: result.message });
-                 // Update local state optimistically or refetch
+                 // Update local state optimistically
                  startTransition(() => {
                      setReports(prev => prev.map(r => r.id === reportId ? { ...r, status: 'refused', refusalReason: refusalReason } : r));
+                     // Update mock data directly
+                      const reportIndex = mockReports.findIndex(r => r.id === reportId);
+                      if (reportIndex !== -1) {
+                        mockReports[reportIndex].status = 'refused';
+                        mockReports[reportIndex].refusalReason = refusalReason;
+                      }
+                       // Also update mission status
+                       const missionIndex = mockMissions.findIndex(m => m.id === missionId);
+                       if (missionIndex !== -1) mockMissions[missionIndex].status = 'refused';
+                       setMission(prev => prev ? { ...prev, status: 'refused' } : null);
                  });
                  setReportToRefuse(null); // Close the dialog
                  setRefusalReason(''); // Clear reason
@@ -254,7 +265,7 @@ export default function AdminReviewReportsPage() {
             <Card className="mb-6 shadow-sm">
                 <CardHeader>
                      <CardTitle className="text-xl font-semibold text-primary">Review Reports: {mission.title}</CardTitle>
-                     <CardDescription>Mission ID: {mission.id} | Status: <Badge variant={mission.status === 'approved' ? 'default' : 'outline'} className="capitalize">{mission.status}</Badge></CardDescription>
+                     <CardDescription>Mission ID: {mission.id} | Status: <Badge variant={mission.status === 'approved' ? 'default' : mission.status === 'submitted' ? 'destructive' : 'outline'} className={`capitalize ${mission.status === 'approved' ? 'bg-green-100 text-green-800' : ''} ${mission.status === 'refused' ? 'bg-red-100 text-red-800' : ''}`}>{mission.status}</Badge></CardDescription>
                 </CardHeader>
                 {/* Optional: Add more mission details if needed */}
             </Card>
@@ -269,8 +280,12 @@ export default function AdminReviewReportsPage() {
                  <div className="space-y-6">
                     {reports.map((report) => {
                          // Find user details (replace with actual user fetch later)
+                         // For now, assume mockUser is the only user submitting reports
                          const shopper = mockUser.id === report.userId ? mockUser : { name: `User ${report.userId}`, email: 'unknown@example.com' };
                          const isProcessing = processingReportId === report.id;
+                         const reportStatusVariant = report.status === 'approved' ? 'default' : report.status === 'refused' ? 'destructive' : 'outline';
+                          const reportStatusBg = report.status === 'approved' ? 'bg-green-100 text-green-800 border-green-300' : report.status === 'refused' ? 'bg-red-100 text-red-800 border-red-300' : '';
+
 
                          return (
                             <Card key={report.id} className={`shadow-md transition-opacity ${isProcessing ? 'opacity-70' : ''}`}>
@@ -285,7 +300,7 @@ export default function AdminReviewReportsPage() {
                                                 <span className="flex items-center gap-1"><Calendar className="w-3 h-3"/> Submitted: {format(new Date(report.submittedAt), 'PPp')}</span>
                                              </CardDescription>
                                         </div>
-                                        <Badge variant={report.status === 'approved' ? 'default' : report.status === 'refused' ? 'destructive' : 'outline'} className={`capitalize text-sm px-3 py-1 w-fit ${report.status === 'approved' ? 'bg-green-100 text-green-800' : report.status === 'refused' ? 'bg-red-100 text-red-800' : ''}`}>
+                                         <Badge variant={reportStatusVariant} className={`capitalize text-sm px-3 py-1 w-fit ${reportStatusBg}`}>
                                             {report.status}
                                         </Badge>
                                     </div>
@@ -295,8 +310,8 @@ export default function AdminReviewReportsPage() {
                                      {surveyQuestions.length > 0 ? (
                                          surveyQuestions.map((q, index) => {
                                             // Find the corresponding answer in the report data
+                                             // Construct fieldName based on convention used in ReportSubmissionForm
                                              const fieldName = `q_${q.id}_${q.type}`;
-                                             // Ensure report.answers exists before trying to access fieldName
                                              const answer = report.answers?.[fieldName];
 
                                              return (
@@ -384,7 +399,7 @@ export default function AdminReviewReportsPage() {
                                     )}
                                     {report.status === 'approved' && (
                                          <span className="text-sm text-green-600 font-medium flex items-center gap-1">
-                                            <CheckCircle className="w-4 h-4" /> Approved
+                                            <CheckCircle className="w-4 h-4" /> Approved & Paid ${mission.reward}
                                         </span>
                                     )}
                                      {report.status === 'refused' && (
