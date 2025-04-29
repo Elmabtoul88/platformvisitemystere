@@ -6,12 +6,13 @@ import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle }
 import { Button, buttonVariants } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
 import { mockMissions, mockReports, mockSurveyQuestions, mockUser } from '@/lib/mock-data'; // Use mock data for now
 import { format } from 'date-fns';
 import Link from 'next/link';
 import Image from 'next/image';
 import { useToast } from '@/hooks/use-toast';
-import { approveReportAction, refuseReportAction } from '@/app/actions/admin-actions'; // Import server actions
+import { approveReportAction, refuseReportAction } from '../../../actions/admin-actions.js'; // Import server actions using relative path
 import {
     ArrowLeft, CheckCircle, XCircle, Loader2, FileWarning, User, Calendar, Star,
     MessageSquare, Image as ImageIcon, Mic, MapPin, ListOrdered, CheckSquare as CheckSquareIcon, TextCursorInput
@@ -66,8 +67,9 @@ const formatAnswerValue = (answer, question) => {
                 </ul>
              ) : <span className="text-muted-foreground italic">No options selected</span>;
         case 'image_upload':
-            const urls = Array.isArray(answer.value) ? answer.value : [answer.value];
-            return (
+            // Ensure answer.value is treated as an array even if it's a single string URL
+            const urls = Array.isArray(answer.value) ? answer.value : (answer.value ? [answer.value] : []);
+            return urls.length > 0 ? (
                 <div className="flex flex-wrap gap-2">
                     {urls.map((url, index) => (
                          <Link key={index} href={url} target="_blank" rel="noopener noreferrer">
@@ -81,10 +83,10 @@ const formatAnswerValue = (answer, question) => {
                         </Link>
                     ))}
                  </div>
-            );
+            ) : <span className="text-muted-foreground italic">No images submitted</span>;
         case 'gps_capture':
             const coords = answer.value; // { lat: number, lng: number }
-            if (coords && coords.lat && coords.lng) {
+            if (coords && typeof coords.lat === 'number' && typeof coords.lng === 'number') {
                 const mapsUrl = `https://www.google.com/maps?q=${coords.lat},${coords.lng}`;
                  return (
                      <Link href={mapsUrl} target="_blank" rel="noopener noreferrer" className="text-primary underline hover:text-primary/80 flex items-center gap-1">
@@ -96,7 +98,7 @@ const formatAnswerValue = (answer, question) => {
             return <span className="text-muted-foreground italic">Location not captured</span>;
         case 'audio_recording':
             const audioUrl = answer.value;
-            if (audioUrl) {
+            if (audioUrl && typeof audioUrl === 'string') {
                  return (
                      <audio controls src={audioUrl} className="w-full max-w-xs h-10">
                          Your browser does not support the audio element.
@@ -133,7 +135,11 @@ export default function AdminReviewReportsPage() {
             await new Promise(resolve => setTimeout(resolve, 500));
 
             const foundMission = mockMissions.find(m => m.id === missionId);
-            const foundReports = mockReports.filter(r => r.missionId === missionId);
+            // Filter reports and ensure they have the 'answers' property initialized if missing
+            const foundReports = mockReports.filter(r => r.missionId === missionId).map(r => ({
+                    ...r,
+                    answers: r.answers || {} // Ensure answers object exists
+                }));
             const foundQuestions = mockSurveyQuestions[missionId] || [];
 
             if (foundMission) {
@@ -155,10 +161,10 @@ export default function AdminReviewReportsPage() {
         setProcessingReportId(reportId);
         console.log(`Admin: Approving report ${reportId}`);
         try {
-            // const result = await approveReportAction(reportId, missionId); // Call server action
-            // Simulate Server Action Call
-             await new Promise(resolve => setTimeout(resolve, 1000));
-             const result = { success: true, message: "Report approved successfully (simulated)." }; // Simulate success
+            const result = await approveReportAction(reportId, missionId); // Call server action
+            // Simulate Server Action Call (removed as using actual action now)
+             // await new Promise(resolve => setTimeout(resolve, 1000));
+             // const result = { success: true, message: "Report approved successfully (simulated)." }; // Simulate success
 
             if (result.success) {
                 toast({ title: "Report Approved", description: result.message });
@@ -189,10 +195,10 @@ export default function AdminReviewReportsPage() {
         console.log(`Admin: Refusing report ${reportId} with reason: ${refusalReason}`);
 
         try {
-            // const result = await refuseReportAction(reportId, missionId, refusalReason); // Call server action
-             // Simulate Server Action Call
-             await new Promise(resolve => setTimeout(resolve, 1000));
-             const result = { success: true, message: "Report refused successfully (simulated)." }; // Simulate success
+            const result = await refuseReportAction(reportId, missionId, refusalReason); // Call server action
+             // Simulate Server Action Call (removed)
+             // await new Promise(resolve => setTimeout(resolve, 1000));
+             // const result = { success: true, message: "Report refused successfully (simulated)." }; // Simulate success
 
             if (result.success) {
                 toast({ title: "Report Refused", description: result.message });
@@ -279,7 +285,7 @@ export default function AdminReviewReportsPage() {
                                                 <span className="flex items-center gap-1"><Calendar className="w-3 h-3"/> Submitted: {format(new Date(report.submittedAt), 'PPp')}</span>
                                              </CardDescription>
                                         </div>
-                                        <Badge variant={report.status === 'approved' ? 'default' : report.status === 'refused' ? 'destructive' : 'outline'} className="capitalize text-sm px-3 py-1 w-fit">
+                                        <Badge variant={report.status === 'approved' ? 'default' : report.status === 'refused' ? 'destructive' : 'outline'} className={`capitalize text-sm px-3 py-1 w-fit ${report.status === 'approved' ? 'bg-green-100 text-green-800' : report.status === 'refused' ? 'bg-red-100 text-red-800' : ''}`}>
                                             {report.status}
                                         </Badge>
                                     </div>
@@ -290,6 +296,7 @@ export default function AdminReviewReportsPage() {
                                          surveyQuestions.map((q, index) => {
                                             // Find the corresponding answer in the report data
                                              const fieldName = `q_${q.id}_${q.type}`;
+                                             // Ensure report.answers exists before trying to access fieldName
                                              const answer = report.answers?.[fieldName];
 
                                              return (

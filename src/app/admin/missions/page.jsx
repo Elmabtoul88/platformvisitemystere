@@ -2,7 +2,7 @@
 
 import React, { useState, useMemo, startTransition } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { Button } from '@/components/ui/button';
+import { Button, buttonVariants } from '@/components/ui/button'; // Import buttonVariants
 import { Input } from '@/components/ui/input';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
@@ -14,7 +14,7 @@ import { format } from 'date-fns';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useToast } from '@/hooks/use-toast';
-// import { deleteMissionAction } from '@/app/actions/admin-actions'; // Import delete action if created
+import { deleteMissionAction } from '../../actions/admin-actions.js'; // Import delete action using relative path
 
 // Helper function for status badge variant
 const getStatusVariant = (status) => {
@@ -64,30 +64,36 @@ export default function AdminMissionsPage() {
         console.log(`Admin: Deleting mission ${missionId}`);
 
         // Simulate API call for deletion
-        await new Promise(resolve => setTimeout(resolve, 1000));
+        // await new Promise(resolve => setTimeout(resolve, 1000));
 
         // Call a server action in a real app:
-        // try {
-        //     await deleteMissionAction(missionId);
-        //     setMissions(prev => prev.filter(m => m.id !== missionId));
-        //     toast({ title: "Mission Deleted", description: `Mission ${missionId} has been deleted.` });
-        // } catch (error) {
-        //     toast({ variant: "destructive", title: "Error", description: "Failed to delete mission." });
-        // } finally {
-        //     setIsDeleting(null);
-        // }
+        try {
+            const result = await deleteMissionAction(missionId); // Use server action
+             if (result.success) {
+                 startTransition(() => {
+                   setMissions(prev => prev.filter(m => m.id !== missionId));
+                });
+                toast({ title: "Mission Deleted", description: result.message });
+             } else {
+                 throw new Error(result.message || "Failed to delete mission.");
+             }
+        } catch (error) {
+            toast({ variant: "destructive", title: "Error", description: error.message });
+        } finally {
+            setIsDeleting(null);
+        }
 
-        // Simulate success
-        startTransition(() => {
-           setMissions(prev => prev.filter(m => m.id !== missionId));
-        });
-        toast({ title: "Mission Deleted", description: `Mission ${missionId} deleted (simulated).` });
-        setIsDeleting(null);
+        // Simulate success (removed as using server action now)
+        // startTransition(() => {
+        //    setMissions(prev => prev.filter(m => m.id !== missionId));
+        // });
+        // toast({ title: "Mission Deleted", description: `Mission ${missionId} deleted (simulated).` });
+        // setIsDeleting(null);
     };
 
      const handleReviewReports = (missionId, status) => {
-        if (status !== 'submitted' && status !== 'approved' && status !== 'completed') {
-             toast({ variant: "default", title: "No Reports Yet", description: `No reports submitted for mission ${missionId} yet.` });
+        if (status !== 'submitted' && status !== 'approved' && status !== 'completed' && status !== 'refused') {
+             toast({ variant: "default", title: "No Reports Yet", description: `No reports submitted or processed for mission ${missionId} yet.` });
              return;
          }
         console.log(`Admin: Review reports for mission ${missionId}`);
