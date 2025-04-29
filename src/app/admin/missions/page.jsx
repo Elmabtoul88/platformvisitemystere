@@ -8,15 +8,15 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { Badge } from '@/components/ui/badge';
 import { Label } from '@/components/ui/label';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
-import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog"; // Added AlertDialogTrigger
 import { PlusCircle, MoreHorizontal, Search, Edit, Trash2, FileCheck, FileText, Loader2, UserPlus, Award, MapPin as MapPinIcon, Users as UsersIcon } from 'lucide-react'; // Added UsersIcon
 import { mockMissions, mockReports } from '@/lib/mock-data';
 import { mockUsers } from '../users/users-mock.js';
+import { assignMissionAction, deleteMissionAction } from '../../actions/admin-actions.js'; // Corrected import path
 import { format } from 'date-fns';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useToast } from '@/hooks/use-toast';
-import { deleteMissionAction, assignMissionAction } from '../../actions/admin-actions.js';
 // Import Command components for multi-select autocomplete
 import {
   Command,
@@ -75,10 +75,11 @@ export default function AdminMissionsPage() {
         // Simulate fetching data
         setTimeout(() => {
             startTransition(() => {
-                setMissions(mockMissions);
-                setReports(mockReports);
+                // Ensure mockMissions is initialized correctly
+                setMissions(Array.isArray(mockMissions) ? mockMissions : []);
+                setReports(Array.isArray(mockReports) ? mockReports : []);
                  // Prepare shopper data for Command component
-                setShoppers(mockUsers
+                setShoppers((Array.isArray(mockUsers) ? mockUsers : [])
                     .filter(u => u.role === 'shopper' && u.status === 'active')
                     .map(u => ({
                         value: u.id, // User ID is the value
@@ -96,10 +97,10 @@ export default function AdminMissionsPage() {
 
     const filteredMissions = useMemo(() => {
         return missions.filter(mission =>
-            mission.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
-            mission.id.toLowerCase().includes(searchTerm.toLowerCase()) ||
-            mission.location.toLowerCase().includes(searchTerm.toLowerCase()) ||
-            mission.status.toLowerCase().includes(searchTerm.toLowerCase()) ||
+            mission.title?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+            mission.id?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+            mission.location?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+            mission.status?.toLowerCase().includes(searchTerm.toLowerCase()) ||
              (mission.businessName && mission.businessName.toLowerCase().includes(searchTerm.toLowerCase()))
         );
     }, [missions, searchTerm]);
@@ -181,6 +182,7 @@ export default function AdminMissionsPage() {
 
      // Handle checkbox change or item click in assignment dialog
      const handleUserSelectionChange = (userId) => {
+        console.log("Toggling selection for user:", userId); // Debug log
         setSelectedUsersForAssignment(prev =>
              prev.includes(userId)
                  ? prev.filter(id => id !== userId) // Remove if already selected
@@ -448,19 +450,14 @@ export default function AdminMissionsPage() {
                                     <CommandItem
                                         key={shopper.value}
                                         value={`${shopper.label} ${shopper.email}`} // Combine fields for better searching
-                                        onSelect={(currentValue) => {
-                                             // Prevent Command's default closing behavior
-                                             // We handle selection toggle manually
-                                             handleUserSelectionChange(shopper.value);
-                                             setShopperSearchTerm(""); // Optional: clear search after selection
-                                         }}
+                                        // Remove onSelect here - selection handled by checkbox directly
                                         className="flex items-center gap-2 cursor-pointer aria-selected:bg-accent/50" // Style selected items
                                     >
-                                        {/* Use onClick on Checkbox for direct toggle */}
+                                        {/* Use onCheckedChange on Checkbox for direct toggle */}
                                         <Checkbox
                                             id={`shopper-${shopper.value}`}
                                             checked={selectedUsersForAssignment.includes(shopper.value)}
-                                            onCheckedChange={() => handleUserSelectionChange(shopper.value)} // Direct toggle
+                                            onCheckedChange={() => handleUserSelectionChange(shopper.value)} // Direct toggle via checkbox click
                                             aria-labelledby={`shopper-label-${shopper.value}`}
                                          />
                                         <div id={`shopper-label-${shopper.value}`} className="flex flex-col text-sm flex-grow">
@@ -499,6 +496,4 @@ export default function AdminMissionsPage() {
         </div>
     );
 }
-
-
     
