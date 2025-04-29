@@ -159,6 +159,7 @@ export default function UserDetailPage() {
                                 <h3 className="text-lg font-semibold text-foreground border-b pb-1 flex items-center gap-1"> <FileText className="w-4 h-4"/> Curriculum Vitae (CV)</h3>
                                 <div className="flex items-center gap-2">
                                     <Button asChild variant="outline" size="sm">
+                                         {/* Use an anchor tag with download attribute */}
                                          <a href={user.cvUrl} target="_blank" rel="noopener noreferrer" download>
                                             <Download className="w-4 h-4 mr-2" /> Download CV
                                          </a>
