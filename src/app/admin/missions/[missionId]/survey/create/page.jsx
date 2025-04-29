@@ -13,7 +13,7 @@ import { useToast } from "@/hooks/use-toast";
 import { ArrowLeft, Save, PlusCircle, Trash2, GripVertical, Loader2, ListOrdered, TextCursorInput, CheckSquare, Star } from 'lucide-react';
 import { useRouter, useParams } from 'next/navigation';
 import Link from 'next/link';
-import { saveSurvey } from '@/app/actions/survey-actions'; // Import server action
+import { saveSurvey } from '../../../../../actions/survey-actions.js'; // Import server action using relative path
 
 // Question type definitions
 const QUESTION_TYPES = {
