@@ -187,7 +187,7 @@ export default function AdminMissionsPage() {
 
      // Handle user selection toggle (called by CommandItem onSelect)
      const handleUserSelectionChange = (userId) => {
-        console.log("Toggling selection for user:", userId);
+        console.log("Toggling selection for user:", userId); // Keep this log
         setSelectedUsersForAssignment(prev =>
              prev.includes(userId)
                  ? prev.filter(id => id !== userId) // Remove if already selected
@@ -471,13 +471,15 @@ export default function AdminMissionsPage() {
                                         value={`${shopper.label} ${shopper.email}`} // Combine fields for better searching
                                         onSelect={() => handleUserSelectionChange(shopper.value)} // Toggle selection on item click
                                         className="flex items-center gap-2 cursor-pointer aria-selected:bg-accent/50"
-                                        // Remove disabled prop from CommandItem
+                                        // REMOVE data-disabled attribute - make item interactive
+                                        // data-disabled={selectedUsersForAssignment.includes(shopper.value)} // Mark as disabled visually if selected
                                     >
                                         {/* Checkbox is interactive */}
                                         <Checkbox
                                             id={`user-${shopper.value}`} // Add unique ID for label association
                                             checked={selectedUsersForAssignment.includes(shopper.value)}
-                                            onCheckedChange={() => handleUserSelectionChange(shopper.value)} // Make checkbox interactive
+                                            // REMOVE disabled prop - make checkbox interactive
+                                            // onCheckedChange={() => handleUserSelectionChange(shopper.value)} // Rely on CommandItem onSelect
                                             aria-label={`Select ${shopper.label}`} // Accessibility
                                          />
                                         <Label htmlFor={`user-${shopper.value}`} className="flex flex-col text-sm flex-grow cursor-pointer"> {/* Label for checkbox */}
@@ -518,6 +520,3 @@ export default function AdminMissionsPage() {
         </div>
     );
 }
-
-
-    
