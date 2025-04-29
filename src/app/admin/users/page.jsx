@@ -7,7 +7,7 @@ import { Input } from '@/components/ui/input';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
-import { MoreHorizontal, Search, Edit, Eye, UserX, CheckCircle, Clock, Loader2 } from 'lucide-react';
+import { MoreHorizontal, Search, Edit, Eye, UserX, CheckCircle, Clock, Loader2, UserCheck } from 'lucide-react'; // Added UserCheck
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { mockUsers } from './users-mock.js'; // Use the shared mock data
 import { format } from 'date-fns'; // To format dates if needed
@@ -25,12 +25,14 @@ export default function AdminUsersPage() {
     const [isTransitioning, startTransition] = useTransition(); // For optimistic updates
 
     const filteredUsers = useMemo(() => {
-        return users.filter(user =>
-            user.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-            user.email.toLowerCase().includes(searchTerm.toLowerCase()) ||
-            user.id.toLowerCase().includes(searchTerm.toLowerCase()) ||
-            user.role.toLowerCase().includes(searchTerm.toLowerCase()) ||
-            user.status.toLowerCase().includes(searchTerm.toLowerCase())
+        // Ensure users is an array before filtering
+        const usersArray = Array.isArray(users) ? users : [];
+        return usersArray.filter(user =>
+            user.name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+            user.email?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+            user.id?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+            user.role?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+            user.status?.toLowerCase().includes(searchTerm.toLowerCase())
         );
     }, [users, searchTerm]);
 
@@ -58,16 +60,16 @@ export default function AdminUsersPage() {
                     setUsers(prevUsers => prevUsers.map(user =>
                         user.id === userId ? { ...user, status: result.newStatus } : user
                     ));
+                     // Update the mock data directly (for simulation persistence across navigations)
+                    const userIndex = mockUsers.findIndex(u => u.id === userId);
+                    if (userIndex !== -1) {
+                        mockUsers[userIndex].status = result.newStatus;
+                    }
                 });
                 toast({
                     title: "Status Updated",
                     description: result.message,
                 });
-                 // Update the mock data directly (for simulation persistence across navigations)
-                const userIndex = mockUsers.findIndex(u => u.id === userId);
-                if (userIndex !== -1) {
-                    mockUsers[userIndex].status = result.newStatus;
-                }
             } else {
                 throw new Error(result.message || "Failed to toggle user status.");
             }
@@ -141,7 +143,7 @@ export default function AdminUsersPage() {
                                             </Badge>
                                         </TableCell>
                                         <TableCell>{format(user.registrationDate, 'PP')}</TableCell>
-                                        <TableCell className="text-center">{user.role === 'shopper' ? user.completedMissions : 'N/A'}</TableCell>
+                                        <TableCell className="text-center">{user.role === 'shopper' ? user.completedMissions ?? 0 : 'N/A'}</TableCell>
                                         <TableCell className="text-right">
                                             <DropdownMenu>
                                                 <DropdownMenuTrigger asChild>
@@ -152,26 +154,36 @@ export default function AdminUsersPage() {
                                                 </DropdownMenuTrigger>
                                                 <DropdownMenuContent align="end">
                                                     <DropdownMenuLabel>Actions</DropdownMenuLabel>
-                                                     {/* Updated to navigate */}
+                                                     {/* View Details Action */}
                                                      <DropdownMenuItem onClick={() => handleViewUser(user.id)} disabled={isToggling === user.id}>
                                                          <Eye className="mr-2 h-4 w-4" /> View Details
                                                      </DropdownMenuItem>
-                                                    {/* Only allow editing/status change for non-admins or self? Adjust logic as needed */}
-                                                    {user.role !== 'admin' && (
-                                                        <>
-                                                             {/* Updated to navigate */}
-                                                            <DropdownMenuItem onClick={() => handleEditUser(user.id)} disabled={isToggling === user.id}>
-                                                                <Edit className="mr-2 h-4 w-4" /> Edit User
-                                                            </DropdownMenuItem>
-                                                            <DropdownMenuItem onClick={() => handleToggleStatus(user.id, user.status)} disabled={isToggling === user.id}>
-                                                                 <UserX className="mr-2 h-4 w-4" />
-                                                                 {user.status === 'active' ? 'Deactivate' : 'Activate'} User
-                                                            </DropdownMenuItem>
-                                                        </>
-                                                     )}
-                                                    {/* Prevent admin from deactivating self */}
-                                                     {user.role === 'admin' && (
-                                                         <DropdownMenuItem disabled={true}>
+                                                     {/* Edit User Action */}
+                                                     <DropdownMenuItem onClick={() => handleEditUser(user.id)} disabled={isToggling === user.id || user.role === 'admin' /* Optional: Prevent editing admins */}>
+                                                        <Edit className="mr-2 h-4 w-4" /> Edit User
+                                                     </DropdownMenuItem>
+                                                     {/* Separator */}
+                                                     <DropdownMenuSeparator />
+                                                     {/* Toggle Status Action - Conditional */}
+                                                    {user.role !== 'admin' ? ( // Only allow toggling for non-admins
+                                                        <DropdownMenuItem
+                                                            onClick={() => handleToggleStatus(user.id, user.status)}
+                                                            disabled={isToggling === user.id}
+                                                            className={user.status === 'active' ? 'text-destructive focus:text-destructive focus:bg-destructive/10' : 'text-green-600 focus:text-green-700 focus:bg-green-100/50'}
+                                                        >
+                                                             {user.status === 'active' ? (
+                                                                <>
+                                                                    <UserX className="mr-2 h-4 w-4" /> Deactivate User
+                                                                </>
+                                                            ) : (
+                                                                <>
+                                                                    <UserCheck className="mr-2 h-4 w-4" /> Activate User
+                                                                </>
+                                                            )}
+                                                         </DropdownMenuItem>
+                                                     ) : (
+                                                         // Optional: Show a disabled item for admins
+                                                         <DropdownMenuItem disabled>
                                                             <UserX className="mr-2 h-4 w-4 opacity-50" />
                                                             <span className="opacity-50">(Cannot change status)</span>
                                                          </DropdownMenuItem>
