@@ -15,8 +15,12 @@ import { format } from 'date-fns'; // To format dates if needed
 // Generate more mock users for the list
 const generateMockUsers = (count) => {
     const users = [];
+    const usedIds = new Set(); // Keep track of used IDs
+
+    // Generate shoppers
     for (let i = 1; i <= count; i++) {
         const userId = `user-shopper-${i}`;
+        if (usedIds.has(userId)) continue; // Skip if ID already used (shouldn't happen here)
         users.push({
             id: userId,
             name: `Shopper ${i}`,
@@ -28,15 +32,58 @@ const generateMockUsers = (count) => {
             registrationDate: new Date(Date.now() - (i * 3) * 24 * 60 * 60 * 1000), // Simulate registration dates
             completedMissions: Math.floor(Math.random() * 20), // Random mission count
         });
+        usedIds.add(userId);
     }
-    // Add the original mock user
-    users.push({...mockSingleUser, email: 'alex@example.com', status: 'active', registrationDate: new Date(Date.now() - 30 * 24 * 60 * 60 * 1000), completedMissions: 5 });
+
+    // Add the original mock user (Alex Shopper) with a potentially modified ID if it conflicts
+    const alexUserId = mockSingleUser.id; // Original ID: 'user-shopper-1'
+    if (!usedIds.has(alexUserId)) {
+        users.push({
+            ...mockSingleUser,
+            id: alexUserId, // Use original ID if available
+            email: 'alex@example.com',
+            status: 'active',
+            registrationDate: new Date(Date.now() - 30 * 24 * 60 * 60 * 1000),
+            completedMissions: 5
+        });
+        usedIds.add(alexUserId);
+    } else {
+        // If 'user-shopper-1' was already generated, use a fallback unique ID
+        const fallbackAlexId = 'alex-shopper-unique-id'; // Ensure this is unique
+         if (!usedIds.has(fallbackAlexId)) {
+            users.push({
+                ...mockSingleUser,
+                id: fallbackAlexId, // Use fallback ID
+                email: 'alex@example.com',
+                status: 'active',
+                registrationDate: new Date(Date.now() - 30 * 24 * 60 * 60 * 1000),
+                completedMissions: 5
+            });
+            usedIds.add(fallbackAlexId);
+         }
+    }
+
+
     // Add a mock admin user
-    users.push({ id: 'admin-1', name: 'Admin User', email: 'admin@example.com', role: 'admin', profilePicUrl: null, status: 'active', city: 'HQ', registrationDate: new Date(Date.now() - 300 * 24 * 60 * 60 * 1000), completedMissions: 0 });
+    const adminUserId = 'admin-1';
+    if (!usedIds.has(adminUserId)) {
+        users.push({
+            id: adminUserId,
+            name: 'Admin User',
+            email: 'admin@example.com',
+            role: 'admin',
+            profilePicUrl: null,
+            status: 'active',
+            city: 'HQ',
+            registrationDate: new Date(Date.now() - 300 * 24 * 60 * 60 * 1000),
+            completedMissions: 0
+        });
+        usedIds.add(adminUserId);
+    }
     return users;
 };
 
-const mockUsers = generateMockUsers(15); // Generate 15 mock shoppers + 1 original + 1 admin
+const mockUsers = generateMockUsers(15); // Generate 15 mock shoppers + potentially Alex + 1 admin
 
 export default function AdminUsersPage() {
     const [searchTerm, setSearchTerm] = useState('');
@@ -110,7 +157,7 @@ export default function AdminUsersPage() {
                         <TableBody>
                             {filteredUsers.length > 0 ? (
                                 filteredUsers.map((user) => (
-                                    <TableRow key={user.id}>
+                                    <TableRow key={user.id}> {/* Ensure user.id is unique */}
                                         <TableCell className="font-medium">
                                             <div className="flex items-center gap-2">
                                                 <Avatar className="h-8 w-8 border">
