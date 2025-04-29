@@ -8,6 +8,9 @@ import { Send, MessageSquare, Loader2 } from 'lucide-react'; // Added Loader2
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { useToast } from '@/hooks/use-toast';
 
+// Notification key should match the one used in admin chat and profile menu
+const CHAT_NOTIFICATION_KEY = 'chatNotificationCount';
+
 // Initial messages for the chat
 const initialMessages = [
   { id: 1, sender: 'Admin', text: 'Hello! How can I help you today?', time: '10:30 AM' },
@@ -37,6 +40,41 @@ export default function ChatPage() {
   useEffect(() => {
     scrollToBottom();
   }, [messages]);
+
+   // Simulate receiving an admin message after a delay (for notification testing)
+   useEffect(() => {
+    const timer = setTimeout(() => {
+       const adminMessage = {
+         id: Date.now(),
+         sender: 'Admin',
+         text: "Just checking in - is there anything else I can help with? (Simulated proactive message)",
+         time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+       };
+
+       setMessages(prevMessages => [...prevMessages, adminMessage]);
+
+       // --- Notification Logic for receiving message ---
+       try {
+           const currentCount = parseInt(localStorage.getItem(CHAT_NOTIFICATION_KEY) || '0', 10);
+           const newCount = currentCount + 1;
+           localStorage.setItem(CHAT_NOTIFICATION_KEY, newCount.toString());
+           console.log(`Shopper Chat: Incremented notification count to ${newCount} due to received message`);
+           // Manually dispatch event for ProfileMenu
+           window.dispatchEvent(new StorageEvent('storage', {
+               key: CHAT_NOTIFICATION_KEY,
+               newValue: newCount.toString(),
+               oldValue: currentCount.toString(),
+               storageArea: localStorage,
+           }));
+       } catch (error) {
+           console.error("Shopper Chat: Failed to update notification count:", error);
+       }
+       // --- End Notification Logic ---
+
+     }, 15000); // Send a message after 15 seconds
+
+    return () => clearTimeout(timer); // Cleanup timer on unmount
+   }, []); // Runs once on mount
 
   const handleInputChange = (event) => {
     setInputValue(event.target.value);
@@ -74,6 +112,25 @@ export default function ChatPage() {
 
     setMessages(prevMessages => [...prevMessages, adminReply]);
     // --- End Simulation ---
+
+     // --- Notification Logic for receiving reply ---
+     try {
+         const currentCount = parseInt(localStorage.getItem(CHAT_NOTIFICATION_KEY) || '0', 10);
+         const newCount = currentCount + 1;
+         localStorage.setItem(CHAT_NOTIFICATION_KEY, newCount.toString());
+         console.log(`Shopper Chat: Incremented notification count to ${newCount} due to received reply`);
+         // Manually dispatch event for ProfileMenu
+         window.dispatchEvent(new StorageEvent('storage', {
+             key: CHAT_NOTIFICATION_KEY,
+             newValue: newCount.toString(),
+             oldValue: currentCount.toString(),
+             storageArea: localStorage,
+         }));
+     } catch (error) {
+         console.error("Shopper Chat: Failed to update notification count:", error);
+     }
+     // --- End Notification Logic ---
+
 
     setIsSending(false);
 

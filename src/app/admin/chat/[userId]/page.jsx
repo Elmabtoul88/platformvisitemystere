@@ -19,6 +19,8 @@ const getInitialMessages = (userName) => [
   // Add more mock history if needed
 ];
 
+const CHAT_NOTIFICATION_KEY = 'chatNotificationCount';
+
 export default function AdminChatPage() {
   const params = useParams();
   const router = useRouter();
@@ -92,7 +94,27 @@ export default function AdminChatPage() {
       time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
     };
 
+    // Add shopper reply and increment notification count
     setMessages(prevMessages => [...prevMessages, shopperReply]);
+
+    // --- Notification Logic ---
+    try {
+        const currentCount = parseInt(localStorage.getItem(CHAT_NOTIFICATION_KEY) || '0', 10);
+        const newCount = currentCount + 1;
+        localStorage.setItem(CHAT_NOTIFICATION_KEY, newCount.toString());
+        console.log(`Incremented notification count to ${newCount}`);
+        // Manually dispatch a storage event so the ProfileMenu updates
+        window.dispatchEvent(new StorageEvent('storage', {
+            key: CHAT_NOTIFICATION_KEY,
+            newValue: newCount.toString(),
+            oldValue: currentCount.toString(),
+            storageArea: localStorage,
+        }));
+    } catch (error) {
+        console.error("Failed to update notification count in localStorage:", error);
+    }
+    // --- End Notification Logic ---
+
 
     setIsSending(false);
 

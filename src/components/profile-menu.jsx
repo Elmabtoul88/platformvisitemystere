@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState } from 'react'; // Import useState
+import React, { useState, useEffect } from 'react'; // Import useEffect
 import Link from 'next/link';
 import { Button } from '@/components/ui/button';
 import {
@@ -17,12 +17,46 @@ import { useToast } from '@/hooks/use-toast';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/context/auth-context'; // Import useAuth
 
+const CHAT_NOTIFICATION_KEY = 'chatNotificationCount';
+
 export function ProfileMenu() {
   const { toast } = useToast();
   const router = useRouter();
   const { isAuthenticated, userRole, setAuthState } = useAuth(); // Get setAuthState and userRole from context
-  // Simulate notification count - set initial value here
-  const [notificationCount, setNotificationCount] = useState(3);
+  const [notificationCount, setNotificationCount] = useState(0); // Initialize with 0
+
+  // Effect to read initial count and listen for changes
+  useEffect(() => {
+    // Function to read and update count
+    const updateCountFromStorage = () => {
+        try {
+            const count = parseInt(localStorage.getItem(CHAT_NOTIFICATION_KEY) || '0', 10);
+            setNotificationCount(count);
+            console.log("ProfileMenu: Read notification count from storage:", count);
+        } catch (error) {
+            console.error("Failed to read notification count from localStorage:", error);
+            setNotificationCount(0); // Reset on error
+        }
+    };
+
+    // Initial read
+    updateCountFromStorage();
+
+    // Listener for changes in other tabs/components
+    const handleStorageChange = (event) => {
+        if (event.key === CHAT_NOTIFICATION_KEY) {
+            console.log("ProfileMenu: Detected storage change for notifications.");
+            updateCountFromStorage();
+        }
+    };
+
+    window.addEventListener('storage', handleStorageChange);
+
+    // Cleanup listener on component unmount
+    return () => {
+        window.removeEventListener('storage', handleStorageChange);
+    };
+  }, []); // Empty dependency array ensures this runs only once on mount
 
   const handleLogout = () => {
     // Simulate logout action
@@ -39,6 +73,19 @@ export function ProfileMenu() {
   const handleChatClick = () => {
     // Reset notification count when chat is opened
     setNotificationCount(0);
+    // Also reset the count in localStorage
+     try {
+        localStorage.setItem(CHAT_NOTIFICATION_KEY, '0');
+        console.log("Reset notification count in storage.");
+        // Manually dispatch event to ensure immediate update if needed elsewhere
+        window.dispatchEvent(new StorageEvent('storage', {
+            key: CHAT_NOTIFICATION_KEY,
+            newValue: '0',
+            storageArea: localStorage,
+        }));
+    } catch (error) {
+        console.error("Failed to reset notification count in localStorage:", error);
+    }
     // Navigation handled by Link component
   };
 
