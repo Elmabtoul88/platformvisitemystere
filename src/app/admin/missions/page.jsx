@@ -9,7 +9,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { Badge } from '@/components/ui/badge';
 import { Label } from '@/components/ui/label';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
-import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog"; // Added AlertDialogTrigger
 import { PlusCircle, MoreHorizontal, Search, Edit, Trash2, FileCheck, FileText, Loader2, UserPlus, Award, MapPin as MapPinIcon, Users as UsersIcon } from 'lucide-react';
 import { mockMissions, mockReports } from '@/lib/mock-data';
 import { mockUsers } from '../users/users-mock.js';
@@ -61,7 +61,7 @@ export default function AdminMissionsPage() {
     const [searchTerm, setSearchTerm] = useState('');
     const [missions, setMissions] = useState([]);
     const [reports, setReports] = useState([]);
-    const [shoppers, setShoppers] = useState([]);
+    const [shoppers, setShoppers] = useState([]); // State to hold formatted shopper data
     const [isLoading, setIsLoading] = useState(true);
     const [isProcessing, setIsProcessing] = useState(null); // Track processing state for various actions
     const [assignDialogOpen, setAssignDialogOpen] = useState(false);
@@ -79,8 +79,8 @@ export default function AdminMissionsPage() {
                 // Ensure mockMissions is initialized correctly
                 setMissions(Array.isArray(mockMissions) ? mockMissions : []);
                 setReports(Array.isArray(mockReports) ? mockReports : []);
-                 // Prepare shopper data for Command component
-                setShoppers((Array.isArray(mockUsers) ? mockUsers : [])
+                 // Filter and format shopper data ONLY ONCE here
+                 const activeShoppers = (Array.isArray(mockUsers) ? mockUsers : [])
                     .filter(u => u.role === 'shopper' && u.status === 'active')
                     .map(u => ({
                         value: u.id, // User ID is the value
@@ -88,8 +88,9 @@ export default function AdminMissionsPage() {
                         email: u.email, // For searching
                         city: u.city || 'N/A', // For display
                         completedMissions: u.completedMissions ?? 0, // For display
-                     }))
-                 );
+                     }));
+                setShoppers(activeShoppers);
+                console.log("Active Shoppers for Assignment:", activeShoppers); // Debug log
             });
             setIsLoading(false);
         }, 300); // Short delay for simulation
@@ -108,12 +109,12 @@ export default function AdminMissionsPage() {
 
     // Filter shoppers based on search term for Command list
      const filteredShoppers = useMemo(() => {
-        if (!shopperSearchTerm) return shoppers;
+        if (!shopperSearchTerm) return shoppers; // Use the pre-filtered shoppers state
         return shoppers.filter(shopper =>
             shopper.label.toLowerCase().includes(shopperSearchTerm.toLowerCase()) ||
             shopper.email.toLowerCase().includes(shopperSearchTerm.toLowerCase())
         );
-    }, [shoppers, shopperSearchTerm]);
+    }, [shoppers, shopperSearchTerm]); // Depends only on shoppers and search term
 
 
     const pendingReportsCount = useMemo(() => {
@@ -171,12 +172,15 @@ export default function AdminMissionsPage() {
 
      // --- Assign Mission Logic (Updated for Multi-Select) ---
     const openAssignDialog = (mission) => {
-        if (mission.status !== 'available') {
-            toast({ variant: "destructive", title: "Cannot Assign", description: "Mission is not available for assignment." });
+        // Allow assigning even if already assigned, to add more users
+        if (mission.status !== 'available' && mission.status !== 'assigned') {
+            toast({ variant: "destructive", title: "Cannot Assign", description: `Mission status (${mission.status}) prevents assignment.` });
             return;
         }
         setSelectedMissionForAssignment(mission);
-        setSelectedUsersForAssignment([]); // Reset selected users array
+        // Pre-populate selected users if mission is already assigned
+         const currentAssignees = Array.isArray(mission.assignedTo) ? mission.assignedTo : (mission.assignedTo ? [mission.assignedTo] : []);
+         setSelectedUsersForAssignment(currentAssignees);
         setShopperSearchTerm(''); // Reset search term
         setAssignDialogOpen(true);
     };
@@ -210,20 +214,24 @@ export default function AdminMissionsPage() {
                  results.push({ userId, success: result.success, message: result.message });
                   // If successful, update the mission status in mock data immediately
                   // For simulation, the first successful assignment marks the mission as 'assigned'
-                 if (result.success && mockMissions.find(m => m.id === missionId)?.status === 'available') {
+                 if (result.success) {
                       const missionIndex = mockMissions.findIndex(m => m.id === missionId);
                        if (missionIndex !== -1) {
-                           mockMissions[missionIndex].status = 'assigned';
+                           const currentMission = mockMissions[missionIndex];
+                            // Update status to 'assigned' if it was 'available'
+                           if(currentMission.status === 'available'){
+                                currentMission.status = 'assigned';
+                           }
                             // In a real DB, you'd likely have an assignments table
                            // For simulation, store assigned users in an array
-                           if (!Array.isArray(mockMissions[missionIndex].assignedTo)) {
-                               mockMissions[missionIndex].assignedTo = [];
+                           if (!Array.isArray(currentMission.assignedTo)) {
+                               currentMission.assignedTo = [];
                            }
                             // Add only if not already present (handles multiple calls for same user)
-                            if (!mockMissions[missionIndex].assignedTo.includes(userId)) {
-                                mockMissions[missionIndex].assignedTo.push(userId);
+                            if (!currentMission.assignedTo.includes(userId)) {
+                                currentMission.assignedTo.push(userId);
                             }
-                           console.log(`Mock mission ${missionId} status updated to assigned for user ${userId}.`);
+                           console.log(`Mock mission ${missionId} status updated to ${currentMission.status} for user ${userId}. Assignees: ${currentMission.assignedTo.join(', ')}`);
                        }
                   }
 
@@ -239,14 +247,11 @@ export default function AdminMissionsPage() {
          if (successes.length > 0) {
              startTransition(() => {
                  // Update the mission in the local React state
-                 // Ensure assignedTo is merged correctly
+                 // Ensure assignedTo reflects the final selection
                  setMissions(prev => prev.map(m => {
                      if (m.id === missionId) {
-                         // Get existing assigned users, ensure it's an array
-                         const existingAssignees = Array.isArray(m.assignedTo) ? m.assignedTo : (m.assignedTo ? [m.assignedTo] : []);
-                         // Combine existing with newly selected, removing duplicates
-                         const newAssignees = [...new Set([...existingAssignees, ...selectedUsersForAssignment])];
-                         return { ...m, status: 'assigned', assignedTo: newAssignees };
+                         // Directly set the assignedTo array to the currently selected users
+                         return { ...m, status: 'assigned', assignedTo: selectedUsersForAssignment };
                      }
                      return m;
                  }));
@@ -329,6 +334,7 @@ export default function AdminMissionsPage() {
                                     const pendingCount = pendingReportsCount[mission.id] || 0;
                                     // Handle assignedTo being potentially an array or single ID
                                     const assignedUserIds = Array.isArray(mission.assignedTo) ? mission.assignedTo : (mission.assignedTo ? [mission.assignedTo] : []);
+                                     // Use the pre-formatted shoppers state to find names
                                     const assignedShoppers = assignedUserIds.map(id => shoppers.find(u => u.value === id)).filter(Boolean);
                                     const assignedNames = assignedShoppers.map(s => s.label).join(', ');
                                     const isCurrentProcessing = isProcessing === mission.id;
@@ -367,9 +373,10 @@ export default function AdminMissionsPage() {
                                                     </DropdownMenuTrigger>
                                                     <DropdownMenuContent align="end">
                                                         <DropdownMenuLabel>Actions</DropdownMenuLabel>
-                                                        {mission.status === 'available' && (
+                                                         {/* Allow assigning if available OR already assigned */}
+                                                        {(mission.status === 'available' || mission.status === 'assigned') && (
                                                             <DropdownMenuItem onClick={() => openAssignDialog(mission)} disabled={isCurrentProcessing}>
-                                                                <UserPlus className="mr-2 h-4 w-4" /> Assign to Shopper(s)
+                                                                <UserPlus className="mr-2 h-4 w-4" /> Assign/Reassign
                                                             </DropdownMenuItem>
                                                         )}
                                                         {(mission.status === 'submitted' || mission.status === 'approved' || mission.status === 'refused') && (
@@ -422,7 +429,7 @@ export default function AdminMissionsPage() {
                                             </TableCell>
                                         </TableRow>
                                     );
-                                })
+                                }) // Added closing parenthesis
                             ) : (
                                 <TableRow>
                                     <TableCell colSpan={8} className="h-24 text-center">
@@ -454,34 +461,37 @@ export default function AdminMissionsPage() {
                             onValueChange={setShopperSearchTerm}
                           />
                           <CommandList>
-                            <CommandEmpty>No shoppers found.</CommandEmpty>
+                            <CommandEmpty>No active shoppers found.</CommandEmpty> {/* Updated empty message */}
                              {/* Wrap list in ScrollArea */}
                              <ScrollArea className="h-[200px]"> {/* Adjust height as needed */}
                                 <CommandGroup>
-                                {filteredShoppers.map((shopper) => (
+                                {filteredShoppers.length > 0 ? filteredShoppers.map((shopper) => (
                                     <CommandItem
                                         key={shopper.value}
                                         value={`${shopper.label} ${shopper.email}`} // Combine fields for better searching
                                         onSelect={() => handleUserSelectionChange(shopper.value)} // Toggle selection on item click
                                         className="flex items-center gap-2 cursor-pointer aria-selected:bg-accent/50"
+                                        // Remove disabled prop from CommandItem
                                     >
-                                        {/* Use disabled Checkbox purely for visual indication */}
+                                        {/* Checkbox is interactive */}
                                         <Checkbox
+                                            id={`user-${shopper.value}`} // Add unique ID for label association
                                             checked={selectedUsersForAssignment.includes(shopper.value)}
-                                            aria-hidden="true" // Hide from assistive tech as item itself is interactive
-                                            tabIndex={-1} // Prevent focus
-                                            className="pointer-events-none" // Disable direct interaction
+                                            onCheckedChange={() => handleUserSelectionChange(shopper.value)} // Make checkbox interactive
+                                            aria-label={`Select ${shopper.label}`} // Accessibility
                                          />
-                                        <div className="flex flex-col text-sm flex-grow">
+                                        <Label htmlFor={`user-${shopper.value}`} className="flex flex-col text-sm flex-grow cursor-pointer"> {/* Label for checkbox */}
                                              <span>{shopper.label}</span> {/* Name */}
                                             <span className="text-xs text-muted-foreground">{shopper.email}</span> {/* Email */}
                                             <div className="flex items-center gap-2 text-xs text-muted-foreground mt-1">
                                                  <span className="flex items-center gap-1"><MapPinIcon className="w-3 h-3"/> {shopper.city}</span>
                                                  <span className="flex items-center gap-1"><Award className="w-3 h-3"/> {shopper.completedMissions} done</span>
                                              </div>
-                                        </div>
+                                        </Label>
                                     </CommandItem>
-                                ))}
+                                )) : (
+                                    <div className="p-4 text-center text-sm text-muted-foreground">No matching active shoppers found.</div> // Message when search yields no results
+                                )}
                                 </CommandGroup>
                              </ScrollArea>
                           </CommandList>
@@ -489,7 +499,7 @@ export default function AdminMissionsPage() {
                         {/* Display selected users */}
                         {selectedUsersForAssignment.length > 0 && (
                              <div className="pt-2 text-xs text-muted-foreground">
-                                 Selected: {selectedUsersForAssignment.map(id => shoppers.find(s => s.value === id)?.label).join(', ')}
+                                 Selected: {selectedUsersForAssignment.map(id => shoppers.find(s => s.value === id)?.label).filter(Boolean).join(', ')}
                              </div>
                          )}
                     </div>
@@ -508,5 +518,6 @@ export default function AdminMissionsPage() {
         </div>
     );
 }
+
 
     
