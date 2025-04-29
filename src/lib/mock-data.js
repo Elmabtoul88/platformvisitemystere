@@ -11,7 +11,7 @@ export const mockMissions = [
     businessName: 'Gourmet Place Inc.',
   },
   {
-    id: 'mission-2',
+    id: 'mission-2', // Has survey questions defined below
     title: 'Retail Store Cleanliness Check',
     description: 'Visit the downtown branch and assess store cleanliness, staff helpfulness, and product availability. Purchase a small item.',
     deadline: new Date(Date.now() + 5 * 24 * 60 * 60 * 1000), // 5 days from now
@@ -57,7 +57,7 @@ export const mockMissions = [
     businessName: 'Burger Bonanza',
   },
     {
-    id: 'mission-6',
+    id: 'mission-6', // Has survey questions defined below
     title: 'Grocery Store Checkout Efficiency',
     description: 'Evaluate the checkout speed and friendliness of the cashier during evening hours (5-7 PM). Purchase 5-10 items.',
     deadline: new Date(Date.now() + 2 * 24 * 60 * 60 * 1000), // 2 days from now
@@ -75,19 +75,26 @@ export const mockReports = [
     id: 'report-1',
     missionId: 'mission-4', // Linked to the approved mission
     userId: 'user-shopper-1',
-    rating: 4,
-    comments: 'Check-in was smooth, staff were polite. Lobby was clean but a bit dated.',
-    photoUrl: 'https://picsum.photos/400/300?random=1',
+    // Example of structured answers based on potential survey for mission-4
+    answers: {
+        'q_hotel_1_rating': { type: 'rating', value: 4 },
+        'q_hotel_2_text': { type: 'text', value: 'Check-in was smooth, staff were polite. Lobby was clean but a bit dated.' },
+        'q_hotel_3_image_upload': { type: 'image_upload', value: ['https://picsum.photos/400/300?random=1'] }
+    },
     submittedAt: new Date(Date.now() - 1 * 24 * 60 * 60 * 1000), // Submitted 1 day ago
     status: 'approved',
   },
    {
     id: 'report-2',
-    missionId: 'mission-2', // Linked to an assigned (but not yet approved) mission
+    missionId: 'mission-2', // Linked to an assigned mission with survey questions
     userId: 'user-shopper-1',
-    rating: 5,
-    comments: 'Store was very clean and well-organized. Staff member Sarah was extremely helpful in finding the item I needed. Quick checkout.',
-    photoUrl: 'https://picsum.photos/400/300?random=2',
+    // Example answers matching mockSurveyQuestions['mission-2']
+    answers: {
+        'q_1700000000001_rating': { type: 'rating', value: 5 }, // Overall Store Rating
+        'q_1700000000002_multiple_choice': { type: 'multiple_choice', value: 'Very Helpful' }, // Staff Helpfulness
+        'q_1700000000003_text': { type: 'text', value: 'Store was very clean and well-organized. Staff member Sarah was extremely helpful in finding the item I needed. Quick checkout.' }, // Comments
+        'q_1700000000004_image_upload': { type: 'image_upload', value: ['https://picsum.photos/400/300?random=2'] } // Storefront Photo
+    },
     submittedAt: new Date(Date.now() - 0.5 * 24 * 60 * 60 * 1000), // Submitted 12 hours ago
     status: 'submitted', // Report is submitted but not yet approved by business
   },
@@ -105,4 +112,27 @@ export const mockUser = {
   cvUrl: null, // Added cvUrl, initially null
   birthYear: 1992, // Added birth year
   gender: 'female', // Added gender ('male', 'female', 'other', 'prefer_not_say')
+};
+
+
+// Mock Survey Questions for specific missions
+export const mockSurveyQuestions = {
+  // Questions for mission-2: Retail Store Cleanliness Check
+  'mission-2': [
+    { id: 1700000000001, type: 'rating', text: 'Rate the overall cleanliness of the store.', isRequired: true, maxRating: 5, minLabel: 'Dirty', maxLabel: 'Spotless' },
+    { id: 1700000000002, type: 'multiple_choice', text: 'How helpful were the staff members?', isRequired: true, options: [{id: 1, text: 'Very Helpful'}, {id: 2, text: 'Somewhat Helpful'}, {id: 3, text: 'Not Helpful'}, {id: 4, text: 'Did not interact'}] },
+    { id: 1700000000003, type: 'text', text: 'Provide any additional comments about your experience.', isRequired: false },
+    { id: 1700000000004, type: 'image_upload', text: 'Upload a photo of the storefront.', isRequired: true, allowMultiple: false, maxImages: 1 },
+  ],
+  // Questions for mission-6: Grocery Store Checkout Efficiency
+  'mission-6': [
+    { id: 1700000000010, type: 'rating', text: 'Rate the speed of the checkout process.', isRequired: true, maxRating: 5, minLabel: 'Very Slow', maxLabel: 'Very Fast' },
+    { id: 1700000000011, type: 'rating', text: 'Rate the friendliness of the cashier.', isRequired: true, maxRating: 5, minLabel: 'Unfriendly', maxLabel: 'Very Friendly' },
+    { id: 1700000000012, type: 'checkboxes', text: 'Which payment methods were clearly available?', isRequired: false, options: [{id: 1, text: 'Cash'}, {id: 2, text: 'Credit/Debit Card'}, {id: 3, text: 'Mobile Pay (Apple/Google Pay)'}, {id: 4, text: 'Store App'}] },
+    { id: 1700000000013, type: 'gps_capture', text: 'Capture your location upon leaving the store.', isRequired: true },
+    { id: 1700000000014, type: 'audio_recording', text: 'Record a brief audio comment about the checkout noise level (optional).', isRequired: false, maxDurationSeconds: 30 },
+    { id: 1700000000015, type: 'image_upload', text: 'Upload photos of your receipt and purchased items (up to 3 images).', isRequired: true, allowMultiple: true, maxImages: 3 },
+    { id: 1700000000016, type: 'text', text: 'Any suggestions for improvement?', isRequired: false },
+  ],
+  // Add questions for other missions if needed
 };

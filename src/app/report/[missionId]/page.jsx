@@ -1,9 +1,9 @@
 'use server'; // Mark functions within this file that need server context
 
 import { ReportSubmissionForm } from '@/components/report-submission-form';
-import { mockMissions, mockUser } from '@/lib/mock-data'; // Using mock data
+import { mockMissions, mockUser, mockSurveyQuestions } from '@/lib/mock-data'; // Import mock survey questions
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
-import { ArrowLeft, FileWarning, Ban, Info } from "lucide-react"; // Added Ban icon
+import { ArrowLeft, FileWarning, Ban } from "lucide-react"; // Added Ban icon
 import Link from 'next/link';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from "@/components/ui/card"; // Added Card components
@@ -20,10 +20,23 @@ async function getMissionData(missionId) {
   return mission || null;
 }
 
+// Simulate fetching survey questions for a mission ID
+// This remains a server-side function
+async function getSurveyQuestions(missionId) {
+  console.log(`Fetching survey questions for mission: ${missionId}`);
+  await new Promise(resolve => setTimeout(resolve, 100)); // Simulate network delay
+  // In a real app, fetch from DB based on missionId. Use mock data for now.
+  // Assuming mockSurveyQuestions holds questions for 'mission-2' and 'mission-6'
+  const questions = mockSurveyQuestions[missionId] || [];
+  console.log("Fetched questions:", questions.length);
+  return questions;
+}
+
 
 export default async function ReportSubmissionPage({ params }) {
   const missionId = params.missionId;
   const mission = await getMissionData(missionId);
+  const surveyQuestions = await getSurveyQuestions(missionId); // Fetch survey questions
 
   if (!mission) {
     return (
@@ -60,9 +73,9 @@ export default async function ReportSubmissionPage({ params }) {
                     </CardDescription>
                 </CardHeader>
                 <CardContent className="space-y-2 text-sm text-foreground/80">
-                    {/* Removed invalid <p> wrapping <ul> */}
-                   <div className="text-left"> {/* Added a div for structure */}
-                     <p className="mb-1">This could be because:</p> {/* Put text in its own <p> */}
+                   {/* Removed invalid <p> wrapping <ul>, added div for structure */}
+                   <div className="text-left">
+                     <p className="mb-1">This could be because:</p>
                      <ul className="list-disc list-inside pl-4 mt-1 space-y-1">
                         <li>The mission isn't assigned to you.</li>
                         <li>The mission has already been completed or cancelled.</li>
@@ -88,7 +101,7 @@ export default async function ReportSubmissionPage({ params }) {
      );
    }
 
-  // Pass the server action directly to the client component
+  // Pass the server action AND survey questions to the client component
   return (
     <main className="min-h-screen bg-background py-10 px-4">
        <div className="container mx-auto max-w-3xl">
@@ -97,8 +110,12 @@ export default async function ReportSubmissionPage({ params }) {
                  <ArrowLeft className="w-4 h-4 mr-1" /> Back to Assigned Missions
                </Link>
              </Button>
-            {/* Pass the imported server action as the onSubmitAction prop */}
-            <ReportSubmissionForm mission={mission} onSubmitAction={submitReport} />
+            {/* Pass the imported server action and fetched questions */}
+            <ReportSubmissionForm
+                mission={mission}
+                surveyQuestions={surveyQuestions} // Pass questions here
+                onSubmitAction={submitReport}
+            />
         </div>
          <Toaster /> {/* Add Toaster here for this page's toasts */}
     </main>

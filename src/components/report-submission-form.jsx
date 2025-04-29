@@ -1,8 +1,7 @@
 "use client";
 
-import { useForm } from "react-hook-form";
-import { zodResolver } from "@hookform/resolvers/zod";
-import { reportSchema } from "@/lib/validators";
+import { useForm, Controller } from "react-hook-form";
+// Removed zodResolver and reportSchema as validation will be based on dynamic fields
 import { Button } from "@/components/ui/button";
 import {
   Form,
@@ -16,63 +15,258 @@ import {
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
-import { Star, Upload, Send } from "lucide-react";
-import { useState } from "react";
+import { Star, Upload, Send, Loader2, MapPin, Mic, Image as ImageIcon, Trash2, AlertCircle, RadioGroupIndicator } from "lucide-react";
+import { useState, useEffect, useRef } from "react";
 import Image from 'next/image';
 import { useRouter } from 'next/navigation';
 import { useToast } from "@/hooks/use-toast";
-import { mockUser } from '@/lib/mock-data'; // Still using mock user for now
+import { mockUser } from '@/lib/mock-data';
+import { Checkbox } from "@/components/ui/checkbox";
+import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group"; // Assuming RadioGroup exists
+import { Alert, AlertTitle } from "@/components/ui/alert"; // For GPS/Audio messages
 
-// The component now receives the server action via `onSubmitAction` prop
-export function ReportSubmissionForm({ mission, onSubmitAction }) {
+// Helper to get icon for display
+const getIconForType = (type) => {
+    switch(type) {
+        case 'text': return <TextCursorInput className="w-4 h-4 mr-1" />;
+        case 'multiple_choice': return <ListOrdered className="w-4 h-4 mr-1" />;
+        case 'checkboxes': return <CheckSquare className="w-4 h-4 mr-1" />;
+        case 'rating': return <Star className="w-4 h-4 mr-1" />;
+        case 'image_upload': return <ImageIcon className="w-4 h-4 mr-1" />;
+        case 'gps_capture': return <MapPin className="w-4 h-4 mr-1" />;
+        case 'audio_recording': return <Mic className="w-4 h-4 mr-1" />;
+        default: return null;
+    }
+};
+
+
+// Component now receives surveyQuestions prop
+export function ReportSubmissionForm({ mission, surveyQuestions = [], onSubmitAction }) {
   const router = useRouter();
   const { toast } = useToast();
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [previewUrl, setPreviewUrl] = useState(null);
+  // State to manage dynamic field previews/data
+  const [imagePreviews, setImagePreviews] = useState({}); // { questionId: [url1, url2] }
+  const [gpsCoords, setGpsCoords] = useState({}); // { questionId: { lat: num, lng: num } | null }
+  const [audioData, setAudioData] = useState({}); // { questionId: { url: '...', status: 'idle'|'recording'|'recorded' } }
+  const audioRecorderRef = useRef(null);
+  const audioChunksRef = useRef([]);
 
+
+   // Initialize react-hook-form without resolver, as fields are dynamic
    const form = useForm({
-    resolver: zodResolver(reportSchema),
-    defaultValues: {
-      rating: 3, // Default rating
-      comments: "",
-      photoUrl: "",
-    },
-  });
+       // No defaultValues needed here initially, they are set based on questions
+   });
 
-  // Simulate photo upload and get URL
-  const handlePhotoChange = async (event) => {
-     const file = event.target.files?.[0];
-    if (file) {
-        // Basic preview
-         const reader = new FileReader();
-         reader.onloadend = () => {
-           setPreviewUrl(reader.result);
-         };
-         reader.readAsDataURL(file);
+   // Helper function to generate unique field name for RHF based on question id and type
+   const getFieldName = (q) => `q_${q.id}_${q.type}`;
 
-        // In a real app: upload file to Firebase Storage or similar
-        // For now, just set a placeholder URL after a delay
-        console.log("Simulating photo upload...");
-        // Simulate upload delay
-        await new Promise(resolve => setTimeout(resolve, 1500));
-        const placeholderUrl = `https://picsum.photos/400/300?random=${Math.random()}`;
-        form.setValue("photoUrl", placeholderUrl);
-        console.log("Simulated upload complete:", placeholderUrl);
-         toast({ title: "Photo Uploaded (Simulated)", description: "Placeholder URL generated." });
-    } else {
-         setPreviewUrl(null);
-         form.setValue("photoUrl", "");
+   // --- Media Handling ---
+
+   // Image Upload Handling
+   const handleImageChange = async (event, questionId, maxImages, allowMultiple) => {
+    const files = Array.from(event.target.files);
+    if (!files.length) return;
+
+    const currentPreviews = imagePreviews[questionId] || [];
+    const filesToProcess = allowMultiple ? files.slice(0, maxImages - currentPreviews.length) : [files[0]]; // Respect limits
+
+    if (filesToProcess.length === 0 && !allowMultiple && currentPreviews.length > 0) {
+         toast({ variant: "destructive", title: "Limit Reached", description: "Only one image allowed for this question." });
+         return;
     }
+     if (allowMultiple && filesToProcess.length < files.length) {
+        toast({ variant: "destructive", title: "Limit Reached", description: `Maximum ${maxImages} images allowed.` });
+    }
+
+    const newPreviews = { ...imagePreviews };
+    newPreviews[questionId] = [...currentPreviews];
+
+    const uploadPromises = filesToProcess.map(file => {
+      return new Promise(async (resolve) => {
+        // 1. Create Preview
+        const reader = new FileReader();
+        reader.onloadend = () => {
+          setImagePreviews(prev => ({
+            ...prev,
+            [questionId]: [...(prev[questionId] || []), reader.result] // Add preview URL immediately
+          }));
+          newPreviews[questionId].push(reader.result); // Also keep track for form value setting
+        };
+        reader.readAsDataURL(file);
+
+        // 2. Simulate Upload & Get URL
+        console.log(`Simulating upload for ${file.name}...`);
+        await new Promise(res => setTimeout(res, 1000 + Math.random() * 500)); // Simulate variable delay
+        const placeholderUrl = `https://picsum.photos/400/300?random=${Math.random()}`;
+        console.log(`Simulated upload complete for ${file.name}: ${placeholderUrl}`);
+        resolve(placeholderUrl); // Resolve with the simulated URL
+      });
+    });
+
+    // Wait for all simulations to complete
+     const uploadedUrls = await Promise.all(uploadPromises);
+
+     // Set RHF value: store array of URLs if multiple, single URL otherwise
+     const existingUrls = form.getValues(getFieldName({ id: questionId, type: 'image_upload' })) || [];
+     const finalUrls = allowMultiple ? [...existingUrls, ...uploadedUrls] : [uploadedUrls[0]]; // If not multiple, replace existing
+     form.setValue(getFieldName({ id: questionId, type: 'image_upload' }), finalUrls);
+
+     toast({ title: `Uploaded ${uploadedUrls.length} image(s)`, description: "Placeholder URLs generated." });
   };
 
-  // This function is called by react-hook-form's handleSubmit
+    // Remove Image
+  const removeImage = (questionId, indexToRemove) => {
+        const currentUrls = form.getValues(getFieldName({ id: questionId, type: 'image_upload' })) || [];
+        const updatedUrls = currentUrls.filter((_, index) => index !== indexToRemove);
+        form.setValue(getFieldName({ id: questionId, type: 'image_upload' }), updatedUrls);
+
+         // Update previews
+        setImagePreviews(prev => ({
+            ...prev,
+             [questionId]: (prev[questionId] || []).filter((_, index) => index !== indexToRemove)
+        }));
+    };
+
+
+  // GPS Capture Handling
+  const handleGpsCapture = (questionId) => {
+        setGpsCoords(prev => ({ ...prev, [questionId]: 'loading' })); // Show loading state
+        if (navigator.geolocation) {
+          navigator.geolocation.getCurrentPosition(
+            async (position) => {
+              const coords = {
+                lat: position.coords.latitude,
+                lng: position.coords.longitude,
+              };
+              setGpsCoords(prev => ({ ...prev, [questionId]: coords }));
+              form.setValue(getFieldName({ id: questionId, type: 'gps_capture' }), coords); // Set RHF value
+              toast({ title: "Location Captured", description: `Lat: ${coords.lat.toFixed(4)}, Lng: ${coords.lng.toFixed(4)}` });
+              console.log("GPS Captured:", coords);
+            },
+            (error) => {
+               setGpsCoords(prev => ({ ...prev, [questionId]: 'error' })); // Show error state
+               console.error("Error getting location:", error);
+               toast({ variant: "destructive", title: "Location Error", description: error.message });
+               form.setValue(getFieldName({ id: questionId, type: 'gps_capture' }), null); // Clear RHF value on error
+            },
+            { enableHighAccuracy: true, timeout: 10000, maximumAge: 0 } // Options
+          );
+        } else {
+            setGpsCoords(prev => ({ ...prev, [questionId]: 'error' }));
+            toast({ variant: "destructive", title: "Geolocation Not Supported", description: "Your browser does not support geolocation." });
+            form.setValue(getFieldName({ id: questionId, type: 'gps_capture' }), null);
+        }
+    };
+
+
+  // Audio Recording Handling
+    const startRecording = async (questionId, maxDurationSeconds) => {
+        try {
+            const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+            audioRecorderRef.current = new MediaRecorder(stream);
+            audioChunksRef.current = []; // Reset chunks
+
+            audioRecorderRef.current.ondataavailable = event => {
+                audioChunksRef.current.push(event.data);
+            };
+
+            audioRecorderRef.current.onstop = async () => {
+                const audioBlob = new Blob(audioChunksRef.current, { type: 'audio/webm' }); // Or appropriate type
+                // Simulate upload
+                console.log(`Simulating audio upload (${(audioBlob.size / 1024).toFixed(2)} KB)...`);
+                await new Promise(res => setTimeout(res, 1500));
+                const placeholderAudioUrl = `/audio/simulated_${questionId}_${Date.now()}.webm`; // Placeholder URL
+                console.log("Simulated audio upload complete:", placeholderAudioUrl);
+
+                setAudioData(prev => ({
+                    ...prev,
+                    [questionId]: { url: placeholderAudioUrl, status: 'recorded' }
+                }));
+                form.setValue(getFieldName({ id: questionId, type: 'audio_recording' }), placeholderAudioUrl); // Set RHF value
+
+                toast({ title: "Audio Recorded & Uploaded (Simulated)" });
+
+                 // Stop tracks to release mic
+                stream.getTracks().forEach(track => track.stop());
+            };
+
+            audioRecorderRef.current.start();
+            setAudioData(prev => ({ ...prev, [questionId]: { url: null, status: 'recording' } }));
+            toast({ title: "Recording Started...", description: `Max ${maxDurationSeconds} seconds.` });
+
+            // Stop recording after max duration
+            setTimeout(() => {
+                if (audioRecorderRef.current && audioRecorderRef.current.state === "recording") {
+                    stopRecording(questionId);
+                }
+            }, maxDurationSeconds * 1000);
+
+        } catch (error) {
+            console.error("Error starting recording:", error);
+            toast({ variant: "destructive", title: "Audio Error", description: "Could not start recording. Check microphone permissions." });
+             setAudioData(prev => ({ ...prev, [questionId]: { url: null, status: 'error' } }));
+        }
+    };
+
+    const stopRecording = (questionId) => {
+        if (audioRecorderRef.current && audioRecorderRef.current.state === "recording") {
+            audioRecorderRef.current.stop();
+            // Status update happens in 'onstop' handler
+        }
+    };
+
+    const removeAudio = (questionId) => {
+        setAudioData(prev => ({ ...prev, [questionId]: { url: null, status: 'idle' } }));
+        form.setValue(getFieldName({ id: questionId, type: 'audio_recording' }), null); // Clear RHF value
+         if (audioRecorderRef.current && audioRecorderRef.current.state === "recording") {
+            audioRecorderRef.current.stop(); // Stop recording if active
+            // Stop tracks
+            audioRecorderRef.current.stream?.getTracks().forEach(track => track.stop());
+        }
+         toast({ title: "Audio Removed" });
+    };
+
+
+  // Form Submission Logic
   const processSubmit = async (data) => {
     setIsSubmitting(true);
-    console.log("Submitting report data:", data);
+    // Structure data before sending to server action
+    const submittedData = {
+        answers: data // data directly contains the { q_id_type: value } structure
+    };
+    console.log("Submitting structured report data:", JSON.stringify(submittedData, null, 2));
+
+     // --- Validation (Client-side, basic) ---
+     let isValid = true;
+     surveyQuestions.forEach(q => {
+         const fieldName = getFieldName(q);
+         const value = data[fieldName];
+         if (q.isRequired) {
+             if (q.type === 'checkboxes') {
+                 if (!value || Object.values(value).every(v => !v)) {
+                     form.setError(fieldName, { type: 'required', message: 'Please select at least one option.' });
+                     isValid = false;
+                 }
+             } else if (!value && value !== 0) { // Check for empty values (allow 0 for rating)
+                 form.setError(fieldName, { type: 'required', message: 'This field is required.' });
+                 isValid = false;
+             }
+         }
+         // Add more specific validation if needed (e.g., text length for 'text' type)
+     });
+
+     if (!isValid) {
+        toast({ variant: "destructive", title: "Validation Error", description: "Please fill in all required fields." });
+        setIsSubmitting(false);
+        return;
+     }
+     // --- End Validation ---
+
+
     try {
         // Call the server action passed as a prop
-        // Pass necessary IDs along with form data
-        await onSubmitAction(data, mission.id, mockUser.id);
+        await onSubmitAction(submittedData, mission.id, mockUser.id);
 
         toast({
             title: "Report Submitted Successfully!",
@@ -95,121 +289,238 @@ export function ReportSubmissionForm({ mission, onSubmitAction }) {
 
 
   return (
-    <Card className="w-full max-w-2xl mx-auto shadow-lg">
+    <Card className="w-full max-w-3xl mx-auto shadow-lg">
         <CardHeader>
             <CardTitle className="text-xl font-semibold text-primary">Submit Report: {mission.title}</CardTitle>
-            <CardDescription>Complete the form below for mission ID: {mission.id}</CardDescription>
+            <CardDescription>Complete the survey questions below for mission ID: {mission.id}</CardDescription>
         </CardHeader>
         <Form {...form}>
             {/* Use RHF's handleSubmit to trigger validation and then call processSubmit */}
-            <form onSubmit={form.handleSubmit(processSubmit)} className="space-y-6">
-                <CardContent className="space-y-4">
-                <FormField
-                    control={form.control}
-                    name="rating"
-                    render={({ field }) => (
-                    <FormItem>
-                        <FormLabel className="flex items-center gap-1">
-                            <Star className="w-4 h-4 text-accent" /> Overall Rating (1-5)
-                        </FormLabel>
-                        <FormControl>
-                             <div className="flex space-x-1">
-                                {[1, 2, 3, 4, 5].map((star) => (
-                                  <Button
-                                    key={star}
-                                    type="button"
-                                    variant={field.value >= star ? "default" : "outline"}
-                                    size="icon"
-                                    className={`
-                                      ${field.value >= star ? 'bg-accent text-accent-foreground border-accent' : 'text-muted-foreground'}
-                                      hover:bg-accent/80 hover:text-accent-foreground transition-colors
-                                    `}
-                                    onClick={() => field.onChange(star)}
-                                  >
-                                    <Star className="w-5 h-5" fill={field.value >= star ? 'currentColor' : 'none'} />
-                                    <span className="sr-only">{star} Star</span>
-                                  </Button>
-                                ))}
-                              </div>
-                        </FormControl>
-                        <FormMessage />
-                    </FormItem>
-                    )}
-                />
+            <form onSubmit={form.handleSubmit(processSubmit)} className="space-y-8">
+                <CardContent className="space-y-6">
+                {surveyQuestions.length === 0 && (
+                    <p className="text-muted-foreground text-center py-4">No survey questions found for this mission.</p>
+                )}
+                {surveyQuestions.map((q, index) => {
+                     const fieldName = getFieldName(q);
+                     return (
+                        <FormItem key={q.id} className="border-t pt-6 first:border-t-0 first:pt-0">
+                             {/* Question Label with Type Icon */}
+                             <FormLabel className="font-semibold text-md flex items-center gap-2">
+                                {getIconForType(q.type)}
+                                {index + 1}. {q.text}
+                                {q.isRequired && <span className="text-destructive text-xs ml-1">*</span>}
+                             </FormLabel>
+                             {/* Optional Description */}
+                             {q.description && (
+                                <FormDescription className="text-sm ml-6">{q.description}</FormDescription>
+                              )}
 
-                <FormField
-                    control={form.control}
-                    name="comments"
-                    render={({ field }) => (
-                    <FormItem>
-                        <FormLabel>Comments</FormLabel>
-                        <FormControl>
-                        <Textarea
-                            placeholder="Describe your experience in detail..."
-                            className="resize-y min-h-[100px]"
-                            {...field}
-                        />
-                        </FormControl>
-                        <FormDescription>
-                        Provide specific details about your observations. (Min. 10 characters)
-                        </FormDescription>
-                        <FormMessage />
-                    </FormItem>
-                    )}
-                />
+                            {/* Render input based on question type */}
+                            <FormControl className="pl-6 mt-2">
+                                <>
+                                    {q.type === 'text' && (
+                                        <Controller
+                                            name={fieldName}
+                                            control={form.control}
+                                            rules={{ required: q.isRequired }}
+                                            render={({ field }) => <Textarea placeholder="Your answer..." {...field} />}
+                                        />
+                                    )}
 
-                 <FormField
-                    control={form.control}
-                    name="photoUrl"
-                    render={({ field }) => ( // Use field from render prop for hidden input if needed
-                    <FormItem>
-                        <FormLabel className="flex items-center gap-1">
-                            <Upload className="w-4 h-4" /> Upload Photo (Optional)
-                        </FormLabel>
-                        <FormControl>
-                             <Input
-                                id="photo-upload"
-                                type="file"
-                                accept="image/*"
-                                onChange={handlePhotoChange} // Trigger simulation on change
-                                className="block w-full text-sm text-slate-500
-                                file:mr-4 file:py-2 file:px-4
-                                file:rounded-full file:border-0
-                                file:text-sm file:font-semibold
-                                file:bg-primary/10 file:text-primary
-                                hover:file:bg-primary/20"
-                            />
-                        </FormControl>
-                         {previewUrl && (
-                          <div className="mt-4">
-                            <Image
-                              src={previewUrl}
-                              alt="Photo preview"
-                              width={200}
-                              height={150}
-                              className="rounded-md object-cover border"
-                            />
-                          </div>
-                        )}
-                         {/* Hidden input to store the URL from the simulation */}
-                        <input type="hidden" {...field} />
-                        <FormDescription>
-                        Upload a relevant photo (e.g., storefront, product, receipt).
-                        </FormDescription>
-                        <FormMessage />
-                    </FormItem>
-                    )}
-                />
+                                    {q.type === 'rating' && (
+                                        <Controller
+                                            name={fieldName}
+                                            control={form.control}
+                                            rules={{ required: q.isRequired }}
+                                            defaultValue={3} // Default rating
+                                            render={({ field }) => (
+                                                <div className="flex space-x-1 items-center">
+                                                    <span className="text-xs mr-2 text-muted-foreground">{q.minLabel || 'Poor'}</span>
+                                                    {[...Array(q.maxRating || 5).keys()].map((i) => {
+                                                        const ratingValue = i + 1;
+                                                        return (
+                                                            <Button
+                                                                key={ratingValue}
+                                                                type="button"
+                                                                variant={field.value >= ratingValue ? "default" : "outline"}
+                                                                size="icon"
+                                                                className={`h-8 w-8 ${field.value >= ratingValue ? 'bg-accent text-accent-foreground border-accent' : 'text-muted-foreground'} hover:bg-accent/80 hover:text-accent-foreground transition-colors`}
+                                                                onClick={() => field.onChange(ratingValue)}
+                                                            >
+                                                                <Star className="w-5 h-5" fill={field.value >= ratingValue ? 'currentColor' : 'none'} />
+                                                            </Button>
+                                                        );
+                                                    })}
+                                                    <span className="text-xs ml-2 text-muted-foreground">{q.maxLabel || 'Excellent'}</span>
+                                                </div>
+                                            )}
+                                        />
+                                    )}
+
+                                     {q.type === 'multiple_choice' && (
+                                        <Controller
+                                            name={fieldName}
+                                            control={form.control}
+                                            rules={{ required: q.isRequired }}
+                                            render={({ field }) => (
+                                                 <RadioGroup
+                                                    onValueChange={field.onChange}
+                                                    value={field.value}
+                                                    className="space-y-2"
+                                                 >
+                                                    {q.options?.map((opt) => (
+                                                        <FormItem key={opt.id} className="flex items-center space-x-3 space-y-0">
+                                                             <FormControl>
+                                                                <RadioGroupItem value={opt.text} />
+                                                             </FormControl>
+                                                            <FormLabel className="font-normal">{opt.text}</FormLabel>
+                                                        </FormItem>
+                                                    ))}
+                                                </RadioGroup>
+                                            )}
+                                        />
+                                    )}
+
+                                     {q.type === 'checkboxes' && (
+                                        <div className="space-y-2">
+                                            {q.options?.map((opt) => (
+                                                <Controller
+                                                    key={opt.id}
+                                                    name={`${fieldName}.${opt.id}`} // Use unique name per checkbox
+                                                    control={form.control}
+                                                    render={({ field }) => (
+                                                        <FormItem className="flex items-center space-x-3 space-y-0">
+                                                             <FormControl>
+                                                                 <Checkbox
+                                                                     checked={field.value || false}
+                                                                     onCheckedChange={field.onChange}
+                                                                 />
+                                                             </FormControl>
+                                                            <FormLabel className="font-normal">{opt.text}</FormLabel>
+                                                        </FormItem>
+                                                    )}
+                                                />
+                                            ))}
+                                             {/* RHF validation message shown at the top level */}
+                                         </div>
+                                    )}
+
+                                     {q.type === 'image_upload' && (
+                                        <div className="space-y-3">
+                                             <Input
+                                                id={`q-img-${q.id}`}
+                                                type="file"
+                                                accept="image/*"
+                                                multiple={q.allowMultiple ?? true} // Default to true if undefined
+                                                onChange={(e) => handleImageChange(e, q.id, q.maxImages ?? 5, q.allowMultiple ?? true)}
+                                                disabled={(imagePreviews[q.id]?.length || 0) >= (q.maxImages ?? 5) && q.allowMultiple}
+                                                className="block w-full max-w-xs text-sm text-slate-500 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-primary/10 file:text-primary hover:file:bg-primary/20"
+                                            />
+                                            {(imagePreviews[q.id]?.length || 0) > 0 && (
+                                                <div className="mt-2 flex flex-wrap gap-2">
+                                                    {(imagePreviews[q.id] || []).map((url, index) => (
+                                                         <div key={index} className="relative group">
+                                                             <Image
+                                                                src={url}
+                                                                alt={`Preview ${index + 1}`}
+                                                                width={100}
+                                                                height={75}
+                                                                className="rounded-md object-cover border"
+                                                            />
+                                                             <Button
+                                                                type="button"
+                                                                variant="destructive"
+                                                                size="icon"
+                                                                className="absolute top-0 right-0 h-5 w-5 opacity-0 group-hover:opacity-100 transition-opacity"
+                                                                onClick={() => removeImage(q.id, index)}
+                                                             >
+                                                                <Trash2 className="h-3 w-3"/>
+                                                             </Button>
+                                                         </div>
+                                                    ))}
+                                                </div>
+                                            )}
+                                             <FormDescription className="text-xs">
+                                                {q.allowMultiple ? `Upload up to ${q.maxImages ?? 5} images.` : `Upload 1 image.`} Allowed types: JPG, PNG.
+                                             </FormDescription>
+                                              {/* Hidden input managed internally by RHF */}
+                                              <Controller name={fieldName} control={form.control} render={() => null} />
+                                         </div>
+                                    )}
+
+                                    {q.type === 'gps_capture' && (
+                                         <div className="space-y-2">
+                                             <Button type="button" variant="outline" onClick={() => handleGpsCapture(q.id)} disabled={gpsCoords[q.id] === 'loading'}>
+                                                 <MapPin className="w-4 h-4 mr-2"/>
+                                                 {gpsCoords[q.id] === 'loading' && <Loader2 className="w-4 h-4 mr-2 animate-spin"/>}
+                                                 {gpsCoords[q.id] && typeof gpsCoords[q.id] === 'object' ? 'Recapture Location' : 'Capture Current Location'}
+                                             </Button>
+                                             {gpsCoords[q.id] && typeof gpsCoords[q.id] === 'object' && (
+                                                <p className="text-sm text-green-600">Location captured: Lat {gpsCoords[q.id].lat.toFixed(4)}, Lng {gpsCoords[q.id].lng.toFixed(4)}</p>
+                                             )}
+                                             {gpsCoords[q.id] === 'error' && (
+                                                <p className="text-sm text-destructive">Could not capture location.</p>
+                                             )}
+                                              {/* Hidden input managed internally by RHF */}
+                                              <Controller name={fieldName} control={form.control} render={() => null} />
+                                         </div>
+                                    )}
+
+                                     {q.type === 'audio_recording' && (
+                                        <div className="space-y-3">
+                                            <div className="flex items-center gap-2">
+                                                 <Button
+                                                    type="button"
+                                                    variant="outline"
+                                                    onClick={() => startRecording(q.id, q.maxDurationSeconds ?? 60)}
+                                                    disabled={audioData[q.id]?.status === 'recording' || !!audioData[q.id]?.url}
+                                                 >
+                                                    <Mic className="w-4 h-4 mr-2"/> Start Recording
+                                                 </Button>
+                                                 {audioData[q.id]?.status === 'recording' && (
+                                                     <>
+                                                         <Button type="button" variant="destructive" onClick={() => stopRecording(q.id)}>
+                                                            <Loader2 className="w-4 h-4 mr-2 animate-spin"/> Stop Recording
+                                                        </Button>
+                                                        <span className="text-xs text-muted-foreground italic">Recording...</span>
+                                                      </>
+                                                 )}
+                                            </div>
+                                             {audioData[q.id]?.url && (
+                                                 <div className="flex items-center gap-2 p-2 border rounded bg-secondary">
+                                                     <audio controls src={audioData[q.id].url} className="w-full max-w-xs h-10">
+                                                         Your browser does not support the audio element.
+                                                     </audio>
+                                                     <Button type="button" variant="ghost" size="icon" className="text-destructive" onClick={() => removeAudio(q.id)}>
+                                                         <Trash2 className="w-4 h-4"/>
+                                                     </Button>
+                                                 </div>
+                                             )}
+                                            {audioData[q.id]?.status === 'error' && (
+                                                 <p className="text-sm text-destructive">Audio recording failed.</p>
+                                             )}
+                                             <FormDescription className="text-xs">
+                                                 Record audio up to {q.maxDurationSeconds ?? 60} seconds.
+                                             </FormDescription>
+                                              {/* Hidden input managed internally by RHF */}
+                                              <Controller name={fieldName} control={form.control} render={() => null} />
+                                         </div>
+                                    )}
+
+                                </>
+                            </FormControl>
+                            {/* Validation Message */}
+                            <FormMessage className="pl-6" />
+                        </FormItem>
+                     );
+                })}
                 </CardContent>
                 <CardFooter>
                  <Button type="submit" disabled={isSubmitting} className="w-full">
                     {isSubmitting ? (
                         <>
-                         <svg className="animate-spin -ml-1 mr-3 h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                            <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                            <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                          </svg>
-                         Submitting...
+                         <Loader2 className="mr-2 h-4 w-4 animate-spin" /> Submitting...
                         </>
                     ) : (
                         <>
@@ -220,6 +531,42 @@ export function ReportSubmissionForm({ mission, onSubmitAction }) {
                 </CardFooter>
             </form>
         </Form>
+         {/* Global error for permissions if needed */}
+         {/* Example: Display if camera/mic/location is generally denied */}
+         {/* <Alert variant="destructive" className="mt-4">
+            <AlertCircle className="h-4 w-4" />
+            <AlertTitle>Permissions Required</AlertTitle>
+            <AlertDescription>
+                 Please ensure location, microphone, and camera permissions are enabled in your browser settings to use all features.
+            </AlertDescription>
+         </Alert> */}
     </Card>
   );
 }
+
+// Simple TextCursorInput icon if not directly available
+const TextCursorInput = (props) => (
+  <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" {...props}>
+    <path d="M5 4h1a3 3 0 0 1 3 3v10a3 3 0 0 1-3 3H5"/>
+    <path d="M19 4h-1a3 3 0 0 0-3 3v10a3 3 0 0 0 3 3h1"/>
+    <path d="M12 4v16"/>
+  </svg>
+);
+// Simple ListOrdered icon if not directly available
+const ListOrdered = (props) => (
+  <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" {...props}>
+    <line x1="10" x2="21" y1="6" y2="6"/>
+    <line x1="10" x2="21" y1="12" y2="12"/>
+    <line x1="10" x2="21" y1="18" y2="18"/>
+    <path d="M4 6h1v4"/>
+    <path d="M4 10h2"/>
+    <path d="M6 18H4c0-1 2-2 2-3s-1-1.5-2-1"/>
+  </svg>
+);
+// Simple CheckSquare icon if not directly available
+const CheckSquare = (props) => (
+  <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" {...props}>
+    <polyline points="9 11 12 14 22 4"/>
+    <path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/>
+  </svg>
+);

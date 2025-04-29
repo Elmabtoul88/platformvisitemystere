@@ -7,21 +7,43 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group"; // Keep RadioGroup import if needed elsewhere, but not for the item itself here
 import { Checkbox } from "@/components/ui/checkbox";
+import { Badge } from '@/components/ui/badge'; // Import Badge component
 import { useToast } from "@/hooks/use-toast";
-import { ArrowLeft, Save, PlusCircle, Trash2, GripVertical, Loader2, ListOrdered, TextCursorInput, CheckSquare, Star, Circle } from 'lucide-react'; // Added Circle icon
+import {
+    ArrowLeft, Save, PlusCircle, Trash2, GripVertical, Loader2,
+    ListOrdered, TextCursorInput, CheckSquare, Star, Circle, // Basic types
+    Image as ImageIcon, MapPin, Mic // New types
+} from 'lucide-react';
 import { useRouter, useParams } from 'next/navigation';
 import Link from 'next/link';
-import { saveSurvey } from '../../../../../actions/survey-actions.js'; // Import server action using relative path
+import { saveSurvey } from '../../../../../actions/survey-actions.js';
 
-// Question type definitions
+// Question type definitions including new types
 const QUESTION_TYPES = {
-  TEXT: 'text',
-  MULTIPLE_CHOICE: 'multiple_choice',
-  CHECKBOXES: 'checkboxes',
-  RATING: 'rating', // Added rating type
+    TEXT: 'text',
+    MULTIPLE_CHOICE: 'multiple_choice',
+    CHECKBOXES: 'checkboxes',
+    RATING: 'rating',
+    IMAGE_UPLOAD: 'image_upload',
+    GPS_CAPTURE: 'gps_capture',
+    AUDIO_RECORDING: 'audio_recording',
 };
+
+// Function to get icon based on type
+const getIconForType = (type) => {
+    switch(type) {
+        case QUESTION_TYPES.TEXT: return <TextCursorInput className="w-4 h-4 mr-1" />;
+        case QUESTION_TYPES.MULTIPLE_CHOICE: return <ListOrdered className="w-4 h-4 mr-1" />;
+        case QUESTION_TYPES.CHECKBOXES: return <CheckSquare className="w-4 h-4 mr-1" />;
+        case QUESTION_TYPES.RATING: return <Star className="w-4 h-4 mr-1" />;
+        case QUESTION_TYPES.IMAGE_UPLOAD: return <ImageIcon className="w-4 h-4 mr-1" />;
+        case QUESTION_TYPES.GPS_CAPTURE: return <MapPin className="w-4 h-4 mr-1" />;
+        case QUESTION_TYPES.AUDIO_RECORDING: return <Mic className="w-4 h-4 mr-1" />;
+        default: return null;
+    }
+};
+
 
 // Initial empty question structure based on type
 const createNewQuestion = (type, id) => {
@@ -33,6 +55,16 @@ const createNewQuestion = (type, id) => {
          base.maxRating = 5; // Default max rating
          base.minLabel = 'Poor';
          base.maxLabel = 'Excellent';
+    }
+    if (type === QUESTION_TYPES.IMAGE_UPLOAD) {
+        base.maxImages = 5; // Default max images
+        base.allowMultiple = true;
+    }
+    if (type === QUESTION_TYPES.GPS_CAPTURE) {
+        // No specific config needed initially for GPS
+    }
+    if (type === QUESTION_TYPES.AUDIO_RECORDING) {
+        base.maxDurationSeconds = 60; // Default max duration
     }
     return base;
 };
@@ -156,12 +188,12 @@ export default function CreateSurveyPage() {
                 title: "Failed to Save Survey",
                 description: error.message || "An error occurred. Please try again.",
             });
-            setIsSaving(false);
+        } finally {
+             setIsSaving(false); // Ensure this runs even on error
         }
     };
 
      // --- Drag and Drop (Basic - Placeholder for Library Integration) ---
-     // In a real app, use react-beautiful-dnd or similar
      const handleDragStart = (e, index) => {
          e.dataTransfer.setData("questionIndex", index);
      };
@@ -227,7 +259,7 @@ export default function CreateSurveyPage() {
                                     <Label htmlFor={`q-text-${q.id}`}>Question {index + 1}</Label>
                                     <Input
                                         id={`q-text-${q.id}`}
-                                        placeholder="Enter your question"
+                                        placeholder="Enter your question or instructions"
                                         value={q.text}
                                         onChange={(e) => updateQuestion(q.id, 'text', e.target.value)}
                                     />
@@ -235,7 +267,8 @@ export default function CreateSurveyPage() {
 
                                  {/* Question Type Indicator (Readonly) */}
                                  <Badge variant="secondary" className="capitalize">
-                                    {q.type.replace('_', ' ')} Question
+                                    {getIconForType(q.type)}
+                                    {q.type.replace(/_/g, ' ')} Question
                                 </Badge>
 
 
@@ -245,9 +278,8 @@ export default function CreateSurveyPage() {
                                         <Label className="text-sm font-medium">Options</Label>
                                         {q.options.map((opt, optIndex) => (
                                             <div key={opt.id} className="flex items-center gap-2">
-                                                {/* Use Circle icon instead of RadioGroupItem */}
                                                 {q.type === QUESTION_TYPES.MULTIPLE_CHOICE && <Circle className="h-4 w-4 text-muted-foreground opacity-50"/> }
-                                                 {q.type === QUESTION_TYPES.CHECKBOXES && <Checkbox checked={false} disabled className="opacity-50"/>}
+                                                {q.type === QUESTION_TYPES.CHECKBOXES && <Checkbox checked={false} disabled className="opacity-50"/>}
                                                 <Input
                                                     placeholder={`Option ${optIndex + 1}`}
                                                     value={opt.text}
@@ -260,6 +292,7 @@ export default function CreateSurveyPage() {
                                                         size="icon"
                                                         className="h-7 w-7 text-destructive hover:bg-destructive/10"
                                                         onClick={() => removeQuestionOption(q.id, opt.id)}
+                                                        type="button"
                                                      >
                                                         <Trash2 className="h-4 w-4" />
                                                      </Button>
@@ -329,6 +362,63 @@ export default function CreateSurveyPage() {
                                     </div>
                                 )}
 
+                                {/* Settings for Image Upload */}
+                                {q.type === QUESTION_TYPES.IMAGE_UPLOAD && (
+                                    <div className="space-y-3 pl-4 border-l ml-2">
+                                        <Label className="text-sm font-medium">Image Upload Options</Label>
+                                        <div className="flex items-center space-x-2">
+                                            <Checkbox
+                                                id={`q-img-multiple-${q.id}`}
+                                                checked={q.allowMultiple}
+                                                onCheckedChange={(checked) => updateQuestion(q.id, 'allowMultiple', checked)}
+                                            />
+                                            <Label htmlFor={`q-img-multiple-${q.id}`} className="text-xs">Allow Multiple Images</Label>
+                                        </div>
+                                        <div className="grid grid-cols-3 gap-2 items-center">
+                                            <Label htmlFor={`q-img-max-${q.id}`} className="text-xs col-span-1">Max Images:</Label>
+                                            <Input
+                                                id={`q-img-max-${q.id}`}
+                                                type="number"
+                                                min="1"
+                                                max="10" // Sensible upper limit
+                                                value={q.maxImages}
+                                                onChange={(e) => updateQuestion(q.id, 'maxImages', parseInt(e.target.value, 10))}
+                                                className="h-8 text-xs col-span-2"
+                                                disabled={!q.allowMultiple}
+                                            />
+                                        </div>
+                                         <p className="text-xs text-muted-foreground">Shopper will be prompted to upload photos.</p>
+                                    </div>
+                                )}
+
+                                 {/* Settings for GPS Capture */}
+                                {q.type === QUESTION_TYPES.GPS_CAPTURE && (
+                                    <div className="pl-4 border-l ml-2">
+                                         <p className="text-xs text-muted-foreground">Shopper will be prompted to capture their current location.</p>
+                                        {/* Add GPS accuracy settings if needed later */}
+                                    </div>
+                                )}
+
+                                 {/* Settings for Audio Recording */}
+                                {q.type === QUESTION_TYPES.AUDIO_RECORDING && (
+                                    <div className="space-y-3 pl-4 border-l ml-2">
+                                         <Label className="text-sm font-medium">Audio Recording Options</Label>
+                                        <div className="grid grid-cols-3 gap-2 items-center">
+                                            <Label htmlFor={`q-audio-max-${q.id}`} className="text-xs col-span-1">Max Duration (sec):</Label>
+                                            <Input
+                                                id={`q-audio-max-${q.id}`}
+                                                type="number"
+                                                min="5"
+                                                max="300" // 5 minutes max?
+                                                value={q.maxDurationSeconds}
+                                                onChange={(e) => updateQuestion(q.id, 'maxDurationSeconds', parseInt(e.target.value, 10))}
+                                                className="h-8 text-xs col-span-2"
+                                            />
+                                        </div>
+                                         <p className="text-xs text-muted-foreground">Shopper will be able to record audio directly.</p>
+                                    </div>
+                                )}
+
 
                                  {/* Required Toggle */}
                                  <div className="flex items-center justify-end space-x-2 pt-2">
@@ -345,21 +435,31 @@ export default function CreateSurveyPage() {
                 </CardContent>
 
                 <CardFooter className="flex flex-col items-center gap-4 pt-6 border-t">
+                    <p className="text-sm font-medium text-primary">Add New Question</p>
                     <div className="flex flex-wrap justify-center gap-2">
                         <Button type="button" variant="outline" onClick={() => addQuestion(QUESTION_TYPES.TEXT)}>
-                            <TextCursorInput className="w-4 h-4 mr-1" /> Add Text Question
+                            {getIconForType(QUESTION_TYPES.TEXT)} Text
                         </Button>
                         <Button type="button" variant="outline" onClick={() => addQuestion(QUESTION_TYPES.MULTIPLE_CHOICE)}>
-                             <ListOrdered className="w-4 h-4 mr-1" /> Add Multiple Choice
+                             {getIconForType(QUESTION_TYPES.MULTIPLE_CHOICE)} Multiple Choice
                          </Button>
                         <Button type="button" variant="outline" onClick={() => addQuestion(QUESTION_TYPES.CHECKBOXES)}>
-                            <CheckSquare className="w-4 h-4 mr-1" /> Add Checkboxes
+                           {getIconForType(QUESTION_TYPES.CHECKBOXES)} Checkboxes
                         </Button>
                         <Button type="button" variant="outline" onClick={() => addQuestion(QUESTION_TYPES.RATING)}>
-                             <Star className="w-4 h-4 mr-1" /> Add Rating Question
+                             {getIconForType(QUESTION_TYPES.RATING)} Rating
+                         </Button>
+                        <Button type="button" variant="outline" onClick={() => addQuestion(QUESTION_TYPES.IMAGE_UPLOAD)}>
+                           {getIconForType(QUESTION_TYPES.IMAGE_UPLOAD)} Image Upload
+                        </Button>
+                         <Button type="button" variant="outline" onClick={() => addQuestion(QUESTION_TYPES.GPS_CAPTURE)}>
+                            {getIconForType(QUESTION_TYPES.GPS_CAPTURE)} GPS Location
+                         </Button>
+                         <Button type="button" variant="outline" onClick={() => addQuestion(QUESTION_TYPES.AUDIO_RECORDING)}>
+                             {getIconForType(QUESTION_TYPES.AUDIO_RECORDING)} Audio Recording
                          </Button>
                     </div>
-                    <Button onClick={handleSaveSurvey} disabled={isSaving} className="w-full max-w-xs mt-4">
+                    <Button onClick={handleSaveSurvey} disabled={isSaving} className="w-full max-w-xs mt-6">
                         {isSaving ? (
                             <>
                                 <Loader2 className="mr-2 h-4 w-4 animate-spin" /> Saving Survey...
@@ -375,10 +475,3 @@ export default function CreateSurveyPage() {
         </div>
     );
 }
-
-// Dummy Badge component if not available globally
-const Badge = ({ children, ...props }) => (
-    <span className="inline-flex items-center rounded-full border px-2.5 py-0.5 text-xs font-semibold transition-colors focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 border-transparent bg-secondary text-secondary-foreground hover:bg-secondary/80" {...props}>
-        {children}
-    </span>
-);

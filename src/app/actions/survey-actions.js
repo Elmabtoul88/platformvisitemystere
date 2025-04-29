@@ -6,21 +6,22 @@ import { revalidatePath } from 'next/cache';
  * Server Action to save survey questions for a specific mission.
  *
  * @param {string} missionId - The ID of the mission the survey belongs to.
- * @param {Array<object>} questions - An array of question objects.
+ * @param {Array<object>} questions - An array of question objects, potentially including new types.
  * @returns {Promise<{success: boolean, message: string}>} - Result of the save operation.
  */
 export async function saveSurvey(missionId, questions) {
   console.log(`Server Action: Saving survey for mission ${missionId}`);
-  console.log("Survey Questions:", JSON.stringify(questions, null, 2)); // Log the structure
+  // Log the full structure, including new question types and their configs
+  console.log("Survey Questions:", JSON.stringify(questions, null, 2));
 
   // Simulate network delay
   await new Promise(resolve => setTimeout(resolve, 1000));
 
   // --- TODO: Replace simulation with actual backend logic ---
   // 1. Validate missionId.
-  // 2. Validate the questions structure again on the server.
+  // 2. Validate the questions structure again on the server (including new types like image, audio, gps).
   // 3. Save the questions array to the database, associated with the missionId.
-  //    - This might involve creating/updating a 'surveys' collection or adding the questions to the mission document.
+  //    - Ensure database schema supports storing configurations for new types (e.g., maxImages, audioConstraints).
   // 4. Handle potential errors during database operation.
   // ---
 
