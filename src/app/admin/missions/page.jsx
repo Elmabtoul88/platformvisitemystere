@@ -1,7 +1,7 @@
 
 'use client';
 
-import React, { useState, useMemo, startTransition, useEffect } from 'react';
+import React, { useState, useMemo, useTransition, useEffect } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button, buttonVariants } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -69,6 +69,7 @@ export default function AdminMissionsPage() {
     // State for multi-select
     const [selectedUsersForAssignment, setSelectedUsersForAssignment] = useState([]); // Array of user IDs
     const [shopperSearchTerm, setShopperSearchTerm] = useState(''); // State for CommandInput
+    const [isTransitioning, startTransition] = useTransition(); // For optimistic updates
 
     // Fetch initial data
     useEffect(() => {
@@ -185,11 +186,12 @@ export default function AdminMissionsPage() {
         setAssignDialogOpen(true);
     };
 
-     // Handle user selection toggle (called by CommandItem onSelect or Checkbox onCheckedChange)
+     // Handle user selection toggle (called by Checkbox onCheckedChange)
      const handleUserSelectionChange = (userId) => {
          console.log("Toggling selection for user:", userId); // Keep this log
          setSelectedUsersForAssignment(prevSelected => {
-             const newSelected = prevSelected.includes(userId)
+             const isSelected = prevSelected.includes(userId);
+             const newSelected = isSelected
                  ? prevSelected.filter(id => id !== userId) // Remove if already selected
                  : [...prevSelected, userId]; // Add if not selected
              console.log("New selection state:", newSelected); // Log the updated state
@@ -472,23 +474,25 @@ export default function AdminMissionsPage() {
                                     <CommandItem
                                         key={shopper.value}
                                         value={`${shopper.label} ${shopper.email}`} // Combine fields for better searching
-                                        onSelect={() => {
-                                            // Prevent default CMDK selection behavior if needed
-                                            // This might not be necessary if Checkbox handler works
-                                            console.log(`CommandItem selected: ${shopper.label}`);
+                                        onSelect={(currentValue) => {
+                                             // This prevents CMDK's default value setting on select
+                                             // We handle selection via the checkbox click instead
+                                             console.log(`CommandItem selected via text: ${shopper.label}`);
+                                             // Optionally toggle selection here as well, but checkbox is primary
+                                             // handleUserSelectionChange(shopper.value);
+                                             setShopperSearchTerm(""); // Clear search on select
                                         }}
                                         className="flex items-center gap-2 cursor-pointer aria-selected:bg-accent/50"
-                                        // Removed disabled attribute from CommandItem, let Checkbox handle it
+                                        // IMPORTANT: Do NOT disable CommandItem. Checkbox handles interaction.
                                     >
-                                        {/* Checkbox is interactive */}
+                                        {/* Checkbox is interactive and NOT disabled */}
                                         <Checkbox
                                             id={`user-${shopper.value}`} // Add unique ID for label association
                                             checked={selectedUsersForAssignment.includes(shopper.value)}
-                                            // Use onCheckedChange for direct interaction with the checkbox
                                             onCheckedChange={() => handleUserSelectionChange(shopper.value)}
                                             aria-label={`Select ${shopper.label}`} // Accessibility
-                                            // Ensure checkbox is not disabled visually unless intended
-                                            // disabled={isProcessing === selectedMissionForAssignment?.id} // Optional: disable during processing
+                                            // Ensure checkbox is not disabled visually
+                                            disabled={isProcessing === selectedMissionForAssignment?.id} // Only disable during final assignment processing
                                          />
                                         {/* Make Label clickable and associate it with the checkbox */}
                                         <Label htmlFor={`user-${shopper.value}`} className="flex flex-col text-sm flex-grow cursor-pointer">
