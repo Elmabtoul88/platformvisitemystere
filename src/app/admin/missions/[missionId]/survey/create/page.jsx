@@ -7,10 +7,10 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
+import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group"; // Keep RadioGroup import if needed elsewhere, but not for the item itself here
 import { Checkbox } from "@/components/ui/checkbox";
 import { useToast } from "@/hooks/use-toast";
-import { ArrowLeft, Save, PlusCircle, Trash2, GripVertical, Loader2, ListOrdered, TextCursorInput, CheckSquare, Star } from 'lucide-react';
+import { ArrowLeft, Save, PlusCircle, Trash2, GripVertical, Loader2, ListOrdered, TextCursorInput, CheckSquare, Star, Circle } from 'lucide-react'; // Added Circle icon
 import { useRouter, useParams } from 'next/navigation';
 import Link from 'next/link';
 import { saveSurvey } from '../../../../../actions/survey-actions.js'; // Import server action using relative path
@@ -245,7 +245,8 @@ export default function CreateSurveyPage() {
                                         <Label className="text-sm font-medium">Options</Label>
                                         {q.options.map((opt, optIndex) => (
                                             <div key={opt.id} className="flex items-center gap-2">
-                                                {q.type === QUESTION_TYPES.MULTIPLE_CHOICE && <RadioGroupItem value="disabled" disabled className="opacity-50"/> }
+                                                {/* Use Circle icon instead of RadioGroupItem */}
+                                                {q.type === QUESTION_TYPES.MULTIPLE_CHOICE && <Circle className="h-4 w-4 text-muted-foreground opacity-50"/> }
                                                  {q.type === QUESTION_TYPES.CHECKBOXES && <Checkbox checked={false} disabled className="opacity-50"/>}
                                                 <Input
                                                     placeholder={`Option ${optIndex + 1}`}
@@ -283,6 +284,7 @@ export default function CreateSurveyPage() {
                                                     variant={num <= q.maxRating ? 'default' : 'outline'}
                                                     size="icon"
                                                     className={`h-7 w-7 opacity-50 ${num <= q.maxRating ? 'bg-accent text-accent-foreground border-accent' : ''}`}
+                                                    disabled // Make visual only
                                                  >
                                                      <Star className="w-4 h-4"/>
                                                  </Button>
@@ -293,9 +295,8 @@ export default function CreateSurveyPage() {
                                              <Select
                                                 value={String(q.maxRating)}
                                                 onValueChange={(val) => updateQuestion(q.id, 'maxRating', parseInt(val, 10))}
-                                                className="col-span-2"
                                              >
-                                                <SelectTrigger id={`q-rating-max-${q.id}`} className="h-8 text-xs">
+                                                <SelectTrigger id={`q-rating-max-${q.id}`} className="h-8 text-xs col-span-2">
                                                     <SelectValue />
                                                 </SelectTrigger>
                                                 <SelectContent>
