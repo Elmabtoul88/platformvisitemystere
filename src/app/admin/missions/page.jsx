@@ -261,24 +261,17 @@ export default function AdminMissionsPage() {
 
                                     return (
                                         <TableRow key={mission.id} className={isCurrentProcessing ? 'opacity-50 pointer-events-none' : ''}>
-                                            <TableCell className="font-medium">{mission.title}</TableCell>
-                                            <TableCell>{mission.businessName || 'N/A'}</TableCell>
-                                            <TableCell>{mission.location}</TableCell>
-                                            <TableCell>{format(new Date(mission.deadline), 'PP')}</TableCell>
-                                            <TableCell>${mission.reward}</TableCell>
-                                            <TableCell>
+                                            <TableCell className="font-medium">{mission.title}</TableCell><TableCell>{mission.businessName || 'N/A'}</TableCell><TableCell>{mission.location}</TableCell><TableCell>{format(new Date(mission.deadline), 'PP')}</TableCell><TableCell>${mission.reward}</TableCell><TableCell>
                                                 <Badge variant={getStatusVariant(mission.status)} className="capitalize">
                                                      {getStatusText(mission.status)}
                                                 </Badge>
-                                            </TableCell>
-                                            {/* Display Assigned User */}
+                                            </TableCell>{/* Display Assigned User */}
                                             <TableCell className="text-xs">
                                                 {mission.status === 'assigned' || mission.status === 'submitted' || mission.status === 'approved' || mission.status === 'refused'
                                                     ? assignedUserName
                                                     : <span className="text-muted-foreground">Not Assigned</span>
                                                 }
-                                            </TableCell>
-                                            <TableCell className="text-right">
+                                            </TableCell><TableCell className="text-right">
                                                 {/* Removed AlertDialog wrapper, will use state */}
                                                 <DropdownMenu>
                                                     <DropdownMenuTrigger asChild>
