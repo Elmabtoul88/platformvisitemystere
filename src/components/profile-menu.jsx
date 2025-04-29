@@ -21,7 +21,8 @@ export function ProfileMenu() {
   const { toast } = useToast();
   const router = useRouter();
   const { setIsAuthenticated } = useAuth(); // Get setIsAuthenticated from context
-  const [notificationCount, setNotificationCount] = useState(3); // Simulate notification count
+  // Simulate notification count - set initial value here
+  const [notificationCount, setNotificationCount] = useState(3);
 
   const handleLogout = () => {
     // Simulate logout action
@@ -34,6 +35,12 @@ export function ProfileMenu() {
     // In a real app, you would clear auth tokens, etc.
     // Redirect handled by the global layout effect now, but can keep explicit push
      router.push('/login');
+  };
+
+  const handleChatClick = () => {
+    // Reset notification count when chat is opened
+    setNotificationCount(0);
+    // Navigate to chat page (handled by Link component)
   };
 
   return (
@@ -49,7 +56,7 @@ export function ProfileMenu() {
            {notificationCount > 0 && (
             <Badge
               variant="destructive" // Use destructive variant for red background
-              className="absolute -top-1 -right-1 h-4 min-w-[1rem] px-1 flex items-center justify-center rounded-full text-[10px]"
+              className="absolute -top-1 -right-1 h-4 min-w-[1rem] px-1 flex items-center justify-center rounded-full text-[10px] pointer-events-none" // Added pointer-events-none
             >
               {notificationCount}
             </Badge>
@@ -59,8 +66,8 @@ export function ProfileMenu() {
       <DropdownMenuContent align="end">
         <DropdownMenuLabel>My Account</DropdownMenuLabel>
         <DropdownMenuSeparator />
-         {/* Chat Item */}
-        <DropdownMenuItem asChild>
+         {/* Chat Item - Updated with onClick */}
+        <DropdownMenuItem asChild onClick={handleChatClick}>
           <Link href="/chat" className="flex items-center cursor-pointer">
             <MessageSquare className="mr-2 h-4 w-4" />
             <span>Chat</span>
