@@ -109,20 +109,20 @@ export default function AdminUsersPage() {
     const handleViewUser = (userId) => {
         console.log(`Admin: View user ${userId}`);
         // Placeholder: Navigate to a user detail page (not implemented)
-        toast({
-            title: "View User",
-            description: `Navigation to user detail page for ${userId} is not implemented yet.`
-        });
+        // toast({
+        //     title: "View User",
+        //     description: `Navigation to user detail page for ${userId} is not implemented yet.`
+        // });
         // router.push(`/admin/users/${userId}`); // Future implementation
     };
 
      const handleEditUser = (userId) => {
         console.log(`Admin: Edit user ${userId}`);
         // Placeholder: Navigate to a user edit page (not implemented)
-        toast({
-            title: "Edit User",
-            description: `Navigation to user edit page for ${userId} is not implemented yet.`
-        });
+        // toast({
+        //     title: "Edit User",
+        //     description: `Navigation to user edit page for ${userId} is not implemented yet.`
+        // });
         // router.push(`/admin/users/edit/${userId}`); // Future implementation
     };
 
