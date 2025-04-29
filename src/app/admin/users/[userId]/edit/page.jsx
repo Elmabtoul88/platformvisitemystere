@@ -11,7 +11,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Textarea } from '@/components/ui/textarea';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Loader2, ArrowLeft, Save, User, Mail, MapPin, Briefcase, CheckCircle, Clock, Cake, Users as UsersIcon } from 'lucide-react'; // Renamed Users to UsersIcon
-import { mockUsers } from '../users-mock.js'; // Corrected import path to relative and added extension
+import { mockUsers } from '../../users-mock.js'; // Corrected import path to relative and added extension
 import { useToast } from '@/hooks/use-toast';
 import { updateUserAction } from '../../../../actions/admin-actions.js'; // Corrected import path again
 
