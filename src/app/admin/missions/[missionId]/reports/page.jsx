@@ -1,3 +1,4 @@
+
 'use client';
 
 import React, { useState, useEffect, useTransition } from 'react';
@@ -7,17 +8,19 @@ import { Button, buttonVariants } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
-import { mockMissions, mockReports, mockSurveyQuestions, mockUser } from '@/lib/mock-data'; // Use mock data for now
+import { mockMissions, mockReports, mockSurveyQuestions } from '@/lib/mock-data'; // Use mock data for now
+import { mockUsers } from '../../users/users-mock.js'; // Import mock users
 import { format } from 'date-fns';
 import Link from 'next/link';
 import Image from 'next/image';
 import { useToast } from '@/hooks/use-toast';
-import { approveReportAction, refuseReportAction } from '../../../../actions/admin-actions.js'; // Corrected import path
+import { approveReportAction, refuseReportAction } from '../../actions/admin-actions.js'; // Corrected import path
 import {
     ArrowLeft, CheckCircle, XCircle, Loader2, FileWarning, User, Calendar, Star,
     MessageSquare, Image as ImageIcon, Mic, MapPin, ListOrdered, CheckSquare as CheckSquareIcon, TextCursorInput
 } from 'lucide-react';
 import { Textarea } from '@/components/ui/textarea'; // Import Textarea for refusal reason
+import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'; // Import Avatar
 
 
 // Helper to get the correct icon based on question type
@@ -38,19 +41,21 @@ const getIconForType = (type) => {
 const formatAnswerValue = (answer, question) => {
     if (!answer || answer.value === null || answer.value === undefined) return <span className="text-muted-foreground italic">Not answered</span>;
 
-    switch(answer.type) {
+    switch(answer.type || question.type) { // Check answer type first, fallback to question type
         case 'text':
             return <p className="whitespace-pre-wrap">{answer.value}</p>;
         case 'rating':
-            return (
+            const ratingValue = Number(answer.value); // Ensure value is a number
+             const maxRating = question.maxRating || 5;
+            return isNaN(ratingValue) ? <span className="text-muted-foreground italic">Invalid rating</span> : (
                 <div className="flex items-center gap-1">
-                    {Array.from({ length: question.maxRating || 5 }).map((_, i) => (
+                    {Array.from({ length: maxRating }).map((_, i) => (
                         <Star
                             key={i}
-                            className={`w-4 h-4 ${i < answer.value ? 'text-accent fill-accent' : 'text-muted-foreground/30'}`}
+                            className={`w-4 h-4 ${i < ratingValue ? 'text-accent fill-accent' : 'text-muted-foreground/30'}`}
                          />
                     ))}
-                     <span className="text-sm font-medium ml-1">({answer.value}/{question.maxRating || 5})</span>
+                     <span className="text-sm font-medium ml-1">({ratingValue}/{maxRating})</span>
                 </div>
             );
         case 'multiple_choice':
@@ -59,7 +64,7 @@ const formatAnswerValue = (answer, question) => {
             // Value is an object like { optionId: true/false }
             const selectedOptions = Object.entries(answer.value || {})
                 .filter(([_, isSelected]) => isSelected)
-                .map(([optionId]) => question.options.find(opt => String(opt.id) === optionId)?.text)
+                .map(([optionId]) => question.options?.find(opt => String(opt.id) === optionId)?.text) // Use optional chaining for safety
                 .filter(Boolean); // Filter out undefined if an option is missing
             return selectedOptions.length > 0 ? (
                 <ul className="list-disc list-inside">
@@ -109,6 +114,11 @@ const formatAnswerValue = (answer, question) => {
         default:
             return <span>{String(answer.value)}</span>;
     }
+};
+
+// Helper to get user details from mock data
+const getUserById = (userId) => {
+    return mockUsers.find(u => u.id === userId);
 };
 
 
@@ -172,11 +182,26 @@ export default function AdminReviewReportsPage() {
                      const reportIndex = mockReports.findIndex(r => r.id === reportId);
                      if (reportIndex !== -1) mockReports[reportIndex].status = 'approved';
 
-                     // Also update the corresponding mission status if needed (e.g., if all reports approved)
-                     // This logic depends on requirements - assuming one report per mission for now
+                      // Check if all reports for this mission are now approved/refused
+                      const updatedReportsForMission = mockReports.filter(r => r.missionId === missionId);
+                      const allReportsProcessed = updatedReportsForMission.every(r => r.status === 'approved' || r.status === 'refused');
+                      const anyReportApproved = updatedReportsForMission.some(r => r.status === 'approved');
+
+                      // Update the corresponding mission status
                      const missionIndex = mockMissions.findIndex(m => m.id === missionId);
-                     if (missionIndex !== -1) mockMissions[missionIndex].status = 'approved';
-                     setMission(prev => prev ? { ...prev, status: 'approved' } : null);
+                      if (missionIndex !== -1) {
+                           // Logic: If ANY report is approved, mark mission as approved.
+                           // Adjust this if requirements are different (e.g., ALL must be approved)
+                           if (anyReportApproved) {
+                               mockMissions[missionIndex].status = 'approved';
+                               setMission(prev => prev ? { ...prev, status: 'approved' } : null);
+                           } else if (allReportsProcessed && !anyReportApproved) {
+                                // If all are processed but none approved (i.e., all refused)
+                                mockMissions[missionIndex].status = 'refused';
+                                setMission(prev => prev ? { ...prev, status: 'refused' } : null);
+                            }
+                            // Otherwise, mission status remains 'submitted' or 'assigned'
+                       }
                 });
 
             } else {
@@ -212,10 +237,26 @@ export default function AdminReviewReportsPage() {
                         mockReports[reportIndex].status = 'refused';
                         mockReports[reportIndex].refusalReason = refusalReason;
                       }
-                       // Also update mission status
+
+                       // Check if all reports for this mission are now processed
+                       const updatedReportsForMission = mockReports.filter(r => r.missionId === missionId);
+                       const allReportsProcessed = updatedReportsForMission.every(r => r.status === 'approved' || r.status === 'refused');
+                       const anyReportApproved = updatedReportsForMission.some(r => r.status === 'approved');
+
+                       // Update mission status
                        const missionIndex = mockMissions.findIndex(m => m.id === missionId);
-                       if (missionIndex !== -1) mockMissions[missionIndex].status = 'refused';
-                       setMission(prev => prev ? { ...prev, status: 'refused' } : null);
+                       if (missionIndex !== -1) {
+                           if (allReportsProcessed && !anyReportApproved) {
+                                // If all processed and none approved, set mission to refused
+                                mockMissions[missionIndex].status = 'refused';
+                                setMission(prev => prev ? { ...prev, status: 'refused' } : null);
+                           } else if (anyReportApproved) {
+                               // If at least one is approved, mission status should be approved
+                               mockMissions[missionIndex].status = 'approved';
+                               setMission(prev => prev ? { ...prev, status: 'approved' } : null);
+                           }
+                            // Otherwise, remains 'submitted' or 'assigned'
+                       }
                  });
                  setReportToRefuse(null); // Close the dialog
                  setRefusalReason(''); // Clear reason
@@ -254,6 +295,11 @@ export default function AdminReviewReportsPage() {
         );
     }
 
+    // Determine overall mission status based on its own status field first
+    const missionStatusVariant = getStatusVariant(mission.status);
+    const missionStatusBg = mission.status === 'approved' ? 'bg-green-100 text-green-800 border-green-300' : mission.status === 'refused' ? 'bg-red-100 text-red-800 border-red-300' : '';
+
+
     return (
         <div className="container mx-auto py-8 px-4">
             <Button asChild variant="outline" size="sm" className="mb-4">
@@ -263,11 +309,24 @@ export default function AdminReviewReportsPage() {
             </Button>
 
             <Card className="mb-6 shadow-sm">
-                <CardHeader>
-                     <CardTitle className="text-xl font-semibold text-primary">Review Reports: {mission.title}</CardTitle>
-                     <CardDescription>Mission ID: {mission.id} | Status: <Badge variant={mission.status === 'approved' ? 'default' : mission.status === 'submitted' ? 'destructive' : 'outline'} className={`capitalize ${mission.status === 'approved' ? 'bg-green-100 text-green-800' : ''} ${mission.status === 'refused' ? 'bg-red-100 text-red-800' : ''}`}>{mission.status}</Badge></CardDescription>
-                </CardHeader>
+                 <CardHeader className="border-b pb-4">
+                     <div className="flex flex-col sm:flex-row justify-between sm:items-center gap-2">
+                         <div>
+                            <CardTitle className="text-xl font-semibold text-primary">Review Reports: {mission.title}</CardTitle>
+                             <CardDescription>Mission ID: {mission.id}</CardDescription>
+                         </div>
+                         {/* Display overall mission status */}
+                         <Badge variant={missionStatusVariant} className={`capitalize text-sm px-3 py-1 w-fit ${missionStatusBg}`}>
+                             Mission Status: {mission.status}
+                         </Badge>
+                     </div>
+                 </CardHeader>
                 {/* Optional: Add more mission details if needed */}
+                 <CardContent className="pt-4 text-sm">
+                     <p><strong className="font-medium text-muted-foreground">Business:</strong> {mission.businessName}</p>
+                     <p><strong className="font-medium text-muted-foreground">Deadline:</strong> {format(new Date(mission.deadline), 'PPP')}</p>
+                     <p><strong className="font-medium text-muted-foreground">Reward:</strong> ${mission.reward}</p>
+                 </CardContent>
             </Card>
 
             {reports.length === 0 ? (
@@ -279,28 +338,37 @@ export default function AdminReviewReportsPage() {
             ) : (
                  <div className="space-y-6">
                     {reports.map((report) => {
-                         // Find user details (replace with actual user fetch later)
-                         // For now, assume mockUser is the only user submitting reports
-                         const shopper = mockUser.id === report.userId ? mockUser : { name: `User ${report.userId}`, email: 'unknown@example.com' };
+                         // Find user details using the helper function
+                         const shopper = getUserById(report.userId);
+                         const shopperName = shopper ? shopper.name : `User ${report.userId}`;
+                         const shopperAvatarUrl = shopper?.profilePicUrl;
+                         const shopperAvatarFallback = shopperName?.charAt(0)?.toUpperCase() || 'U';
                          const isProcessing = processingReportId === report.id;
-                         const reportStatusVariant = report.status === 'approved' ? 'default' : report.status === 'refused' ? 'destructive' : 'outline';
-                          const reportStatusBg = report.status === 'approved' ? 'bg-green-100 text-green-800 border-green-300' : report.status === 'refused' ? 'bg-red-100 text-red-800 border-red-300' : '';
+                          // Determine report-specific status badge styles
+                         const reportStatusVariant = report.status === 'approved' ? 'default' : report.status === 'refused' ? 'destructive' : report.status === 'submitted' ? 'outline' : 'secondary';
+                         const reportStatusBg = report.status === 'approved' ? 'bg-green-100 text-green-800 border-green-300' : report.status === 'refused' ? 'bg-red-100 text-red-800 border-red-300' : report.status === 'submitted' ? 'bg-yellow-100 text-yellow-800 border-yellow-300' : '';
 
 
                          return (
-                            <Card key={report.id} className={`shadow-md transition-opacity ${isProcessing ? 'opacity-70' : ''}`}>
+                            <Card key={report.id} className={`shadow-md transition-opacity ${isProcessing ? 'opacity-70' : ''} overflow-hidden`}>
                                 <CardHeader className="bg-secondary/30 border-b p-4">
-                                    <div className="flex flex-col sm:flex-row justify-between sm:items-center gap-2">
-                                        <div>
-                                             <CardTitle className="text-lg font-medium flex items-center gap-2">
-                                                <User className="w-4 h-4 text-primary" /> Report from {shopper.name}
-                                            </CardTitle>
-                                             <CardDescription className="text-xs mt-1 flex flex-wrap items-center gap-x-3 gap-y-1">
-                                                <span>User ID: {report.userId}</span>
-                                                <span className="flex items-center gap-1"><Calendar className="w-3 h-3"/> Submitted: {format(new Date(report.submittedAt), 'PPp')}</span>
-                                             </CardDescription>
+                                    <div className="flex flex-col sm:flex-row justify-between sm:items-start gap-3">
+                                         <div className="flex items-center gap-3">
+                                             <Avatar className="h-10 w-10 border">
+                                                <AvatarImage src={shopperAvatarUrl} alt={shopperName} />
+                                                <AvatarFallback>{shopperAvatarFallback}</AvatarFallback>
+                                             </Avatar>
+                                             <div>
+                                                <CardTitle className="text-lg font-medium flex items-center gap-2">
+                                                     Report from {shopperName}
+                                                </CardTitle>
+                                                 <CardDescription className="text-xs mt-1 flex flex-wrap items-center gap-x-3 gap-y-1">
+                                                     <span>User ID: {report.userId}</span>
+                                                    <span className="flex items-center gap-1"><Calendar className="w-3 h-3"/> Submitted: {format(new Date(report.submittedAt), 'PPp')}</span>
+                                                 </CardDescription>
+                                             </div>
                                         </div>
-                                         <Badge variant={reportStatusVariant} className={`capitalize text-sm px-3 py-1 w-fit ${reportStatusBg}`}>
+                                         <Badge variant={reportStatusVariant} className={`capitalize text-sm px-3 py-1 w-fit mt-2 sm:mt-0 ${reportStatusBg}`}>
                                             {report.status}
                                         </Badge>
                                     </div>
@@ -358,7 +426,7 @@ export default function AdminReviewReportsPage() {
                                                 </AlertDialogTrigger>
                                                 <AlertDialogContent>
                                                     <AlertDialogHeader>
-                                                        <AlertDialogTitle>Refuse Report from {shopper.name}?</AlertDialogTitle>
+                                                        <AlertDialogTitle>Refuse Report from {shopperName}?</AlertDialogTitle>
                                                         <AlertDialogDescription>
                                                              Please provide a clear reason for refusing this report. This reason will be shared with the shopper.
                                                         </AlertDialogDescription>
@@ -404,7 +472,7 @@ export default function AdminReviewReportsPage() {
                                     )}
                                      {report.status === 'refused' && (
                                          <span className="text-sm text-destructive font-medium flex items-center gap-1">
-                                            <XCircle className="w-4 h-4" /> Refused
+                                            <XCircle className="w-4 h-4" /> Report Refused
                                         </span>
                                     )}
                                 </CardFooter>
@@ -416,3 +484,12 @@ export default function AdminReviewReportsPage() {
         </div>
     );
 }
+
+// Add missing icons if needed (ensure these don't cause conflicts if already defined)
+const TextCursorInput = (props) => (
+  <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" {...props}>
+    <path d="M5 4h1a3 3 0 0 1 3 3v10a3 3 0 0 1-3 3H5"/>
+    <path d="M19 4h-1a3 3 0 0 0-3 3v10a3 3 0 0 0 3 3h1"/>
+    <path d="M12 4v16"/>
+  </svg>
+);

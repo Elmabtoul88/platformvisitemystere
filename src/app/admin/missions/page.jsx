@@ -29,16 +29,24 @@ import {
 } from "@/components/ui/command";
 import { Checkbox } from "@/components/ui/checkbox";
 import { ScrollArea } from "@/components/ui/scroll-area";
+import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'; // Import Avatar
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from "@/components/ui/tooltip"; // Import Tooltip components
+
 
 // Helper function for status badge variant
 const getStatusVariant = (status) => {
     switch (status) {
       case 'available': return 'secondary';
       case 'assigned': return 'default';
-      case 'submitted': return 'destructive';
-      case 'approved': return 'default';
+      case 'submitted': return 'destructive'; // Highlight pending review
+      case 'approved': return 'default'; // Use default for completed/approved
       case 'refused': return 'outline';
-      case 'completed': return 'default';
+      case 'completed': return 'default'; // Treat completed same as approved visually here
       default: return 'secondary';
     }
 };
@@ -47,13 +55,24 @@ const getStatusText = (status) => {
     switch (status) {
       case 'available': return 'Available';
       case 'assigned': return 'Assigned';
-      case 'submitted': return 'Reports Pending';
-      case 'approved': return 'Completed';
-      case 'refused': return 'Reports Refused';
-      case 'completed': return 'Completed';
+      case 'submitted': return 'Review Pending'; // Changed text for clarity
+      case 'approved': return 'Approved';
+      case 'refused': return 'Refused';
+      case 'completed': return 'Approved'; // Display completed as Approved
       default: return status.charAt(0).toUpperCase() + status.slice(1); // Capitalize
     }
   };
+
+// Helper to count submitted reports for a specific mission
+const countSubmittedReports = (missionId, reportsData) => {
+    return reportsData.filter(r => r.missionId === missionId && r.status === 'submitted').length;
+};
+
+// Helper to get user details from mock data
+const getUserById = (userId) => {
+    return mockUsers.find(u => u.id === userId);
+};
+
 
 export default function AdminMissionsPage() {
     const router = useRouter();
@@ -90,6 +109,7 @@ export default function AdminMissionsPage() {
                         email: u.email, // For searching
                         city: u.city || 'N/A', // For display
                         completedMissions: u.completedMissions ?? 0, // For display
+                        profilePicUrl: u.profilePicUrl, // Include profile picture URL
                      }));
                 setShoppers(activeShoppers);
                 console.log("Active Shoppers for Assignment:", activeShoppers); // Debug log
@@ -117,17 +137,6 @@ export default function AdminMissionsPage() {
             shopper.email.toLowerCase().includes(shopperSearchTerm.toLowerCase())
         );
     }, [shoppers, shopperSearchTerm]); // Depends only on shoppers and search term
-
-
-    const pendingReportsCount = useMemo(() => {
-        const counts = {};
-        reports.forEach(report => {
-            if (report.status === 'submitted') {
-                counts[report.missionId] = (counts[report.missionId] || 0) + 1;
-            }
-        });
-        return counts;
-    }, [reports]);
 
 
     const handleCreateMission = () => {
@@ -169,6 +178,7 @@ export default function AdminMissionsPage() {
     };
 
      const handleReviewReports = (missionId) => {
+         // Navigate to the page that lists all reports for this mission
         router.push(`/admin/missions/${missionId}/reports`);
     };
 
@@ -335,14 +345,15 @@ export default function AdminMissionsPage() {
                             </TableRow>
                         </TableHeader>
                         <TableBody>
+                             {/* Wrap TableBody content with TooltipProvider */}
+                            <TooltipProvider>
                             {filteredMissions.length > 0 ? (
                                 filteredMissions.map((mission) => {
-                                    const pendingCount = pendingReportsCount[mission.id] || 0;
+                                    const submittedCount = countSubmittedReports(mission.id, reports);
                                     // Handle assignedTo being potentially an array or single ID
                                     const assignedUserIds = Array.isArray(mission.assignedTo) ? mission.assignedTo : (mission.assignedTo ? [mission.assignedTo] : []);
-                                     // Use the pre-formatted shoppers state to find names
-                                    const assignedShoppers = assignedUserIds.map(id => shoppers.find(u => u.value === id)).filter(Boolean);
-                                    const assignedNames = assignedShoppers.map(s => s.label).join(', ');
+                                     // Get details for assigned shoppers
+                                    const assignedShoppers = assignedUserIds.map(id => getUserById(id)).filter(Boolean);
                                     const isCurrentProcessing = isProcessing === mission.id; // Used for delete/row disabling
 
                                     return (
@@ -353,21 +364,50 @@ export default function AdminMissionsPage() {
                                             <TableCell>{format(new Date(mission.deadline), 'PP')}</TableCell>
                                             <TableCell>${mission.reward}</TableCell>
                                             <TableCell>
-                                                <Badge variant={getStatusVariant(mission.status)} className="capitalize">
-                                                     {getStatusText(mission.status)}
-                                                </Badge>
+                                                 {/* Display status badge */}
+                                                 <Badge variant={getStatusVariant(mission.status)} className="capitalize">
+                                                    {getStatusText(mission.status)}
+                                                 </Badge>
+                                                 {/* Show pending count badge if reports are submitted */}
+                                                 {mission.status === 'submitted' && submittedCount > 0 && (
+                                                    <Badge variant="destructive" className="ml-2 text-xs">
+                                                         {submittedCount} Pending
+                                                     </Badge>
+                                                 )}
                                             </TableCell>
-                                            <TableCell className="text-xs max-w-[150px] truncate" title={assignedNames}>
-                                                 {/* Display assigned users */}
-                                                {assignedShoppers.length > 0
-                                                    ? (
-                                                        <span className="flex items-center gap-1">
-                                                            <UsersIcon className="w-3 h-3 text-muted-foreground"/>
-                                                             {assignedShoppers.length === 1 ? assignedNames : `${assignedShoppers.length} Shoppers`}
-                                                        </span>
-                                                    )
-                                                    : <span className="text-muted-foreground">Not Assigned</span>
-                                                }
+                                            <TableCell className="text-xs max-w-[150px]">
+                                                 {/* Display assigned users with avatars and tooltip */}
+                                                {assignedShoppers.length > 0 ? (
+                                                    <div className="flex items-center -space-x-2">
+                                                         {assignedShoppers.slice(0, 3).map((shopper) => (
+                                                            <Tooltip key={shopper.id}>
+                                                                <TooltipTrigger asChild>
+                                                                     <Avatar className="h-6 w-6 border-2 border-background hover:z-10">
+                                                                        <AvatarImage src={shopper.profilePicUrl} alt={shopper.name} />
+                                                                        <AvatarFallback>{shopper.name?.charAt(0)?.toUpperCase() || 'U'}</AvatarFallback>
+                                                                     </Avatar>
+                                                                </TooltipTrigger>
+                                                                 <TooltipContent>
+                                                                    <p>{shopper.name}</p>
+                                                                </TooltipContent>
+                                                            </Tooltip>
+                                                        ))}
+                                                         {assignedShoppers.length > 3 && (
+                                                            <Tooltip>
+                                                                 <TooltipTrigger asChild>
+                                                                    <Avatar className="h-6 w-6 border-2 border-background bg-muted text-muted-foreground flex items-center justify-center hover:z-10">
+                                                                        <span>+{assignedShoppers.length - 3}</span>
+                                                                    </Avatar>
+                                                                </TooltipTrigger>
+                                                                 <TooltipContent>
+                                                                     <p>{assignedShoppers.slice(3).map(s => s.name).join(', ')}</p>
+                                                                 </TooltipContent>
+                                                            </Tooltip>
+                                                         )}
+                                                    </div>
+                                                ) : (
+                                                    <span className="text-muted-foreground italic">Not Assigned</span>
+                                                )}
                                             </TableCell>
                                             <TableCell className="text-right">
                                                 <DropdownMenu>
@@ -385,14 +425,17 @@ export default function AdminMissionsPage() {
                                                                 <UserPlus className="mr-2 h-4 w-4" /> Assign/Reassign
                                                             </DropdownMenuItem>
                                                         )}
-                                                        {(mission.status === 'submitted' || mission.status === 'approved' || mission.status === 'refused') && (
+                                                         {/* Show 'Review Reports' if status is submitted */}
+                                                         {(mission.status === 'submitted' || mission.status === 'approved' || mission.status === 'refused') && (
                                                             <DropdownMenuItem onClick={() => handleReviewReports(mission.id)} disabled={isCurrentProcessing}>
-                                                                <FileCheck className="mr-2 h-4 w-4" /> Review Reports
-                                                                {pendingCount > 0 && <Badge variant="destructive" className="ml-auto text-xs">{pendingCount} New</Badge>}
+                                                                 <FileCheck className="mr-2 h-4 w-4" /> Review Reports
+                                                                 {submittedCount > 0 && mission.status === 'submitted' && (
+                                                                     <Badge variant="destructive" className="ml-auto text-[10px] px-1 h-4">{submittedCount}</Badge>
+                                                                 )}
                                                             </DropdownMenuItem>
-                                                            )}
+                                                         )}
                                                         <DropdownMenuItem onClick={() => handleEditMission(mission.id)} disabled={isCurrentProcessing}>
-                                                            <Edit className="mr-2 h-4 w-4" /> Edit Mission
+                                                            <Edit className="mr-2 h-4 w-4" /> Edit Mission Details
                                                         </DropdownMenuItem>
                                                         <DropdownMenuItem onClick={() => handleEditSurvey(mission.id)} disabled={isCurrentProcessing}>
                                                             <FileText className="mr-2 h-4 w-4" /> Edit Survey
@@ -403,8 +446,9 @@ export default function AdminMissionsPage() {
                                                                 <DropdownMenuItem
                                                                     className="text-destructive focus:text-destructive focus:bg-destructive/10"
                                                                     onSelect={(e) => e.preventDefault()} // Prevent dropdown closing on trigger click
-                                                                    disabled={isCurrentProcessing || mission.status === 'assigned' || mission.status === 'submitted'}
-                                                                    title={mission.status === 'assigned' || mission.status === 'submitted' ? "Cannot delete assigned/submitted missions" : ""}
+                                                                     // Allow deletion only if 'available' or perhaps 'refused'/'approved' (depending on rules)
+                                                                    disabled={isCurrentProcessing || ['assigned', 'submitted'].includes(mission.status)}
+                                                                    title={['assigned', 'submitted'].includes(mission.status) ? "Cannot delete while assigned or reports pending" : ""}
                                                                 >
                                                                     <Trash2 className="mr-2 h-4 w-4" /> Delete Mission
                                                                 </DropdownMenuItem>
@@ -443,6 +487,7 @@ export default function AdminMissionsPage() {
                                     </TableCell>
                                 </TableRow>
                             )}
+                            </TooltipProvider> {/* Close TooltipProvider */}
                         </TableBody>
                     </Table>
                 </CardContent>
@@ -481,10 +526,12 @@ export default function AdminMissionsPage() {
                                              console.log(`CommandItem selected via text: ${shopper.label}`);
                                              // Optionally toggle selection here as well, but checkbox is primary
                                              // handleUserSelectionChange(shopper.value);
-                                             setShopperSearchTerm(""); // Clear search on select
+                                             // Do not clear search on text select, allow checkbox usage
+                                             // setShopperSearchTerm("");
                                         }}
                                         className="flex items-center gap-2 cursor-pointer aria-selected:bg-accent/50"
-                                        // IMPORTANT: CommandItem itself should not be disabled for search functionality
+                                        // Prevent default selection behavior which interferes with checkbox
+                                         // IMPORTANT: CommandItem itself should not be disabled for search functionality
                                     >
                                         {/* Checkbox is interactive and NOT disabled during selection */}
                                         <Checkbox
@@ -494,12 +541,19 @@ export default function AdminMissionsPage() {
                                             aria-label={`Select ${shopper.label}`} // Accessibility
                                             // Disable the checkbox ONLY when the assignment action is processing
                                             disabled={isAssigning}
+                                            className="shrink-0" // Prevent checkbox from shrinking
                                          />
                                         {/* Make Label clickable and associate it with the checkbox */}
-                                        <Label htmlFor={`user-${shopper.value}`} className="flex flex-col text-sm flex-grow cursor-pointer">
-                                             <span>{shopper.label}</span> {/* Name */}
-                                            <span className="text-xs text-muted-foreground">{shopper.email}</span> {/* Email */}
-                                            <div className="flex items-center gap-2 text-xs text-muted-foreground mt-1">
+                                        <Label htmlFor={`user-${shopper.value}`} className="flex flex-col text-sm flex-grow cursor-pointer pl-2">
+                                            <div className="flex items-center gap-2">
+                                                <Avatar className="h-6 w-6 border">
+                                                  <AvatarImage src={shopper.profilePicUrl} alt={shopper.label} />
+                                                  <AvatarFallback>{shopper.label?.charAt(0)?.toUpperCase() || 'U'}</AvatarFallback>
+                                                </Avatar>
+                                                <span>{shopper.label}</span> {/* Name */}
+                                            </div>
+                                            <span className="text-xs text-muted-foreground ml-8">{shopper.email}</span> {/* Email */}
+                                            <div className="flex items-center gap-2 text-xs text-muted-foreground mt-1 ml-8">
                                                  <span className="flex items-center gap-1"><MapPinIcon className="w-3 h-3"/> {shopper.city}</span>
                                                  <span className="flex items-center gap-1"><Award className="w-3 h-3"/> {shopper.completedMissions} done</span>
                                              </div>
@@ -520,7 +574,7 @@ export default function AdminMissionsPage() {
                          )}
                     </div>
                     <AlertDialogFooter>
-                        <AlertDialogCancel onClick={() => setAssignDialogOpen(false)} disabled={isAssigning}>Cancel</AlertDialogCancel>
+                        <AlertDialogCancel onClick={() => { setAssignDialogOpen(false); setSelectedMissionForAssignment(null); setSelectedUsersForAssignment([]); }} disabled={isAssigning}>Cancel</AlertDialogCancel>
                         <AlertDialogAction
                             onClick={handleAssignMission}
                             disabled={isAssigning || selectedUsersForAssignment.length === 0}
