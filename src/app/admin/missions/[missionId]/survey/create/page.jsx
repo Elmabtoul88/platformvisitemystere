@@ -17,7 +17,7 @@ import {
 } from 'lucide-react';
 import { useRouter, useParams } from 'next/navigation';
 import Link from 'next/link';
-import { saveSurvey } from '../../../../../actions/survey-actions.js';
+import { saveSurvey } from '../../../../../actions/survey-actions.js'; // Import server action
 
 // Question type definitions including new types
 const QUESTION_TYPES = {
@@ -100,6 +100,23 @@ export default function CreateSurveyPage() {
         setQuestions(prev => prev.map(q => q.id === id ? { ...q, [field]: value } : q));
     };
 
+    // Specific handler for numeric inputs to prevent NaN values
+    const handleNumericInputChange = (questionId, field, rawValue) => {
+        const parsedValue = parseInt(rawValue, 10);
+        if (rawValue === '') {
+            updateQuestion(questionId, field, ''); // Store empty string to allow clearing input
+        } else if (!isNaN(parsedValue)) {
+             // Optionally add min/max clamping here if needed
+             // const min = field === 'maxImages' ? 1 : 5;
+             // const max = field === 'maxImages' ? 10 : 300;
+             // const clampedValue = Math.max(min, Math.min(max, parsedValue));
+             // updateQuestion(questionId, field, clampedValue);
+             updateQuestion(questionId, field, parsedValue); // Store as number
+        }
+        // If not empty and not a number, do nothing (prevents NaN)
+    };
+
+
     const updateQuestionOption = (questionId, optionId, value) => {
         setQuestions(prev => prev.map(q => {
             if (q.id === questionId) {
@@ -138,7 +155,6 @@ export default function CreateSurveyPage() {
 
      const handleSaveSurvey = async () => {
         setIsSaving(true);
-        console.log("Saving survey (simulated):", { missionId, questions });
 
          // Basic validation: Check if all question texts are filled
          const hasEmptyQuestions = questions.some(q => !q.text.trim());
@@ -147,6 +163,12 @@ export default function CreateSurveyPage() {
             (q.type === QUESTION_TYPES.MULTIPLE_CHOICE || q.type === QUESTION_TYPES.CHECKBOXES) &&
             q.options.some(opt => !opt.text.trim())
          );
+         // Check if numeric fields are valid before saving
+          const hasInvalidNumeric = questions.some(q =>
+              (q.type === QUESTION_TYPES.IMAGE_UPLOAD && q.maxImages === '') ||
+              (q.type === QUESTION_TYPES.AUDIO_RECORDING && q.maxDurationSeconds === '')
+          );
+
 
         if (questions.length === 0) {
             toast({
@@ -158,19 +180,37 @@ export default function CreateSurveyPage() {
              return;
          }
 
-         if (hasEmptyQuestions || hasEmptyOptions) {
+         if (hasEmptyQuestions || hasEmptyOptions || hasInvalidNumeric) {
              toast({
                  variant: "destructive",
-                 title: "Incomplete Questions",
-                 description: "Please fill in all question texts and option labels before saving.",
+                 title: "Incomplete or Invalid Questions",
+                 description: "Please fill in all required texts, option labels, and valid numeric values before saving.",
              });
              setIsSaving(false);
              return;
          }
 
+          // Sanitize questions before sending to server action (ensure numeric fields are numbers)
+        const sanitizedQuestions = questions.map(q => {
+            const sanitizedQ = { ...q };
+            if (sanitizedQ.type === QUESTION_TYPES.IMAGE_UPLOAD) {
+                 sanitizedQ.maxImages = parseInt(sanitizedQ.maxImages, 10) || 1; // Default to 1 if invalid
+            }
+            if (sanitizedQ.type === QUESTION_TYPES.AUDIO_RECORDING) {
+                 sanitizedQ.maxDurationSeconds = parseInt(sanitizedQ.maxDurationSeconds, 10) || 5; // Default to 5 if invalid
+            }
+             if (sanitizedQ.type === QUESTION_TYPES.RATING) {
+                 sanitizedQ.maxRating = parseInt(sanitizedQ.maxRating, 10) || 5; // Default to 5 if invalid
+            }
+            return sanitizedQ;
+         });
+
+
+        console.log("Saving survey (simulated):", { missionId, questions: sanitizedQuestions });
+
         try {
              // Call the server action to save the survey
-             const result = await saveSurvey(missionId, questions);
+             const result = await saveSurvey(missionId, sanitizedQuestions);
 
              if (result.success) {
                 toast({
@@ -381,8 +421,8 @@ export default function CreateSurveyPage() {
                                                 type="number"
                                                 min="1"
                                                 max="10" // Sensible upper limit
-                                                value={q.maxImages}
-                                                onChange={(e) => updateQuestion(q.id, 'maxImages', parseInt(e.target.value, 10))}
+                                                value={q.maxImages || ''} // Use empty string for initial/invalid state
+                                                onChange={(e) => handleNumericInputChange(q.id, 'maxImages', e.target.value)}
                                                 className="h-8 text-xs col-span-2"
                                                 disabled={!q.allowMultiple}
                                             />
@@ -410,8 +450,8 @@ export default function CreateSurveyPage() {
                                                 type="number"
                                                 min="5"
                                                 max="300" // 5 minutes max?
-                                                value={q.maxDurationSeconds}
-                                                onChange={(e) => updateQuestion(q.id, 'maxDurationSeconds', parseInt(e.target.value, 10))}
+                                                value={q.maxDurationSeconds || ''} // Use empty string for initial/invalid state
+                                                onChange={(e) => handleNumericInputChange(q.id, 'maxDurationSeconds', e.target.value)}
                                                 className="h-8 text-xs col-span-2"
                                             />
                                         </div>
@@ -475,3 +515,5 @@ export default function CreateSurveyPage() {
         </div>
     );
 }
+
+// Removed duplicate icon definitions
