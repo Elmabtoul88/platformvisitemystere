@@ -365,13 +365,13 @@ export default function AdminMissionsPage() {
                                             <TableCell>${mission.reward}</TableCell>
                                             <TableCell>
                                                  {/* Improved Status Display */}
-                                                 <div className="flex items-center gap-2">
-                                                     <Badge variant={getStatusVariant(mission.status)} className={`capitalize ${statusInfo.className}`}>
+                                                 <div className="flex items-center gap-1"> {/* Decreased gap */}
+                                                     <Badge variant={getStatusVariant(mission.status)} className={`capitalize px-2 py-0.5 ${statusInfo.className}`}> {/* Reduced padding */}
                                                          {statusInfo.text}
                                                      </Badge>
                                                      {/* Show pending count badge ONLY if reports are submitted */}
                                                      {mission.status === 'submitted' && submittedCount > 0 && (
-                                                        <Badge variant="destructive" className="text-xs h-5 px-1.5 flex items-center">
+                                                        <Badge variant="destructive" className="text-xs px-1.5 py-0.5 flex items-center h-4"> {/* Fixed height */}
                                                              {submittedCount} Pending
                                                          </Badge>
                                                      )}
@@ -432,7 +432,7 @@ export default function AdminMissionsPage() {
                                                             <DropdownMenuItem onClick={() => handleReviewReports(mission.id)} disabled={isCurrentProcessing}>
                                                                  <FileCheck className="mr-2 h-4 w-4" /> Review Reports
                                                                  {submittedCount > 0 && mission.status === 'submitted' && (
-                                                                     <Badge variant="destructive" className="ml-auto text-[10px] px-1 h-4">{submittedCount}</Badge>
+                                                                     <Badge variant="destructive" className="ml-auto text-[10px] px-1 py-0.5 flex items-center leading-none">{submittedCount}</Badge>
                                                                  )}
                                                             </DropdownMenuItem>
                                                          )}
