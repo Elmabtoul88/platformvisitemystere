@@ -13,9 +13,11 @@ import {
 } from '@/components/ui/dropdown-menu';
 import { User, Settings, LogOut } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast'; // For logout feedback
+import { useRouter } from 'next/navigation'; // Import useRouter
 
 export function ProfileMenu() {
   const { toast } = useToast();
+  const router = useRouter(); // Initialize router
 
   const handleLogout = () => {
     // Simulate logout action
@@ -24,8 +26,9 @@ export function ProfileMenu() {
       title: "Logged Out",
       description: "You have been successfully logged out.",
     });
-    // In a real app, you would clear auth tokens, redirect, etc.
-    // router.push('/login');
+    // In a real app, you would clear auth tokens, etc.
+    // Redirect to the login page
+    router.push('/login');
   };
 
   return (
