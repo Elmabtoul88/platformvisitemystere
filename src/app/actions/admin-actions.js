@@ -160,3 +160,43 @@ export async function toggleUserStatusAction(userId, currentStatus) {
     return { success: false, message: `Failed to toggle status for user ${userId} (simulated server error).` };
   }
 }
+
+/**
+ * Server Action to update user details.
+ *
+ * @param {string} userId - The ID of the user to update.
+ * @param {object} userData - The updated user data (e.g., { name, email, city, motivation, role, status }).
+ * @returns {Promise<{success: boolean, message: string}>} - Result of the update operation.
+ */
+export async function updateUserAction(userId, userData) {
+    console.log(`Server Action: Updating user ${userId} with data:`, userData);
+
+    // Simulate network delay
+    await new Promise(resolve => setTimeout(resolve, 1000));
+
+    // --- TODO: Replace simulation with actual backend logic ---
+    // 1. Validate userId and userData.
+    // 2. Check permissions (ensure current user is admin).
+    // 3. Fetch the user from the database.
+    // 4. Update the user's fields in the database with the provided `userData`.
+    //    - Be careful about which fields are allowed to be updated (e.g., updating email might require verification).
+    //    - Handle role and status changes appropriately.
+    // 5. Handle potential errors during database operations.
+    // ---
+
+    // Simulate success
+    const success = true;
+
+    if (success) {
+        console.log(`Server Action: User ${userId} updated successfully (simulated).`);
+        // Revalidate relevant paths
+        revalidatePath('/admin/users'); // Revalidate the user list
+        revalidatePath(`/admin/users/${userId}`); // Revalidate the user detail page
+        revalidatePath(`/admin/users/${userId}/edit`); // Revalidate the edit page itself
+
+        return { success: true, message: `User ${userId} updated successfully (simulated).` };
+    } else {
+        console.error(`Server Action: Failed to update user ${userId} (simulated).`);
+        return { success: false, message: `Failed to update user ${userId} (simulated server error).` };
+    }
+}

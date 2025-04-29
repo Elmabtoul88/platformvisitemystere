@@ -9,84 +9,12 @@ import { Badge } from '@/components/ui/badge';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import { MoreHorizontal, Search, Edit, Eye, UserX, CheckCircle, Clock, Loader2 } from 'lucide-react';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
-import { mockUser as mockSingleUser, mockMissions } from '@/lib/mock-data'; // Using mock data
+import { mockUsers } from './users-mock'; // Use the shared mock data
 import { format } from 'date-fns'; // To format dates if needed
 import { useRouter } from 'next/navigation'; // Import useRouter
 import { useToast } from '@/hooks/use-toast'; // Import useToast
 import { toggleUserStatusAction } from '../../actions/admin-actions'; // Import the server action
 
-// Generate more mock users for the list
-const generateMockUsers = (count) => {
-    const users = [];
-    const usedIds = new Set(); // Keep track of used IDs
-
-    // Generate shoppers
-    for (let i = 1; i <= count; i++) {
-        const userId = `user-shopper-${i}`;
-        if (usedIds.has(userId)) continue; // Skip if ID already used (shouldn't happen here)
-        users.push({
-            id: userId,
-            name: `Shopper ${i}`,
-            email: `shopper${i}@example.com`,
-            role: 'shopper', // Assuming all are shoppers for now
-            profilePicUrl: `https://picsum.photos/seed/${userId}/40/40`,
-            status: i % 3 === 0 ? 'inactive' : 'active', // Example status distribution
-            city: i % 2 === 0 ? 'Anytown' : 'Otherville',
-            registrationDate: new Date(Date.now() - (i * 3) * 24 * 60 * 60 * 1000), // Simulate registration dates
-            completedMissions: Math.floor(Math.random() * 20), // Random mission count
-        });
-        usedIds.add(userId);
-    }
-
-    // Add the original mock user (Alex Shopper)
-    const alexUserId = mockSingleUser.id; // Original ID: 'user-shopper-1'
-    if (!usedIds.has(alexUserId)) {
-        users.push({
-            ...mockSingleUser,
-            id: alexUserId, // Use original ID if available
-            email: 'alex@example.com',
-            status: 'active',
-            registrationDate: new Date(Date.now() - 30 * 24 * 60 * 60 * 1000),
-            completedMissions: 5
-        });
-        usedIds.add(alexUserId);
-    } else {
-        // If 'user-shopper-1' was already generated, use a fallback unique ID
-        const fallbackAlexId = 'alex-shopper-unique-id'; // Ensure this is unique
-         if (!usedIds.has(fallbackAlexId)) {
-            users.push({
-                ...mockSingleUser,
-                id: fallbackAlexId, // Use fallback ID
-                email: 'alex@example.com',
-                status: 'active',
-                registrationDate: new Date(Date.now() - 30 * 24 * 60 * 60 * 1000),
-                completedMissions: 5
-            });
-            usedIds.add(fallbackAlexId);
-         }
-    }
-
-
-    // Add a mock admin user
-    const adminUserId = 'admin-1';
-    if (!usedIds.has(adminUserId)) {
-        users.push({
-            id: adminUserId,
-            name: 'Admin User',
-            email: 'admin@example.com',
-            role: 'admin',
-            profilePicUrl: null,
-            status: 'active',
-            city: 'HQ',
-            registrationDate: new Date(Date.now() - 300 * 24 * 60 * 60 * 1000),
-            completedMissions: 0
-        });
-        usedIds.add(adminUserId);
-    }
-    return users;
-};
-
-const mockUsers = generateMockUsers(15); // Generate 15 mock shoppers + potentially Alex + 1 admin
 
 export default function AdminUsersPage() {
     const router = useRouter(); // Initialize useRouter
@@ -107,23 +35,13 @@ export default function AdminUsersPage() {
     }, [users, searchTerm]);
 
     const handleViewUser = (userId) => {
-        console.log(`Admin: View user ${userId}`);
-        // Placeholder: Navigate to a user detail page (not implemented)
-        // toast({
-        //     title: "View User",
-        //     description: `Navigation to user detail page for ${userId} is not implemented yet.`
-        // });
-        // router.push(`/admin/users/${userId}`); // Future implementation
+        console.log(`Admin: Navigating to view user ${userId}`);
+        router.push(`/admin/users/${userId}`); // Navigate to the detail page
     };
 
      const handleEditUser = (userId) => {
-        console.log(`Admin: Edit user ${userId}`);
-        // Placeholder: Navigate to a user edit page (not implemented)
-        // toast({
-        //     title: "Edit User",
-        //     description: `Navigation to user edit page for ${userId} is not implemented yet.`
-        // });
-        // router.push(`/admin/users/edit/${userId}`); // Future implementation
+        console.log(`Admin: Navigating to edit user ${userId}`);
+        router.push(`/admin/users/${userId}/edit`); // Navigate to the edit page
     };
 
     const handleToggleStatus = async (userId, currentStatus) => {
@@ -145,6 +63,11 @@ export default function AdminUsersPage() {
                     title: "Status Updated",
                     description: result.message,
                 });
+                 // Update the mock data directly (for simulation persistence across navigations)
+                const userIndex = mockUsers.findIndex(u => u.id === userId);
+                if (userIndex !== -1) {
+                    mockUsers[userIndex].status = result.newStatus;
+                }
             } else {
                 throw new Error(result.message || "Failed to toggle user status.");
             }
@@ -229,12 +152,14 @@ export default function AdminUsersPage() {
                                                 </DropdownMenuTrigger>
                                                 <DropdownMenuContent align="end">
                                                     <DropdownMenuLabel>Actions</DropdownMenuLabel>
+                                                     {/* Updated to navigate */}
                                                      <DropdownMenuItem onClick={() => handleViewUser(user.id)} disabled={isToggling === user.id}>
                                                          <Eye className="mr-2 h-4 w-4" /> View Details
                                                      </DropdownMenuItem>
                                                     {/* Only allow editing/status change for non-admins or self? Adjust logic as needed */}
                                                     {user.role !== 'admin' && (
                                                         <>
+                                                             {/* Updated to navigate */}
                                                             <DropdownMenuItem onClick={() => handleEditUser(user.id)} disabled={isToggling === user.id}>
                                                                 <Edit className="mr-2 h-4 w-4" /> Edit User
                                                             </DropdownMenuItem>
