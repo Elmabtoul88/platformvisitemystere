@@ -82,8 +82,9 @@ function AppLayout({ children }) {
       // If authenticated...
       if (userRole === 'admin') {
         // Allow access to admin routes, redirect from non-admin routes (except potentially settings, chat?)
-         if (isShopperRoute && pathname !== '/settings' && pathname !=='/chat') { // Allow admin to access settings/chat
-             console.log("Redirecting admin from shopper route to /admin");
+         // Adjusted check: Allow admin access to /admin/* routes
+         if (!isAdminRoute && !isPublicRoute) {
+             console.log("Redirecting admin from non-admin/non-public route to /admin");
              router.push('/admin');
          } else if (isPublicRoute) {
             console.log("Redirecting admin from public route to /admin");
@@ -178,6 +179,7 @@ function AppLayout({ children }) {
                       <CheckSquare className="w-4 h-4" /> Completed
                     </Link>
                   </Button>
+                  {/* ProfileMenu handles its own dynamic links */}
                   <ProfileMenu />
                 </>
               )}
@@ -199,7 +201,16 @@ function AppLayout({ children }) {
                       <Users className="w-4 h-4" /> Manage Users
                     </Link>
                   </Button>
-                  {/* Admins can also access their own settings/chat via profile menu */}
+                  {/* Added Admin Chat Link */}
+                   <Button variant={pathname.startsWith('/admin/chat') ? "secondary" : "ghost"} size="sm" asChild>
+                     <Link href="/admin/chat" className="flex items-center gap-1">
+                       <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" className="w-4 h-4">
+                         <path fillRule="evenodd" d="M4.848 2.771A49.144 49.144 0 0112 2.25c2.43 0 4.817.178 7.152.52 1.978.292 3.348 2.024 3.348 3.97v6.02c0 1.946-1.37 3.678-3.348 3.97a48.901 48.901 0 01-3.476.383.39.39 0 00-.297.17l-2.755 4.133a.75.75 0 01-1.248 0l-2.755-4.133a.39.39 0 00-.297-.17 48.9 48.9 0 01-3.476-.384c-1.978-.29-3.348-2.024-3.348-3.97V6.741c0-1.946 1.37-3.68 3.348-3.97zM6.75 8.25a.75.75 0 01.75-.75h9a.75.75 0 010 1.5h-9a.75.75 0 01-.75-.75zm.75 2.25a.75.75 0 000 1.5H12a.75.75 0 000-1.5H7.5z" clipRule="evenodd" />
+                       </svg>
+                       Chat
+                     </Link>
+                   </Button>
+                  {/* ProfileMenu handles its own dynamic links */}
                   <ProfileMenu />
                 </>
               )}

@@ -20,7 +20,7 @@ import { useAuth } from '@/context/auth-context'; // Import useAuth
 export function ProfileMenu() {
   const { toast } = useToast();
   const router = useRouter();
-  const { setAuthState } = useAuth(); // Get setAuthState from context
+  const { isAuthenticated, userRole, setAuthState } = useAuth(); // Get setAuthState and userRole from context
   // Simulate notification count - set initial value here
   const [notificationCount, setNotificationCount] = useState(3);
 
@@ -39,8 +39,13 @@ export function ProfileMenu() {
   const handleChatClick = () => {
     // Reset notification count when chat is opened
     setNotificationCount(0);
-    // Navigate to chat page (handled by Link component)
+    // Navigation handled by Link component
   };
+
+  // Determine the correct links based on user role
+  const chatLink = userRole === 'admin' ? '/admin/chat' : '/chat';
+  const settingsLink = userRole === 'admin' ? '/admin/settings' : '/settings';
+
 
   return (
     <DropdownMenu>
@@ -65,9 +70,9 @@ export function ProfileMenu() {
       <DropdownMenuContent align="end">
         <DropdownMenuLabel>My Account</DropdownMenuLabel>
         <DropdownMenuSeparator />
-         {/* Chat Item - Updated with onClick */}
+         {/* Chat Item - Updated with dynamic link and onClick */}
         <DropdownMenuItem asChild onClick={handleChatClick}>
-          <Link href="/chat" className="flex items-center cursor-pointer">
+          <Link href={chatLink} className="flex items-center cursor-pointer">
             <MessageSquare className="mr-2 h-4 w-4" />
             <span>Chat</span>
              {/* Optionally add a smaller badge inside the menu item too */}
@@ -76,9 +81,9 @@ export function ProfileMenu() {
             )}
           </Link>
         </DropdownMenuItem>
-         {/* Settings Item */}
+         {/* Settings Item - Updated with dynamic link */}
         <DropdownMenuItem asChild>
-          <Link href="/settings" className="flex items-center cursor-pointer">
+          <Link href={settingsLink} className="flex items-center cursor-pointer">
             <Settings className="mr-2 h-4 w-4" />
             <span>Settings</span>
           </Link>
