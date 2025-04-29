@@ -9,7 +9,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { Badge } from '@/components/ui/badge';
 import { Label } from '@/components/ui/label';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
-import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog"; // Ensure AlertDialogTrigger is imported
 import { PlusCircle, MoreHorizontal, Search, Edit, Trash2, FileCheck, FileText, Loader2, UserPlus, Award, MapPin as MapPinIcon, Users as UsersIcon } from 'lucide-react';
 import { mockMissions, mockReports } from '@/lib/mock-data';
 import { mockUsers } from '../users/users-mock.js';
@@ -41,25 +41,25 @@ import {
 // Helper function for status badge variant
 const getStatusVariant = (status) => {
     switch (status) {
-      case 'available': return 'secondary';
-      case 'assigned': return 'default';
-      case 'submitted': return 'destructive'; // Highlight pending review
-      case 'approved': return 'default'; // Use default for completed/approved
-      case 'refused': return 'outline';
+      case 'available': return 'secondary'; // Grayish
+      case 'assigned': return 'default'; // Primary (Teal)
+      case 'submitted': return 'outline'; // Outline style, color added via class
+      case 'approved': return 'default'; // Primary (Teal) - Use class for green maybe
+      case 'refused': return 'destructive'; // Red
       case 'completed': return 'default'; // Treat completed same as approved visually here
       default: return 'secondary';
     }
 };
-// Helper function for status text
-const getStatusText = (status) => {
+// Helper function for status text and adding specific styling classes
+const getStatusInfo = (status) => {
     switch (status) {
-      case 'available': return 'Available';
-      case 'assigned': return 'Assigned';
-      case 'submitted': return 'Review Pending'; // Changed text for clarity
-      case 'approved': return 'Approved';
-      case 'refused': return 'Refused';
-      case 'completed': return 'Approved'; // Display completed as Approved
-      default: return status.charAt(0).toUpperCase() + status.slice(1); // Capitalize
+      case 'available': return { text: 'Available', className: '' };
+      case 'assigned': return { text: 'Assigned', className: 'bg-primary/10 text-primary-foreground' }; // Slightly different from default badge bg maybe?
+      case 'submitted': return { text: 'Review Pending', className: 'bg-yellow-100 text-yellow-800 border-yellow-300' }; // Yellow style for pending
+      case 'approved': return { text: 'Approved', className: 'bg-green-100 text-green-800 border-green-300' }; // Green style for approved
+      case 'refused': return { text: 'Refused', className: '' }; // Destructive variant handles red
+      case 'completed': return { text: 'Approved', className: 'bg-green-100 text-green-800 border-green-300' }; // Display completed as Approved
+      default: return { text: status.charAt(0).toUpperCase() + status.slice(1), className: '' }; // Capitalize
     }
   };
 
@@ -354,6 +354,7 @@ export default function AdminMissionsPage() {
                                      // Get details for assigned shoppers
                                     const assignedShoppers = assignedUserIds.map(id => getUserById(id)).filter(Boolean);
                                     const isCurrentProcessing = isProcessing === mission.id; // Used for delete/row disabling
+                                    const statusInfo = getStatusInfo(mission.status); // Get text and class for status
 
                                     return (
                                         <TableRow key={mission.id} className={isCurrentProcessing ? 'opacity-50 pointer-events-none' : ''}>
@@ -363,16 +364,18 @@ export default function AdminMissionsPage() {
                                             <TableCell>{format(new Date(mission.deadline), 'PP')}</TableCell>
                                             <TableCell>${mission.reward}</TableCell>
                                             <TableCell>
-                                                 {/* Display status badge */}
-                                                 <Badge variant={getStatusVariant(mission.status)} className="capitalize">
-                                                    {getStatusText(mission.status)}
-                                                 </Badge>
-                                                 {/* Show pending count badge if reports are submitted */}
-                                                 {mission.status === 'submitted' && submittedCount > 0 && (
-                                                    <Badge variant="destructive" className="ml-2 text-xs">
-                                                         {submittedCount} Pending
+                                                 {/* Improved Status Display */}
+                                                 <div className="flex items-center gap-2">
+                                                     <Badge variant={getStatusVariant(mission.status)} className={`capitalize ${statusInfo.className}`}>
+                                                         {statusInfo.text}
                                                      </Badge>
-                                                 )}
+                                                     {/* Show pending count badge ONLY if reports are submitted */}
+                                                     {mission.status === 'submitted' && submittedCount > 0 && (
+                                                        <Badge variant="destructive" className="text-xs h-5 px-1.5 flex items-center">
+                                                             {submittedCount} Pending
+                                                         </Badge>
+                                                     )}
+                                                 </div>
                                             </TableCell>
                                             <TableCell className="text-xs max-w-[150px]">
                                                  {/* Display assigned users with avatars and tooltip */}
