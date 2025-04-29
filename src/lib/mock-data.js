@@ -41,7 +41,7 @@ export const mockMissions = [
     reward: 70,
     location: '101 River Rd, Anytown',
     category: 'Service',
-    status: 'completed', // Report submitted and approved
+    status: 'approved', // Changed from 'completed' to 'approved' to match report
     assignedTo: 'user-shopper-1',
     businessName: 'Grand Hotel Group',
   },
@@ -56,18 +56,40 @@ export const mockMissions = [
     status: 'available',
     businessName: 'Burger Bonanza',
   },
+    {
+    id: 'mission-6',
+    title: 'Grocery Store Checkout Efficiency',
+    description: 'Evaluate the checkout speed and friendliness of the cashier during evening hours (5-7 PM). Purchase 5-10 items.',
+    deadline: new Date(Date.now() + 2 * 24 * 60 * 60 * 1000), // 2 days from now
+    reward: 30,
+    location: '333 Market St, Anytown',
+    category: 'Retail',
+    status: 'assigned', // Example of another assigned mission
+    assignedTo: 'user-shopper-1',
+    businessName: 'SuperMart Foods',
+  },
 ];
 
 export const mockReports = [
   {
     id: 'report-1',
-    missionId: 'mission-4', // Linked to the completed mission
+    missionId: 'mission-4', // Linked to the approved mission
     userId: 'user-shopper-1',
     rating: 4,
     comments: 'Check-in was smooth, staff were polite. Lobby was clean but a bit dated.',
     photoUrl: 'https://picsum.photos/400/300?random=1',
     submittedAt: new Date(Date.now() - 1 * 24 * 60 * 60 * 1000), // Submitted 1 day ago
     status: 'approved',
+  },
+   {
+    id: 'report-2',
+    missionId: 'mission-2', // Linked to an assigned (but not yet approved) mission
+    userId: 'user-shopper-1',
+    rating: 5,
+    comments: 'Store was very clean and well-organized. Staff member Sarah was extremely helpful in finding the item I needed. Quick checkout.',
+    photoUrl: 'https://picsum.photos/400/300?random=2',
+    submittedAt: new Date(Date.now() - 0.5 * 24 * 60 * 60 * 1000), // Submitted 12 hours ago
+    status: 'submitted', // Report is submitted but not yet approved by business
   },
   // Add more reports if needed for testing different states
 ];
@@ -77,4 +99,5 @@ export const mockUser = {
   id: 'user-shopper-1',
   name: 'Alex Shopper',
   role: 'shopper',
+  profilePicUrl: null, // Set to null initially, or provide a default URL like 'https://picsum.photos/seed/user-shopper-1/100/100'
 };
