@@ -3,7 +3,7 @@
 
 import React, { useState, useMemo, useTransition, useEffect } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { Button, buttonVariants } from '@/components/ui/button';
+import { Button, buttonVariants } from '@/components/ui/button'; // Import buttonVariants
 import { Input } from '@/components/ui/input';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
@@ -345,7 +345,6 @@ export default function AdminMissionsPage() {
                             </TableRow>
                         </TableHeader>
                         <TableBody>
-                             {/* Wrap TableBody content with TooltipProvider */}
                             <TooltipProvider>
                             {filteredMissions.length > 0 ? (
                                 filteredMissions.map((mission) => {
@@ -425,7 +424,7 @@ export default function AdminMissionsPage() {
                                                                 <UserPlus className="mr-2 h-4 w-4" /> Assign/Reassign
                                                             </DropdownMenuItem>
                                                         )}
-                                                         {/* Show 'Review Reports' if status is submitted */}
+                                                         {/* Show 'Review Reports' if status is submitted or approved/refused */}
                                                          {(mission.status === 'submitted' || mission.status === 'approved' || mission.status === 'refused') && (
                                                             <DropdownMenuItem onClick={() => handleReviewReports(mission.id)} disabled={isCurrentProcessing}>
                                                                  <FileCheck className="mr-2 h-4 w-4" /> Review Reports
@@ -487,7 +486,7 @@ export default function AdminMissionsPage() {
                                     </TableCell>
                                 </TableRow>
                             )}
-                            </TooltipProvider> {/* Close TooltipProvider */}
+                            </TooltipProvider>{/* Close TooltipProvider */}
                         </TableBody>
                     </Table>
                 </CardContent>

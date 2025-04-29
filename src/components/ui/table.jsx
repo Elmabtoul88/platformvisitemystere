@@ -19,6 +19,7 @@ const TableHeader = React.forwardRef(({ className, ...props }, ref) => (
 TableHeader.displayName = "TableHeader"
 
 const TableBody = React.forwardRef(({ className, ...props }, ref) => (
+  // Ensure no extra whitespace around the children
   <tbody
     ref={ref}
     className={cn("[&_tr:last-child]:border-0", className)}
