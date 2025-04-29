@@ -9,7 +9,7 @@ import { Badge } from '@/components/ui/badge';
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
 import { mockMissions, mockReports, mockSurveyQuestions } from '@/lib/mock-data'; // Use mock data for now
-import { mockUsers } from '../../users/users-mock.js'; // Corrected import path using relative path
+import { mockUsers } from '../../../users/users-mock.js'; // Corrected import path using relative path
 import { format } from 'date-fns';
 import Link from 'next/link';
 import Image from 'next/image';
