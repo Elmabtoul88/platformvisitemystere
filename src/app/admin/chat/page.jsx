@@ -1,25 +1,30 @@
 'use client';
 
-import React, { useState, useMemo, useEffect } from 'react';
+import React, { useState, useMemo, useEffect, useTransition } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
 import { Search, MessageSquare, Loader2, Users } from 'lucide-react';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
-import { mockUsers } from '../users/users-mock.js'; // Use the shared mock data
+import { mockUsers, clearUserUnreadMessages } from '../users/users-mock.js'; // Use the shared mock data and import clear function
 import Link from 'next/link';
+import { Button } from '@/components/ui/button'; // Import Button
 
 export default function AdminChatListPage() {
     const [searchTerm, setSearchTerm] = useState('');
     const [shoppers, setShoppers] = useState([]);
     const [isLoading, setIsLoading] = useState(true);
+    const [isTransitioning, startTransition] = useTransition();
 
     useEffect(() => {
         // Simulate fetching users (filter for shoppers)
         setIsLoading(true);
         setTimeout(() => {
-            setShoppers(mockUsers.filter(u => u.role === 'shopper'));
+            // Use startTransition to avoid blocking UI during state update
+            startTransition(() => {
+                 setShoppers(mockUsers.filter(u => u.role === 'shopper'));
+            });
             setIsLoading(false);
         }, 300);
     }, []);
@@ -31,6 +36,18 @@ export default function AdminChatListPage() {
             shopper.id?.toLowerCase().includes(searchTerm.toLowerCase())
         );
     }, [shoppers, searchTerm]);
+
+    // Function to handle clicking the chat button
+    const handleChatClick = (userId) => {
+         // Clear unread messages in mock data
+        clearUserUnreadMessages(userId);
+         // Optimistically update local state to remove badge immediately
+         startTransition(() => {
+             setShoppers(prev => prev.map(s => s.id === userId ? { ...s, unreadMessages: 0 } : s));
+         });
+         // Navigation will be handled by the Link component
+     };
+
 
      if (isLoading) {
         return (
@@ -82,7 +99,18 @@ export default function AdminChatListPage() {
                                                     <AvatarImage src={shopper.profilePicUrl} alt={shopper.name} />
                                                     <AvatarFallback>{shopper.name?.charAt(0)?.toUpperCase() || 'U'}</AvatarFallback>
                                                 </Avatar>
-                                                <span>{shopper.name}</span>
+                                                <span className="flex items-center gap-1.5"> {/* Wrap name and badge */}
+                                                    <span>{shopper.name}</span>
+                                                    {/* Display unread message badge */}
+                                                     {shopper.unreadMessages > 0 && (
+                                                        <Badge
+                                                            variant="destructive"
+                                                            className="h-4 min-w-[1rem] px-1.5 flex items-center justify-center rounded-full text-[10px]"
+                                                          >
+                                                            {shopper.unreadMessages}
+                                                        </Badge>
+                                                      )}
+                                                </span>
                                             </div>
                                         </TableCell>
                                         <TableCell>{shopper.email}</TableCell>
@@ -92,11 +120,12 @@ export default function AdminChatListPage() {
                                             </Badge>
                                         </TableCell>
                                         <TableCell className="text-right">
-                                            <Link href={`/admin/chat/${shopper.id}`}>
-                                                <button className="inline-flex items-center justify-center gap-1 whitespace-nowrap rounded-md text-sm font-medium ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 bg-primary text-primary-foreground hover:bg-primary/90 h-9 px-3">
+                                             {/* Use Link for navigation and Button for styling/onClick */}
+                                             <Button asChild variant="default" size="sm" onClick={() => handleChatClick(shopper.id)}>
+                                                <Link href={`/admin/chat/${shopper.id}`} className="inline-flex items-center gap-1">
                                                     <MessageSquare className="w-4 h-4" /> Chat
-                                                </button>
-                                            </Link>
+                                                 </Link>
+                                             </Button>
                                         </TableCell>
                                     </TableRow>
                                 ))

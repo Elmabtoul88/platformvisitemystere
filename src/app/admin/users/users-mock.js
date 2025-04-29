@@ -26,6 +26,7 @@ const generateMockUsers = (count) => {
              // Simulate varied registration dates over the last year (approx)
              registrationDate: new Date(Date.now() - Math.floor(Math.random() * 365 + 1) * 24 * 60 * 60 * 1000),
             completedMissions: Math.floor(Math.random() * 35), // Wider mission count range
+            unreadMessages: i % 5 === 0 ? Math.floor(Math.random() * 5) + 1 : 0, // Add simulated unread messages for some users
         });
         usedIds.add(userId);
     }
@@ -43,6 +44,7 @@ const generateMockUsers = (count) => {
             // Make Alex's registration date more recent for variety
             registrationDate: new Date(Date.now() - 15 * 24 * 60 * 60 * 1000),
             completedMissions: 7,
+            unreadMessages: Math.floor(Math.random() * 3), // Give Alex some random unread messages too
         });
         usedIds.add(alexUserId);
     } else {
@@ -67,7 +69,8 @@ const generateMockUsers = (count) => {
             birthYear: null,
             gender: 'prefer_not_say',
             registrationDate: new Date(Date.now() - 350 * 24 * 60 * 60 * 1000),
-            completedMissions: 0
+            completedMissions: 0,
+            unreadMessages: 0, // Admins don't have unread messages in this context
         });
         usedIds.add(adminUserId);
     }
@@ -77,3 +80,14 @@ const generateMockUsers = (count) => {
 // Export the generated list
 // Increase the number of generated users to 25
 export let mockUsers = generateMockUsers(25);
+
+// Function to clear unread messages for a user (for simulation)
+export function clearUserUnreadMessages(userId) {
+    const userIndex = mockUsers.findIndex(u => u.id === userId);
+    if (userIndex > -1) {
+        mockUsers[userIndex].unreadMessages = 0;
+        console.log(`Cleared unread messages for user ${userId} in mock data.`);
+        return true;
+    }
+    return false;
+}
