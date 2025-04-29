@@ -6,7 +6,7 @@ export const mockMissions = [
     description: 'Evaluate the dinner service quality, food presentation, and overall ambiance. Order a main course and a drink. Submit report within 24 hours.',
     deadline: new Date(Date.now() + 3 * 24 * 60 * 60 * 1000), // 3 days from now
     reward: 50,
-    location: '123 Main St, Anytown',
+    location: '34.0550,-118.2450', // Lat,Lng format near LA
     category: 'Restaurant',
     status: 'submitted', // Keep as submitted since reports are pending
     // Assign multiple users to simulate multiple reports for the same mission
@@ -19,7 +19,7 @@ export const mockMissions = [
     description: 'Visit the downtown branch and assess store cleanliness, staff helpfulness, and product availability. Purchase a small item.',
     deadline: new Date(Date.now() + 5 * 24 * 60 * 60 * 1000), // 5 days from now
     reward: 35,
-    location: '456 Oak Ave, Anytown',
+    location: '34.0500,-118.2500', // Lat,Lng format near LA
     category: 'Retail',
     status: 'submitted', // Report exists for user-shopper-1
     assignedTo: 'user-shopper-1', // Only assigned to one user
@@ -31,7 +31,7 @@ export const mockMissions = [
     description: 'Order a standard latte during peak morning hours (8-9 AM) and time the service from order to receiving the drink.',
     deadline: new Date(Date.now() + 1 * 24 * 60 * 60 * 1000), // 1 day from now
     reward: 20,
-    location: '789 Pine Ln, Anytown',
+    location: '34.0480,-118.2400', // Lat,Lng format near LA
     category: 'Service',
     status: 'assigned',
     assignedTo: 'user-shopper-6', // Assign to a different user
@@ -43,7 +43,7 @@ export const mockMissions = [
     description: 'Assess the check-in process, staff friendliness, and lobby atmosphere.',
     deadline: new Date(Date.now() - 2 * 24 * 60 * 60 * 1000), // 2 days ago (deadline passed)
     reward: 70,
-    location: '101 River Rd, Anytown',
+    location: '34.0600,-118.2600', // Lat,Lng format near LA
     category: 'Service',
     status: 'approved', // Approved mission
     assignedTo: 'user-shopper-1', // Completed by user 1
@@ -55,7 +55,7 @@ export const mockMissions = [
     description: 'Order a specific meal combo via drive-thru and verify order accuracy and speed.',
     deadline: new Date(Date.now() + 4 * 24 * 60 * 60 * 1000), // 4 days from now
     reward: 25,
-    location: '222 Burger Blvd, Anytown',
+    location: '34.0580,-118.2350', // Lat,Lng format near LA
     category: 'Restaurant',
     status: 'available', // Still available
     businessName: 'Burger Bonanza',
@@ -66,7 +66,7 @@ export const mockMissions = [
     description: 'Evaluate the checkout speed and friendliness of the cashier during evening hours (5-7 PM). Purchase 5-10 items.',
     deadline: new Date(Date.now() + 2 * 24 * 60 * 60 * 1000), // 2 days from now
     reward: 30,
-    location: '333 Market St, Anytown',
+    location: '34.0450,-118.2550', // Lat,Lng format near LA
     category: 'Retail',
     status: 'submitted', // Report exists for user-shopper-1
     assignedTo: 'user-shopper-1',
@@ -78,11 +78,22 @@ export const mockMissions = [
     description: 'Assess the noise level and general ambiance of the main reading room.',
     deadline: new Date(Date.now() - 5 * 24 * 60 * 60 * 1000), // 5 days ago
     reward: 15,
-    location: '444 Bookworm Way, Anytown',
+    location: '34.0650,-118.2480', // Lat,Lng format near LA
     category: 'Service',
     status: 'refused', // Mission status is refused
     assignedTo: 'user-shopper-7',
     businessName: 'City Library System',
+  },
+   {
+    id: 'mission-8',
+    title: 'Electronics Store Demo Station',
+    description: 'Interact with the new VR demo station and report on staff assistance and equipment functionality.',
+    deadline: new Date(Date.now() + 6 * 24 * 60 * 60 * 1000), // 6 days from now
+    reward: 45,
+    location: '34.0520,-118.2700', // Lat,Lng format near LA
+    category: 'Retail',
+    status: 'available', // Still available
+    businessName: 'Tech World',
   },
 ];
 
@@ -187,7 +198,7 @@ export const mockReports = [
         'q_1700000000010_rating': { type: 'rating', value: 4 },
         'q_1700000000011_rating': { type: 'rating', value: 5 },
         'q_1700000000012_checkboxes': { type: 'checkboxes', value: { '1': true, '2': true, '3': false, '4': false } },
-        'q_1700000000013_gps_capture': { type: 'gps_capture', value: { lat: 34.0522, lng: -118.2437 } },
+        'q_1700000000013_gps_capture': { type: 'gps_capture', value: { lat: 34.0450, lng: -118.2550 } }, // Match mission location
         'q_1700000000015_image_upload': { type: 'image_upload', value: ['https://picsum.photos/400/300?random=61', 'https://picsum.photos/400/300?random=62'] },
         'q_1700000000016_text': { type: 'text', value: 'Checkout line moved quickly. Cashier was very friendly and efficient.'}
     },
@@ -255,3 +266,5 @@ export const mockSurveyQuestions = {
     ],
    // No specific questions needed for mission-3, mission-5, or mission-7 for now
 };
+
+    

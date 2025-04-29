@@ -1,7 +1,7 @@
 
 'use client';
 
-import React, { useState, useEffect, useRef, useMemo } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import L from 'leaflet'; // Import Leaflet directly
 import 'leaflet/dist/leaflet.css'; // Import Leaflet CSS
 import { Loader2, MapPin } from 'lucide-react';
@@ -27,6 +27,8 @@ const blueIcon = createMarkerIcon('hsl(var(--primary))'); // Blue for current lo
 
 
 // Helper to parse location strings (simple example, adjust as needed)
+// IMPORTANT: Assumes location is stored as "lat,lng" string or similar parsable format.
+// If location format is different (e.g., address only), you'll need a geocoding service.
 const parseLocation = (locationString) => {
     // Basic validation for Lat,Lng format (adjust regex if needed)
     if (typeof locationString === 'string' && /^-?\d+(\.\d+)?,\s*-?\d+(\.\d+)?$/.test(locationString)) {
@@ -40,7 +42,9 @@ const parseLocation = (locationString) => {
     }
     console.warn(`Could not parse location: "${locationString}". Using fallback.`);
     // Fallback near center with random offset for visual distinction if parsing fails
-    return { lat: 34.05 + (Math.random() - 0.5) * 0.1, lng: -118.24 + (Math.random() - 0.5) * 0.1 };
+    // Using a fixed fallback for demonstration, replace with better handling if needed.
+    // return { lat: 34.05 + (Math.random() - 0.5) * 0.1, lng: -118.24 + (Math.random() - 0.5) * 0.1 };
+    return null; // Return null if parsing fails to avoid placing markers incorrectly
 };
 
 
@@ -95,16 +99,12 @@ export function MapView({ availableMissions = [], assignedMissions = [] }) {
         mapRef.current = L.map(mapContainerRef.current, {
             center: initialCenter,
             zoom: 13,
-            // Consider adding zoom control options if needed: zoomControl: false
         });
 
         L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
             attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors',
-            maxZoom: 19, // Standard max zoom for OSM
+            maxZoom: 19,
         }).addTo(mapRef.current);
-
-        // Add zoom controls if they were disabled during init
-        // L.control.zoom({ position: 'topright' }).addTo(mapRef.current);
     }
 
      // Add/Update markers when map is ready and data is available
@@ -172,30 +172,31 @@ export function MapView({ availableMissions = [], assignedMissions = [] }) {
              }
          }
 
-          // Optional: Fit map bounds to markers if needed
-         // if (markersRef.current.length > 0) {
-         //    const group = L.featureGroup(markersRef.current);
-         //    mapRef.current.fitBounds(group.getBounds().pad(0.1)); // Add padding
-         // } else if (currentLocation) {
-         //    mapRef.current.setView([currentLocation.lat, currentLocation.lng], 13); // Center on user if no markers
-         // } else {
-         //     mapRef.current.setView(initialCenter, 13); // Fallback center
-         // }
+         // Optional: Fit map bounds only if there are markers
+         if (markersRef.current.length > 0) {
+            const group = L.featureGroup(markersRef.current);
+            // Check if bounds are valid before fitting
+            if (group.getBounds().isValid()) {
+                 mapRef.current.fitBounds(group.getBounds().pad(0.1)); // Add padding
+            } else {
+                 console.warn("Could not fit bounds: Invalid bounds calculated from markers.");
+                 // Fallback to centering on initial center or current location if bounds are invalid
+                 mapRef.current.setView(currentLocation ? [currentLocation.lat, currentLocation.lng] : initialCenter, 13);
+             }
+         } else if (currentLocation) {
+             mapRef.current.setView([currentLocation.lat, currentLocation.lng], 13); // Center on user if no markers
+         } else {
+             mapRef.current.setView(initialCenter, 13); // Fallback center
+         }
 
      }
 
-    // --- Cleanup function ---
-    // DO NOT remove the map instance here if the component might re-render without unmounting
-    // We only want to remove markers on data updates.
-    // The map instance should only be removed when the component truly unmounts.
-
-    // Return a cleanup function specifically for component unmount
+    // --- Cleanup function for component unmount ---
     return () => {
-        // This runs ONLY when the component is unmounted
         if (mapRef.current) {
             console.log("Unmounting MapView: Cleaning up Leaflet map instance.");
-            mapRef.current.remove(); // Destroy the map instance
-            mapRef.current = null; // Nullify the ref
+            mapRef.current.remove();
+            mapRef.current = null;
         }
     };
   }, [availableMissions, assignedMissions, currentLocation, initialCenter, isLoadingLocation]); // Re-run if data or location status changes
@@ -205,7 +206,6 @@ export function MapView({ availableMissions = [], assignedMissions = [] }) {
     if (mapRef.current && currentLocation) {
       mapRef.current.setView([currentLocation.lat, currentLocation.lng], 14); // Recenter map with slightly more zoom
     } else if (!isLoadingLocation && !currentLocation) {
-        // Optionally prompt to retry getting location if it failed initially
         toast({ variant: "destructive", title: "Location Unavailable", description: locationError || "Could not retrieve your current location." });
     }
    };
@@ -248,3 +248,5 @@ export function MapView({ availableMissions = [], assignedMissions = [] }) {
     </div>
   );
 }
+
+    
