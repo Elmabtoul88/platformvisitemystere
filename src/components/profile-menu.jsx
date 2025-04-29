@@ -11,7 +11,7 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
-import { User, Settings, LogOut } from 'lucide-react';
+import { User, Settings, LogOut, MessageSquare } from 'lucide-react'; // Added MessageSquare
 import { useToast } from '@/hooks/use-toast';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/context/auth-context'; // Import useAuth
@@ -45,6 +45,14 @@ export function ProfileMenu() {
       <DropdownMenuContent align="end">
         <DropdownMenuLabel>My Account</DropdownMenuLabel>
         <DropdownMenuSeparator />
+         {/* Chat Item */}
+        <DropdownMenuItem asChild>
+          <Link href="/chat" className="flex items-center cursor-pointer">
+            <MessageSquare className="mr-2 h-4 w-4" />
+            <span>Chat</span>
+          </Link>
+        </DropdownMenuItem>
+         {/* Settings Item */}
         <DropdownMenuItem asChild>
           <Link href="/settings" className="flex items-center cursor-pointer">
             <Settings className="mr-2 h-4 w-4" />
@@ -52,6 +60,7 @@ export function ProfileMenu() {
           </Link>
         </DropdownMenuItem>
         <DropdownMenuSeparator />
+        {/* Logout Item */}
         <DropdownMenuItem onClick={handleLogout} className="cursor-pointer text-destructive focus:text-destructive focus:bg-destructive/10">
           <LogOut className="mr-2 h-4 w-4" />
           <span>Déconnexion</span>
