@@ -65,7 +65,8 @@ export default function CompletedMissionsPage() {
                                       </Badge>
                                     </h3>
                                     <p className="text-sm text-muted-foreground">
-                                        Submitted on: {format(report.submittedAt, 'PPP p')}
+                                        {/* Format date without time to avoid hydration mismatch */}
+                                        Submitted on: {format(report.submittedAt, 'PPP')}
                                     </p>
                                     <div className="flex items-center gap-1">
                                          {Array.from({ length: 5 }).map((_, i) => (
