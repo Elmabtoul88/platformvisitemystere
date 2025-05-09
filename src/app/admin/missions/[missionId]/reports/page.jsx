@@ -9,12 +9,12 @@ import { Badge } from '@/components/ui/badge';
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
 import { mockMissions, mockReports, mockSurveyQuestions } from '@/lib/mock-data'; // Use mock data for now
-import { mockUsers } from '@/lib/mock-data'; // Import users from the central mock data source
+import { mockUsers } from '@/app/admin/users/users-mock.js'; // Import mock users using alias
 import { format } from 'date-fns';
 import Link from 'next/link';
 import Image from 'next/image';
 import { useToast } from '@/hooks/use-toast';
-import { approveReportAction, refuseReportAction } from '@/app/actions/admin-actions.js'; // Corrected import path to top-level actions
+import { approveReportAction, refuseReportAction } from '../../../../actions/admin-actions.js'; // Corrected import path
 import {
     ArrowLeft, CheckCircle, XCircle, Loader2, FileWarning, User, Calendar, Star,
     MessageSquare, Image as ImageIcon, Mic, MapPin, ListOrdered, CheckSquare as CheckSquareIcon, TextCursorInput as TextCursorInputIcon // Renamed imported icon
@@ -84,6 +84,7 @@ const formatAnswerValue = (answer, question) => {
                                 width={100}
                                 height={75}
                                 className="rounded border object-cover hover:opacity-80 transition-opacity"
+                                data-ai-hint="abstract texture"
                             />
                         </Link>
                     ))}
