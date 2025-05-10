@@ -1,24 +1,23 @@
-
+// admin/missions/page.jsx
 'use client';
 
 import React, { useState, useMemo, useTransition, useEffect } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { Button, buttonVariants } from '@/components/ui/button'; // Import buttonVariants
+import { Button, buttonVariants } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
 import { Label } from '@/components/ui/label';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
-import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog"; // Ensure AlertDialogTrigger is imported
-import { PlusCircle, MoreHorizontal, Search, Edit, Trash2, FileCheck, FileText, Loader2, UserPlus, Award, MapPin as MapPinIcon, Users as UsersIcon } from 'lucide-react';
-import { mockMissions, mockReports } from '@/lib/mock-data';
-import { mockUsers } from '../users/users-mock.js';
-import { assignMissionAction, deleteMissionAction } from '../../actions/admin-actions.js'; // Corrected import path
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
+import { PlusCircle, MoreHorizontal, Search, Edit, Trash2, FileCheck, FileText, Loader2, UserPlus, Award, MapPin as MapPinIcon, Users as UsersIcon, FileSignature } from 'lucide-react';
+import { mockMissions, mockReports, mockAssignments, mockApplications, mockUsers } from '@/lib/mock-data'; // Import all necessary mock data, including mockUsers
+
+import { assignMissionAction, deleteMissionAction } from '../../actions/admin-actions.js';
 import { format } from 'date-fns';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useToast } from '@/hooks/use-toast';
-// Import Command components for multi-select autocomplete
 import {
   Command,
   CommandEmpty,
@@ -29,47 +28,47 @@ import {
 } from "@/components/ui/command";
 import { Checkbox } from "@/components/ui/checkbox";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'; // Import Avatar
+import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import {
   Tooltip,
   TooltipContent,
   TooltipProvider,
   TooltipTrigger,
-} from "@/components/ui/tooltip"; // Import Tooltip components
+} from "@/components/ui/tooltip";
 
 
 // Helper function for status badge variant
 const getStatusVariant = (status) => {
     switch (status) {
-      case 'available': return 'secondary'; // Grayish
-      case 'assigned': return 'default'; // Primary (Teal)
-      case 'submitted': return 'outline'; // Outline style, color added via class
-      case 'approved': return 'default'; // Primary (Teal) - Use class for green maybe
-      case 'refused': return 'destructive'; // Red
-      case 'completed': return 'default'; // Treat completed same as approved visually here
+      case 'available': return 'secondary';
+      case 'pending_approval': return 'outline'; // For applications pending
+      case 'assigned': return 'default';
+      case 'submitted': return 'outline';
+      case 'approved': return 'default';
+      case 'refused': return 'destructive';
+      case 'completed': return 'default';
       default: return 'secondary';
     }
 };
-// Helper function for status text and adding specific styling classes
+
 const getStatusInfo = (status) => {
     switch (status) {
       case 'available': return { text: 'Available', className: '' };
-      case 'assigned': return { text: 'Assigned', className: 'bg-primary/10 text-primary-foreground' }; // Slightly different from default badge bg maybe?
-      case 'submitted': return { text: 'Review Pending', className: 'bg-yellow-100 text-yellow-800 border-yellow-300' }; // Yellow style for pending
-      case 'approved': return { text: 'Approved', className: 'bg-green-100 text-green-800 border-green-300' }; // Green style for approved
-      case 'refused': return { text: 'Refused', className: '' }; // Destructive variant handles red
-      case 'completed': return { text: 'Approved', className: 'bg-green-100 text-green-800 border-green-300' }; // Display completed as Approved
-      default: return { text: status.charAt(0).toUpperCase() + status.slice(1), className: '' }; // Capitalize
+      case 'pending_approval': return { text: 'Pending App.', className: 'bg-orange-100 text-orange-800 border-orange-300' };
+      case 'assigned': return { text: 'Assigned', className: 'bg-primary/10 text-primary-foreground' };
+      case 'submitted': return { text: 'Review Reports', className: 'bg-yellow-100 text-yellow-800 border-yellow-300' };
+      case 'approved': return { text: 'Approved', className: 'bg-green-100 text-green-800 border-green-300' };
+      case 'refused': return { text: 'Refused', className: '' }; // Destructive variant handles this
+      case 'completed': return { text: 'Approved', className: 'bg-green-100 text-green-800 border-green-300' };
+      default: return { text: status.charAt(0).toUpperCase() + status.slice(1), className: '' };
     }
   };
 
-// Helper to count submitted reports for a specific mission
-// Updated to use the imported mockReports directly for accurate counting
 const countSubmittedReports = (missionId) => {
+    // Count reports for a specific mission that are in 'submitted' status
     return mockReports.filter(r => r.missionId === missionId && r.status === 'submitted').length;
 };
 
-// Helper to get user details from mock data
 const getUserById = (userId) => {
     return mockUsers.find(u => u.id === userId);
 };
@@ -79,46 +78,36 @@ export default function AdminMissionsPage() {
     const router = useRouter();
     const { toast } = useToast();
     const [searchTerm, setSearchTerm] = useState('');
-    const [missions, setMissions] = useState([]);
-    // Removed reports state as countSubmittedReports uses mockReports directly
-    // const [reports, setReports] = useState([]);
-    const [shoppers, setShoppers] = useState([]); // State to hold formatted shopper data
+    const [missions, setMissions] = useState(mockMissions);
+    const [activeShoppers, setActiveShoppers] = useState([]); // Renamed from 'shoppers' to be more specific
     const [isLoading, setIsLoading] = useState(true);
-    const [isProcessing, setIsProcessing] = useState(null); // Track processing state for various actions (e.g., delete, assign)
-    const [isAssigning, setIsAssigning] = useState(false); // Specific state for assignment action button loading
+    const [isProcessing, setIsProcessing] = useState(null);
+    const [isAssigning, setIsAssigning] = useState(false);
     const [assignDialogOpen, setAssignDialogOpen] = useState(false);
     const [selectedMissionForAssignment, setSelectedMissionForAssignment] = useState(null);
-    // State for multi-select
-    const [selectedUsersForAssignment, setSelectedUsersForAssignment] = useState([]); // Array of user IDs
-    const [shopperSearchTerm, setShopperSearchTerm] = useState(''); // State for CommandInput
-    const [isTransitioning, startTransition] = useTransition(); // For optimistic updates
+    const [selectedUsersForAssignment, setSelectedUsersForAssignment] = useState([]);
+    const [shopperSearchTerm, setShopperSearchTerm] = useState('');
+    const [isTransitioning, startTransition] = useTransition();
 
-    // Fetch initial data
     useEffect(() => {
         setIsLoading(true);
-        // Simulate fetching data
         setTimeout(() => {
             startTransition(() => {
-                // Ensure mockMissions is initialized correctly
-                setMissions(Array.isArray(mockMissions) ? mockMissions : []);
-                // Removed setReports as it's no longer needed locally
-                // setReports(Array.isArray(mockReports) ? mockReports : []);
-                 // Filter and format shopper data ONLY ONCE here
-                 const activeShoppers = (Array.isArray(mockUsers) ? mockUsers : [])
+                setMissions(mockMissions);
+                const filteredActiveShoppers = mockUsers // Use allMockUsers here
                     .filter(u => u.role === 'shopper' && u.status === 'active')
                     .map(u => ({
-                        value: u.id, // User ID is the value
-                        label: u.name, // Display name
-                        email: u.email, // For searching
-                        city: u.city || 'N/A', // For display
-                        completedMissions: u.completedMissions ?? 0, // For display
-                        profilePicUrl: u.profilePicUrl, // Include profile picture URL
+                        value: u.id,
+                        label: u.name,
+                        email: u.email,
+                        city: u.city || 'N/A',
+                        completedMissions: u.completed_missions_count ?? 0,
+                        profilePicUrl: u.profile_pic_url,
                      }));
-                setShoppers(activeShoppers);
-                console.log("Active Shoppers for Assignment:", activeShoppers); // Debug log
+                setActiveShoppers(filteredActiveShoppers);
             });
             setIsLoading(false);
-        }, 300); // Short delay for simulation
+        }, 300);
     }, []);
 
 
@@ -132,14 +121,13 @@ export default function AdminMissionsPage() {
         );
     }, [missions, searchTerm]);
 
-    // Filter shoppers based on search term for Command list
-     const filteredShoppers = useMemo(() => {
-        if (!shopperSearchTerm) return shoppers; // Use the pre-filtered shoppers state
-        return shoppers.filter(shopper =>
+     const filteredShoppersForDialog = useMemo(() => { // Renamed to avoid confusion
+        if (!shopperSearchTerm) return activeShoppers;
+        return activeShoppers.filter(shopper =>
             shopper.label.toLowerCase().includes(shopperSearchTerm.toLowerCase()) ||
             shopper.email.toLowerCase().includes(shopperSearchTerm.toLowerCase())
         );
-    }, [shoppers, shopperSearchTerm]); // Depends only on shoppers and search term
+    }, [activeShoppers, shopperSearchTerm]);
 
 
     const handleCreateMission = () => {
@@ -151,28 +139,35 @@ export default function AdminMissionsPage() {
     };
 
     const handleEditSurvey = (missionId) => {
-        // Navigate to survey edit page - ensure this route exists and works
-        router.push(`/admin/missions/${missionId}/survey/create`); // Assuming create/edit share the same page
+        router.push(`/admin/missions/${missionId}/survey/create`); // Assuming survey creation is linked this way
     };
 
     const handleDeleteMission = async (missionId) => {
-        setIsProcessing(missionId); // Use generic processing state for row opacity/disable
-        console.log(`Admin: Deleting mission ${missionId}`);
-
+        setIsProcessing(missionId);
         try {
             const result = await deleteMissionAction(missionId);
              if (result.success) {
                  startTransition(() => {
                    setMissions(prev => prev.filter(m => m.id !== missionId));
-                   // Also remove reports associated with this mission from mock data
-                    const updatedReports = mockReports.filter(r => r.missionId !== missionId);
-                    // Update mockReports directly (only for simulation)
-                    mockReports.length = 0;
-                    mockReports.push(...updatedReports);
-
-                    // Also remove from mockMissions for simulation persistence
+                   // Update mock data directly
                    const index = mockMissions.findIndex(m => m.id === missionId);
                    if (index > -1) mockMissions.splice(index, 1);
+
+                   // Also remove associated applications, assignments, reports, survey_questions
+                    const applicationsToKeep = mockApplications.filter(app => app.mission_id !== missionId);
+                    mockApplications.length = 0;
+                    mockApplications.push(...applicationsToKeep);
+
+                    const assignmentsToKeep = mockAssignments.filter(assign => assign.mission_id !== missionId);
+                    mockAssignments.length = 0;
+                    mockAssignments.push(...assignmentsToKeep);
+
+                    const reportsToKeep = mockReports.filter(report => report.missionId !== missionId);
+                    mockReports.length = 0;
+                    mockReports.push(...reportsToKeep);
+
+                    // For surveyQuestions (object), delete the key
+                    // delete mockSurveyQuestions[missionId]; // This was commented out, ensure mockSurveyQuestions is defined if used
                 });
                 toast({ title: "Mission Deleted", description: result.message });
              } else {
@@ -186,34 +181,29 @@ export default function AdminMissionsPage() {
     };
 
      const handleReviewReports = (missionId) => {
-         // Navigate to the page that lists all reports for this mission
         router.push(`/admin/missions/${missionId}/reports`);
     };
 
-     // --- Assign Mission Logic (Updated for Multi-Select) ---
     const openAssignDialog = (mission) => {
-        // Allow assigning even if already assigned, to add more users
-        if (mission.status !== 'available' && mission.status !== 'assigned') {
+        if (!['available', 'assigned', 'pending_approval'].includes(mission.status)) {
             toast({ variant: "destructive", title: "Cannot Assign", description: `Mission status (${mission.status}) prevents assignment.` });
             return;
         }
         setSelectedMissionForAssignment(mission);
-        // Pre-populate selected users if mission is already assigned
-         const currentAssignees = Array.isArray(mission.assignedTo) ? mission.assignedTo : (mission.assignedTo ? [mission.assignedTo] : []);
+        const currentAssignees = mockAssignments
+            .filter(a => a.mission_id === mission.id)
+            .map(a => a.user_id);
          setSelectedUsersForAssignment(currentAssignees);
-        setShopperSearchTerm(''); // Reset search term
+        setShopperSearchTerm('');
         setAssignDialogOpen(true);
     };
 
-     // Handle user selection toggle (called by Checkbox onCheckedChange)
      const handleUserSelectionChange = (userId) => {
-         console.log("Toggling selection for user:", userId); // Keep this log
          setSelectedUsersForAssignment(prevSelected => {
              const isSelected = prevSelected.includes(userId);
              const newSelected = isSelected
-                 ? prevSelected.filter(id => id !== userId) // Remove if already selected
-                 : [...prevSelected, userId]; // Add if not selected
-             console.log("New selection state:", newSelected); // Log the updated state
+                 ? prevSelected.filter(id => id !== userId)
+                 : [...prevSelected, userId];
              return newSelected;
          });
      };
@@ -225,83 +215,52 @@ export default function AdminMissionsPage() {
             return;
         }
         const missionId = selectedMissionForAssignment.id;
-        setIsAssigning(true); // Set assigning state for button loading
-        console.log(`Admin: Assigning mission ${missionId} to users: ${selectedUsersForAssignment.join(', ')}`);
+        setIsAssigning(true);
 
-        // Array to hold results of each assignment attempt
-        const results = [];
-        // Sequentially assign to each selected user (could be parallelized, but sequential is simpler for simulation)
-        for (const userId of selectedUsersForAssignment) {
-             try {
-                 // This server action needs to handle assigning to a single user at a time
-                 const result = await assignMissionAction(missionId, userId);
-                 results.push({ userId, success: result.success, message: result.message });
-                  // If successful, update the mission status in mock data immediately
-                  // For simulation, the first successful assignment marks the mission as 'assigned'
-                 if (result.success) {
-                      const missionIndex = mockMissions.findIndex(m => m.id === missionId);
-                       if (missionIndex !== -1) {
-                           const currentMission = mockMissions[missionIndex];
-                            // Update status to 'assigned' if it was 'available'
-                           if(currentMission.status === 'available'){
-                                currentMission.status = 'assigned';
-                           }
-                            // In a real DB, you'd likely have an assignments table
-                           // For simulation, store assigned users in an array
-                           if (!Array.isArray(currentMission.assignedTo)) {
-                               currentMission.assignedTo = [];
-                           }
-                            // Add only if not already present (handles multiple calls for same user)
-                            if (!currentMission.assignedTo.includes(userId)) {
-                               currentMission.assignedTo.push(userId);
-                            }
-                           console.log(`Mock mission ${missionId} status updated to ${currentMission.status} for user ${userId}. Assignees: ${currentMission.assignedTo.join(', ')}`);
-                       }
-                  }
+        try {
+             // Assuming assignMissionAction takes missionId and an array of userIds
+             const result = await assignMissionAction(missionId, selectedUsersForAssignment);
+             if (result.success) {
+                 startTransition(() => {
+                     setMissions(prevMissions => prevMissions.map(m =>
+                         m.id === missionId ? { ...m, status: 'assigned' } : m
+                     ));
+                     // Update mock data for assignments
+                     // Remove old assignments for this mission
+                     const assignmentsToKeep = mockAssignments.filter(a => a.mission_id !== missionId);
+                     mockAssignments.length = 0; // Clear the array
+                     mockAssignments.push(...assignmentsToKeep); // Repopulate
 
-             } catch (error) {
-                 results.push({ userId, success: false, message: error.message || "Failed to assign." });
+                     // Add new assignments
+                    selectedUsersForAssignment.forEach(userId => {
+                        mockAssignments.push({
+                            id: `asg-${Date.now()}-${userId}`, // Simple unique ID generation
+                            mission_id: missionId,
+                            user_id: userId,
+                            assigned_at: new Date().toISOString()
+                        });
+                    });
+                     // Also update mission status in mockMissions
+                    const missionIndex = mockMissions.findIndex(m => m.id === missionId);
+                    if (missionIndex > -1) {
+                        mockMissions[missionIndex].status = 'assigned';
+                        // If the mission was previously 'available' or 'pending_approval', ensure its assignedTo is updated.
+                        // For this mock setup, assignMissionAction handles the mockMissions[missionIndex].assignedTo update.
+                    }
+                 });
+                 toast({ title: "Mission Assigned", description: result.message });
+                 setAssignDialogOpen(false);
+                 setSelectedMissionForAssignment(null);
+                 setSelectedUsersForAssignment([]);
+             } else {
+                 throw new Error(result.message || "Failed to assign mission.");
              }
-         }
-
-         const successes = results.filter(r => r.success);
-         const failures = results.filter(r => !r.success);
-
-         // Update local state only if at least one assignment was successful
-         if (successes.length > 0) {
-             startTransition(() => {
-                 // Update the mission in the local React state
-                 // Ensure assignedTo reflects the final selection
-                 setMissions(prev => prev.map(m => {
-                     if (m.id === missionId) {
-                         // Directly set the assignedTo array to the currently selected users
-                         return { ...m, status: 'assigned', assignedTo: selectedUsersForAssignment };
-                     }
-                     return m;
-                 }));
-             });
-         }
-
-         // Display feedback based on results
-          if (failures.length === 0) {
-             toast({ title: "Mission Assigned", description: `Successfully assigned to ${successes.length} user(s).` });
-          } else {
-              toast({
-                 variant: "destructive",
-                 title: "Partial Assignment Failure",
-                 description: `Assigned to ${successes.length} user(s). Failed for ${failures.length} user(s). Check logs for details.`,
-                 duration: 5000, // Longer duration for error messages
-             });
-             console.error("Assignment Failures:", failures);
-          }
-
-         setAssignDialogOpen(false);
-         setSelectedMissionForAssignment(null);
-         setSelectedUsersForAssignment([]);
-         setIsAssigning(false); // Clear assigning state
-     };
-
-     // --- End Assign Mission Logic ---
+        } catch (error) {
+             toast({ variant: "destructive", title: "Assignment Failed", description: error.message });
+        } finally {
+            setIsAssigning(false);
+        }
+    };
 
 
      if (isLoading) {
@@ -317,7 +276,7 @@ export default function AdminMissionsPage() {
         <div className="container mx-auto py-8 px-4">
             <div className="flex justify-between items-center mb-6">
                 <h1 className="text-2xl font-bold text-primary flex items-center gap-2">
-                    Manage Missions
+                    <FileSignature className="w-6 h-6" /> Manage Missions
                 </h1>
                 <Button onClick={handleCreateMission} size="sm">
                     <PlusCircle className="w-4 h-4 mr-2" /> Create New Mission
@@ -339,173 +298,173 @@ export default function AdminMissionsPage() {
                     </div>
                 </CardHeader>
                 <CardContent>
-                    <Table>
-                        <TableHeader>
-                            <TableRow>
-                                <TableHead>Title</TableHead>
-                                <TableHead>Business</TableHead>
-                                <TableHead>Location</TableHead>
-                                <TableHead>Deadline</TableHead>
-                                <TableHead>Reward</TableHead>
-                                <TableHead>Status</TableHead>
-                                <TableHead>Assigned To</TableHead>
-                                <TableHead className="text-right">Actions</TableHead>
-                            </TableRow>
-                        </TableHeader>
-                        <TableBody><TooltipProvider> {/* Ensure TooltipProvider wraps the rows */}
-                            {filteredMissions.length > 0 ? (
-                                filteredMissions.map((mission) => {
-                                    const submittedCount = countSubmittedReports(mission.id); // Use updated helper
-                                    // Handle assignedTo being potentially an array or single ID
-                                    const assignedUserIds = Array.isArray(mission.assignedTo) ? mission.assignedTo : (mission.assignedTo ? [mission.assignedTo] : []);
-                                     // Get details for assigned shoppers
-                                    const assignedShoppers = assignedUserIds.map(id => getUserById(id)).filter(Boolean);
-                                    const isCurrentProcessing = isProcessing === mission.id; // Used for delete/row disabling
-                                    const statusInfo = getStatusInfo(mission.status); // Get text and class for status
-
-                                    return (
-                                        <TableRow key={mission.id} className={isCurrentProcessing ? 'opacity-50 pointer-events-none' : ''}>
-                                            <TableCell className="font-medium">{mission.title}</TableCell>
-                                            <TableCell>{mission.businessName || 'N/A'}</TableCell>
-                                            <TableCell>{mission.location}</TableCell>
-                                            <TableCell>{format(new Date(mission.deadline), 'PP')}</TableCell>
-                                            <TableCell>${mission.reward}</TableCell>
-                                            <TableCell>
-                                                 {/* Improved Status Display */}
-                                                 <div className="flex items-center gap-1.5"> {/* Adjusted gap */}
-                                                     <Badge variant={getStatusVariant(mission.status)} className={`capitalize px-2 py-0.5 ${statusInfo.className}`}> {/* Base status */}
-                                                         {statusInfo.text}
-                                                     </Badge>
-                                                     {/* Show pending count badge ONLY if reports are submitted */}
-                                                     {mission.status === 'submitted' && submittedCount > 0 && (
-                                                        <Badge variant="destructive" className="text-xs px-2 py-1 h-fit leading-tight flex items-center"> {/* Increased padding, adjusted leading */}
-                                                             {submittedCount} Pending
-                                                         </Badge>
-                                                     )}
-                                                 </div>
-                                            </TableCell>
-                                            <TableCell className="text-xs max-w-[150px]">
-                                                 {/* Display assigned users with avatars and tooltip */}
-                                                {assignedShoppers.length > 0 ? (
-                                                    <div className="flex items-center -space-x-2">
-                                                         {assignedShoppers.slice(0, 3).map((shopper) => (
-                                                            <Tooltip key={shopper.id}>
-                                                                <TooltipTrigger asChild>
-                                                                     <Avatar className="h-6 w-6 border-2 border-background hover:z-10">
-                                                                        <AvatarImage src={shopper.profilePicUrl} alt={shopper.name} />
-                                                                        <AvatarFallback>{shopper.name?.charAt(0)?.toUpperCase() || 'U'}</AvatarFallback>
-                                                                     </Avatar>
-                                                                </TooltipTrigger>
-                                                                 <TooltipContent>
-                                                                    <p>{shopper.name}</p>
-                                                                </TooltipContent>
-                                                            </Tooltip>
-                                                        ))}
-                                                         {assignedShoppers.length > 3 && (
-                                                            <Tooltip>
-                                                                 <TooltipTrigger asChild>
-                                                                    <Avatar className="h-6 w-6 border-2 border-background bg-muted text-muted-foreground flex items-center justify-center hover:z-10">
-                                                                        <span>+{assignedShoppers.length - 3}</span>
-                                                                    </Avatar>
-                                                                </TooltipTrigger>
-                                                                 <TooltipContent>
-                                                                     {/* Display all remaining names */}
-                                                                     <p>{assignedShoppers.slice(3).map(s => s.name).join(', ')}</p>
-                                                                 </TooltipContent>
-                                                            </Tooltip>
-                                                         )}
-                                                    </div>
-                                                ) : (
-                                                    <span className="text-muted-foreground italic">Not Assigned</span>
-                                                )}
-                                            </TableCell>
-                                            <TableCell className="text-right">
-                                                <DropdownMenu>
-                                                    <DropdownMenuTrigger asChild>
-                                                        <Button variant="ghost" className="h-8 w-8 p-0" disabled={isCurrentProcessing}>
-                                                            {isCurrentProcessing ? <Loader2 className="h-4 w-4 animate-spin" /> : <MoreHorizontal className="h-4 w-4" />}
-                                                            <span className="sr-only">Open menu</span>
-                                                        </Button>
-                                                    </DropdownMenuTrigger>
-                                                    <DropdownMenuContent align="end">
-                                                        <DropdownMenuLabel>Actions</DropdownMenuLabel>
-                                                         {/* Allow assigning if available OR already assigned */}
-                                                        {(mission.status === 'available' || mission.status === 'assigned') && (
-                                                            <DropdownMenuItem onClick={() => openAssignDialog(mission)} disabled={isCurrentProcessing}>
-                                                                <UserPlus className="mr-2 h-4 w-4" /> Assign/Reassign
-                                                            </DropdownMenuItem>
-                                                        )}
-                                                         {/* Show 'Review Reports' if status is submitted or approved/refused */}
-                                                         {(mission.status === 'submitted' || mission.status === 'approved' || mission.status === 'refused') && (
-                                                            <DropdownMenuItem onClick={() => handleReviewReports(mission.id)} disabled={isCurrentProcessing}>
-                                                                 <FileCheck className="mr-2 h-4 w-4" /> Review Reports
-                                                                 {submittedCount > 0 && mission.status === 'submitted' && (
-                                                                     <Badge variant="destructive" className="ml-auto text-[10px] px-1 py-0.5 flex items-center leading-none">{submittedCount}</Badge>
-                                                                 )}
-                                                            </DropdownMenuItem>
-                                                         )}
-                                                        <DropdownMenuItem onClick={() => handleEditMission(mission.id)} disabled={isCurrentProcessing}>
-                                                            <Edit className="mr-2 h-4 w-4" /> Edit Mission Details
-                                                        </DropdownMenuItem>
-                                                        <DropdownMenuItem onClick={() => handleEditSurvey(mission.id)} disabled={isCurrentProcessing}>
-                                                            <FileText className="mr-2 h-4 w-4" /> Edit Survey
-                                                        </DropdownMenuItem>
-                                                        <DropdownMenuSeparator />
-                                                        <AlertDialog>
-                                                            <AlertDialogTrigger asChild>
-                                                                <DropdownMenuItem
-                                                                    className="text-destructive focus:text-destructive focus:bg-destructive/10"
-                                                                    onSelect={(e) => e.preventDefault()} // Prevent dropdown closing on trigger click
-                                                                     // Allow deletion only if 'available' or perhaps 'refused'/'approved' (depending on rules)
-                                                                    disabled={isCurrentProcessing || ['assigned', 'submitted'].includes(mission.status)}
-                                                                    title={['assigned', 'submitted'].includes(mission.status) ? "Cannot delete while assigned or reports pending" : ""}
-                                                                >
-                                                                    <Trash2 className="mr-2 h-4 w-4" /> Delete Mission
-                                                                </DropdownMenuItem>
-                                                            </AlertDialogTrigger>
-                                                            <AlertDialogContent>
-                                                                <AlertDialogHeader>
-                                                                    <AlertDialogTitle>Are you sure?</AlertDialogTitle>
-                                                                    <AlertDialogDescription>
-                                                                        This action cannot be undone. This will permanently delete the mission
-                                                                        "{mission.title}" and any associated reports.
-                                                                    </AlertDialogDescription>
-                                                                </AlertDialogHeader>
-                                                                <AlertDialogFooter>
-                                                                    <AlertDialogCancel disabled={isCurrentProcessing}>Cancel</AlertDialogCancel>
-                                                                    <AlertDialogAction
-                                                                        className={buttonVariants({ variant: "destructive" })}
-                                                                        onClick={() => handleDeleteMission(mission.id)}
-                                                                        disabled={isCurrentProcessing}
-                                                                    >
-                                                                        {isCurrentProcessing ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
-                                                                        Delete
-                                                                    </AlertDialogAction>
-                                                                </AlertDialogFooter>
-                                                            </AlertDialogContent>
-                                                        </AlertDialog>
-                                                    </DropdownMenuContent>
-                                                </DropdownMenu>
-                                            </TableCell>
-                                        </TableRow>
-                                    );
-                                })
-                            ) : (
+                    <TooltipProvider>
+                        <Table>
+                            <TableHeader>
                                 <TableRow>
-                                    <TableCell colSpan={8} className="h-24 text-center">
-                                        No missions found matching your search criteria.
-                                    </TableCell>
+                                    <TableHead>Title</TableHead>
+                                    <TableHead>Business</TableHead>
+                                    <TableHead>Location</TableHead>
+                                    <TableHead>Deadline</TableHead>
+                                    <TableHead>Reward</TableHead>
+                                    <TableHead>Status</TableHead>
+                                    <TableHead>Assigned To</TableHead>
+                                    <TableHead className="text-right">Actions</TableHead>
                                 </TableRow>
-                            )}
-                            </TooltipProvider>{/* Close TooltipProvider */}
-                        </TableBody>
-                    </Table>
+                            </TableHeader>
+                            <TableBody>
+                                {filteredMissions.length > 0 ? (
+                                    filteredMissions.map((mission) => {
+                                        const submittedCount = countSubmittedReports(mission.id);
+                                        const assignedUserIds = mockAssignments
+                                            .filter(a => a.mission_id === mission.id)
+                                            .map(a => a.user_id);
+                                        const assignedShoppersDetails = assignedUserIds.map(id => getUserById(id)).filter(Boolean);
+                                        const isCurrentProcessing = isProcessing === mission.id;
+                                        const statusInfo = getStatusInfo(mission.status);
+                                        const pendingApplicationsCount = mockApplications.filter(app => app.mission_id === mission.id && app.status === 'pending').length;
+
+
+                                        return (
+                                            <TableRow key={mission.id} className={isCurrentProcessing ? 'opacity-50 pointer-events-none' : ''}>
+                                                <TableCell className="font-medium">{mission.title}</TableCell>
+                                                <TableCell>{mission.businessName || 'N/A'}</TableCell>
+                                                <TableCell>{mission.location}</TableCell>
+                                                <TableCell>{format(new Date(mission.deadline), 'PP')}</TableCell>
+                                                <TableCell>${mission.reward}</TableCell>
+                                                <TableCell>
+                                                     <div className="flex items-center gap-1.5">
+                                                         <Badge variant={getStatusVariant(mission.status)} className={`capitalize px-2 py-0.5 ${statusInfo.className}`}>
+                                                             {statusInfo.text}
+                                                         </Badge>
+                                                         {mission.status === 'submitted' && submittedCount > 0 && (
+                                                            <Badge variant="destructive" className="text-xs px-1.5 py-0.5 h-fit leading-tight flex items-center">
+                                                                 {submittedCount}
+                                                             </Badge>
+                                                         )}
+                                                          {mission.status === 'pending_approval' && pendingApplicationsCount > 0 && (
+                                                            <Badge variant="outline" className="text-xs px-1.5 py-1 h-fit leading-tight flex items-center bg-orange-100 text-orange-800 border-orange-300">
+                                                                 {pendingApplicationsCount} New
+                                                             </Badge>
+                                                         )}
+                                                     </div>
+                                                </TableCell>
+                                                <TableCell className="text-xs max-w-[150px]">
+                                                    {assignedShoppersDetails.length > 0 ? (
+                                                        <div className="flex items-center -space-x-2">
+                                                             {assignedShoppersDetails.slice(0, 3).map((shopper) => (
+                                                                <Tooltip key={shopper.id}>
+                                                                    <TooltipTrigger asChild>
+                                                                         <Avatar className="h-6 w-6 border-2 border-background hover:z-10">
+                                                                            <AvatarImage src={shopper.profilePicUrl} alt={shopper.name} />
+                                                                            <AvatarFallback>{shopper.name?.charAt(0)?.toUpperCase() || 'U'}</AvatarFallback>
+                                                                         </Avatar>
+                                                                    </TooltipTrigger>
+                                                                     <TooltipContent>
+                                                                        <p>{shopper.name}</p>
+                                                                    </TooltipContent>
+                                                                </Tooltip>
+                                                            ))}
+                                                             {assignedShoppersDetails.length > 3 && (
+                                                                <Tooltip>
+                                                                     <TooltipTrigger asChild>
+                                                                        <Avatar className="h-6 w-6 border-2 border-background bg-muted text-muted-foreground flex items-center justify-center hover:z-10">
+                                                                            <span>+{assignedShoppersDetails.length - 3}</span>
+                                                                        </Avatar>
+                                                                    </TooltipTrigger>
+                                                                     <TooltipContent>
+                                                                         <p>{assignedShoppersDetails.slice(3).map(s => s.name).join(', ')}</p>
+                                                                     </TooltipContent>
+                                                                </Tooltip>
+                                                             )}
+                                                        </div>
+                                                    ) : (
+                                                        <span className="text-muted-foreground italic">Not Assigned</span>
+                                                    )}
+                                                </TableCell>
+                                                <TableCell className="text-right">
+                                                    <DropdownMenu>
+                                                        <DropdownMenuTrigger asChild>
+                                                            <Button variant="ghost" className="h-8 w-8 p-0" disabled={isCurrentProcessing}>
+                                                                {isCurrentProcessing ? <Loader2 className="h-4 w-4 animate-spin" /> : <MoreHorizontal className="h-4 w-4" />}
+                                                                <span className="sr-only">Open menu</span>
+                                                            </Button>
+                                                        </DropdownMenuTrigger>
+                                                        <DropdownMenuContent align="end">
+                                                            <DropdownMenuLabel>Actions</DropdownMenuLabel>
+                                                            {['available', 'assigned', 'pending_approval'].includes(mission.status) && (
+                                                                <DropdownMenuItem onClick={() => openAssignDialog(mission)} disabled={isCurrentProcessing}>
+                                                                    <UserPlus className="mr-2 h-4 w-4" /> Assign/Reassign
+                                                                </DropdownMenuItem>
+                                                            )}
+                                                             {mission.status === 'submitted' || mission.status === 'approved' || mission.status === 'refused' || mission.status === 'completed' ? (
+                                                                <DropdownMenuItem onClick={() => handleReviewReports(mission.id)} disabled={isCurrentProcessing}>
+                                                                     <FileCheck className="mr-2 h-4 w-4" /> Review Reports
+                                                                     {submittedCount > 0 && mission.status === 'submitted' && (
+                                                                         <Badge variant="destructive" className="ml-auto text-[10px] px-1.5 py-0.5 flex items-center leading-none">{submittedCount}</Badge>
+                                                                     )}
+                                                                </DropdownMenuItem>
+                                                             ) : null}
+                                                            <DropdownMenuItem onClick={() => handleEditMission(mission.id)} disabled={isCurrentProcessing}>
+                                                                <Edit className="mr-2 h-4 w-4" /> Edit Mission Details
+                                                            </DropdownMenuItem>
+                                                            <DropdownMenuItem onClick={() => handleEditSurvey(mission.id)} disabled={isCurrentProcessing}>
+                                                                <FileText className="mr-2 h-4 w-4" /> Edit Survey
+                                                            </DropdownMenuItem>
+                                                            <DropdownMenuSeparator />
+                                                            <AlertDialog>
+                                                                <AlertDialogTrigger asChild>
+                                                                    <DropdownMenuItem
+                                                                        className="text-destructive focus:text-destructive focus:bg-destructive/10"
+                                                                        onSelect={(e) => e.preventDefault()}
+                                                                        disabled={isCurrentProcessing || ['assigned', 'submitted', 'pending_approval'].includes(mission.status)}
+                                                                        title={['assigned', 'submitted', 'pending_approval'].includes(mission.status) ? "Cannot delete. Unassign or resolve applications/reports first." : ""}
+                                                                    >
+                                                                        <Trash2 className="mr-2 h-4 w-4" /> Delete Mission
+                                                                    </DropdownMenuItem>
+                                                                </AlertDialogTrigger>
+                                                                <AlertDialogContent>
+                                                                    <AlertDialogHeader>
+                                                                        <AlertDialogTitle>Are you sure?</AlertDialogTitle>
+                                                                        <AlertDialogDescription>
+                                                                            This action cannot be undone. This will permanently delete the mission
+                                                                            "{mission.title}" and any associated data (applications, assignments, reports, survey questions).
+                                                                        </AlertDialogDescription>
+                                                                    </AlertDialogHeader>
+                                                                    <AlertDialogFooter>
+                                                                        <AlertDialogCancel disabled={isCurrentProcessing}>Cancel</AlertDialogCancel>
+                                                                        <AlertDialogAction
+                                                                            className={buttonVariants({ variant: "destructive" })}
+                                                                            onClick={() => handleDeleteMission(mission.id)}
+                                                                            disabled={isCurrentProcessing}
+                                                                        >
+                                                                            {isCurrentProcessing ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
+                                                                            Delete
+                                                                        </AlertDialogAction>
+                                                                    </AlertDialogFooter>
+                                                                </AlertDialogContent>
+                                                            </AlertDialog>
+                                                        </DropdownMenuContent>
+                                                    </DropdownMenu>
+                                                </TableCell>
+                                            </TableRow>
+                                        );
+                                    })
+                                ) : (
+                                    <TableRow>
+                                        <TableCell colSpan={8} className="h-24 text-center">
+                                            No missions found matching your search criteria.
+                                        </TableCell>
+                                    </TableRow>
+                                )}
+                            </TableBody>
+                        </Table>
+                    </TooltipProvider>
                 </CardContent>
             </Card>
 
-             {/* Assign User Dialog (Updated for Multi-Select Autocomplete) */}
             <AlertDialog open={assignDialogOpen} onOpenChange={setAssignDialogOpen}>
-                <AlertDialogContent className="sm:max-w-lg"> {/* Wider dialog */}
+                <AlertDialogContent className="sm:max-w-lg">
                     <AlertDialogHeader>
                         <AlertDialogTitle>Assign Mission: {selectedMissionForAssignment?.title}</AlertDialogTitle>
                         <AlertDialogDescription>
@@ -522,47 +481,33 @@ export default function AdminMissionsPage() {
                             onValueChange={setShopperSearchTerm}
                           />
                           <CommandList>
-                            <CommandEmpty>No active shoppers found.</CommandEmpty> {/* Updated empty message */}
-                             {/* Wrap list in ScrollArea */}
-                             <ScrollArea className="h-[200px]"> {/* Adjust height as needed */}
+                            <CommandEmpty>No active shoppers found.</CommandEmpty>
+                             <ScrollArea className="h-[200px]">
                                 <CommandGroup>
-                                {filteredShoppers.length > 0 ? filteredShoppers.map((shopper) => (
+                                {filteredShoppersForDialog.length > 0 ? filteredShoppersForDialog.map((shopper) => (
                                     <CommandItem
                                         key={shopper.value}
-                                        value={`${shopper.label} ${shopper.email}`} // Combine fields for better searching
-                                        onSelect={(currentValue) => {
-                                             // This prevents CMDK's default value setting on select
-                                             // We handle selection via the checkbox click instead
-                                             console.log(`CommandItem selected via text: ${shopper.label}`);
-                                             // Optionally toggle selection here as well, but checkbox is primary
-                                             // handleUserSelectionChange(shopper.value);
-                                             // Do not clear search on text select, allow checkbox usage
-                                             // setShopperSearchTerm("");
-                                        }}
+                                        value={`${shopper.label} ${shopper.email}`}
+                                        onSelect={() => { /* CMDK handles selection; checkbox is primary */ }}
                                         className="flex items-center gap-2 cursor-pointer aria-selected:bg-accent/50"
-                                        // Prevent default selection behavior which interferes with checkbox
-                                         // IMPORTANT: CommandItem itself should not be disabled for search functionality
                                     >
-                                        {/* Checkbox is interactive and NOT disabled during selection */}
                                         <Checkbox
-                                            id={`user-${shopper.value}`} // Add unique ID for label association
+                                            id={`user-${shopper.value}`}
                                             checked={selectedUsersForAssignment.includes(shopper.value)}
                                             onCheckedChange={() => handleUserSelectionChange(shopper.value)}
-                                            aria-label={`Select ${shopper.label}`} // Accessibility
-                                            // Disable the checkbox ONLY when the assignment action is processing
+                                            aria-label={`Select ${shopper.label}`}
                                             disabled={isAssigning}
-                                            className="shrink-0" // Prevent checkbox from shrinking
+                                            className="shrink-0"
                                          />
-                                        {/* Make Label clickable and associate it with the checkbox */}
                                         <Label htmlFor={`user-${shopper.value}`} className="flex flex-col text-sm flex-grow cursor-pointer pl-2">
                                             <div className="flex items-center gap-2">
                                                 <Avatar className="h-6 w-6 border">
                                                   <AvatarImage src={shopper.profilePicUrl} alt={shopper.label} />
                                                   <AvatarFallback>{shopper.label?.charAt(0)?.toUpperCase() || 'U'}</AvatarFallback>
                                                 </Avatar>
-                                                <span>{shopper.label}</span> {/* Name */}
+                                                <span>{shopper.label}</span>
                                             </div>
-                                            <span className="text-xs text-muted-foreground ml-8">{shopper.email}</span> {/* Email */}
+                                            <span className="text-xs text-muted-foreground ml-8">{shopper.email}</span>
                                             <div className="flex items-center gap-2 text-xs text-muted-foreground mt-1 ml-8">
                                                  <span className="flex items-center gap-1"><MapPinIcon className="w-3 h-3"/> {shopper.city}</span>
                                                  <span className="flex items-center gap-1"><Award className="w-3 h-3"/> {shopper.completedMissions} done</span>
@@ -570,16 +515,15 @@ export default function AdminMissionsPage() {
                                         </Label>
                                     </CommandItem>
                                 )) : (
-                                    <div className="p-4 text-center text-sm text-muted-foreground">No matching active shoppers found.</div> // Message when search yields no results
+                                    <div className="p-4 text-center text-sm text-muted-foreground">No matching active shoppers found.</div>
                                 )}
                                 </CommandGroup>
                              </ScrollArea>
                           </CommandList>
                         </Command>
-                        {/* Display selected users */}
                         {selectedUsersForAssignment.length > 0 && (
                              <div className="pt-2 text-xs text-muted-foreground">
-                                 Selected: {selectedUsersForAssignment.map(id => shoppers.find(s => s.value === id)?.label).filter(Boolean).join(', ')}
+                                 Selected: {selectedUsersForAssignment.map(id => activeShoppers.find(s => s.value === id)?.label).filter(Boolean).join(', ')}
                              </div>
                          )}
                     </div>
@@ -598,4 +542,3 @@ export default function AdminMissionsPage() {
         </div>
     );
 }
-
