@@ -1,3 +1,4 @@
+
 'use client';
 
 import React, { useState } from 'react';
@@ -8,18 +9,21 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useToast } from "@/hooks/use-toast";
-import { ArrowLeft, Save, Loader2 } from 'lucide-react';
+import { ArrowLeft, Save, Loader2, MapPin as MapPinIcon } from 'lucide-react'; // Added MapPinIcon
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
-import { mockMissions } from '@/lib/mock-data'; // To get categories
+import { mockMissions, allMockUsers } from '@/lib/mock-data'; // Import mockMissions and allMockUsers
+import { createMissionAction } from '@/app/actions/admin-actions';
 
 // Get unique categories from mock data (replace with API call in real app)
-const availableCategories = [...new Set(mockMissions.map(m => m.category))];
+const availableCategories = [...new Set(mockMissions.map(m => m.category).filter(Boolean))];
 
 export default function CreateMissionPage() {
     const router = useRouter();
     const { toast } = useToast();
     const [isSubmitting, setIsSubmitting] = useState(false);
+    const [isFetchingLocation, setIsFetchingLocation] = useState(false);
+    const [locationError, setLocationError] = useState(null);
     const [formData, setFormData] = useState({
         title: '',
         description: '',
@@ -33,11 +37,53 @@ export default function CreateMissionPage() {
     const handleInputChange = (e) => {
         const { name, value } = e.target;
         setFormData(prev => ({ ...prev, [name]: value }));
+        if (name === 'location') {
+            setLocationError(null); // Clear location error if user types manually
+        }
     };
 
      const handleCategoryChange = (value) => {
         setFormData(prev => ({ ...prev, category: value }));
     };
+
+    const handleGetLocation = async () => {
+        setIsFetchingLocation(true);
+        setLocationError(null);
+        if (navigator.geolocation) {
+            navigator.geolocation.getCurrentPosition(
+                (position) => {
+                    const { latitude, longitude } = position.coords;
+                    const latLngString = `${latitude.toFixed(6)},${longitude.toFixed(6)}`;
+                    setFormData(prev => ({ ...prev, location: latLngString }));
+                    toast({
+                        title: "Location Fetched",
+                        description: `Coordinates: ${latLngString}`,
+                    });
+                    setIsFetchingLocation(false);
+                },
+                (error) => {
+                    console.error("Error getting location:", error);
+                    setLocationError(error.message);
+                    toast({
+                        variant: "destructive",
+                        title: "Location Error",
+                        description: error.message || "Could not retrieve your current location.",
+                    });
+                    setIsFetchingLocation(false);
+                },
+                { enableHighAccuracy: true, timeout: 10000, maximumAge: 0 }
+            );
+        } else {
+            setLocationError("Geolocation is not supported by this browser.");
+            toast({
+                variant: "destructive",
+                title: "Geolocation Not Supported",
+                description: "Your browser does not support geolocation.",
+            });
+            setIsFetchingLocation(false);
+        }
+    };
+
 
     const handleSubmit = async (event) => {
         event.preventDefault();
@@ -55,28 +101,29 @@ export default function CreateMissionPage() {
             return;
         }
 
-        // Simulate API call to create the mission
-        await new Promise(resolve => setTimeout(resolve, 1500));
+        try {
+            // Call the server action to create the mission
+            const result = await createMissionAction(formData);
 
-        // Simulate getting a new mission ID from the backend
-        const newMissionId = `mission-${Date.now()}`; // Replace with actual ID from response
-        console.log("Simulated mission creation successful. New ID:", newMissionId);
-
-        // On success:
-        toast({
-            title: "Mission Created",
-            description: `Proceed to create the survey for "${formData.title}".`,
-        });
-        // Redirect to the survey creation page for the new mission
-        router.push(`/admin/missions/${newMissionId}/survey/create`);
-
-        // On error:
-        // toast({
-        //     variant: "destructive",
-        //     title: "Failed to Create Mission",
-        //     description: "An error occurred. Please try again.",
-        // });
-        // setIsSubmitting(false); // Keep this line if handling errors
+            if (result.success && result.missionId) {
+                toast({
+                    title: "Mission Created",
+                    description: `Proceed to create the survey for "${formData.title}".`,
+                });
+                // Redirect to the survey creation page for the new mission
+                router.push(`/admin/missions/${result.missionId}/survey/create`);
+            } else {
+                 throw new Error(result.message || "Failed to create mission. No mission ID returned.");
+            }
+        } catch (error) {
+             toast({
+                variant: "destructive",
+                title: "Failed to Create Mission",
+                description: error.message || "An error occurred. Please try again.",
+            });
+            setIsSubmitting(false); // Keep this line if handling errors
+        }
+        // No need for setIsSubmitting(false) on success redirect
     };
 
     return (
@@ -112,8 +159,35 @@ export default function CreateMissionPage() {
 
                          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                             <div className="space-y-1">
-                                <Label htmlFor="location">Location (Address) *</Label>
-                                <Input id="location" name="location" value={formData.location} onChange={handleInputChange} required disabled={isSubmitting} />
+                                <Label htmlFor="location">Location (Address or Lat,Lng) *</Label>
+                                <div className="flex items-center gap-2">
+                                    <Input
+                                        id="location"
+                                        name="location"
+                                        placeholder="e.g., 123 Main St or 34.05,-118.24"
+                                        value={formData.location}
+                                        onChange={handleInputChange}
+                                        required
+                                        disabled={isSubmitting || isFetchingLocation}
+                                        className="flex-grow"
+                                    />
+                                    <Button
+                                        type="button"
+                                        variant="outline"
+                                        size="icon"
+                                        onClick={handleGetLocation}
+                                        disabled={isSubmitting || isFetchingLocation}
+                                        title="Get Current Location"
+                                    >
+                                        {isFetchingLocation ? (
+                                            <Loader2 className="h-4 w-4 animate-spin" />
+                                        ) : (
+                                            <MapPinIcon className="h-4 w-4" />
+                                        )}
+                                        <span className="sr-only">Get Current Location</span>
+                                    </Button>
+                                </div>
+                                {locationError && <p className="text-xs text-destructive mt-1">{locationError}</p>}
                             </div>
                             <div className="space-y-1">
                                 <Label htmlFor="category">Category *</Label>
@@ -144,7 +218,7 @@ export default function CreateMissionPage() {
                          {/* Add fields for assigning shoppers, setting specific criteria, etc. later */}
                     </CardContent>
                     <CardFooter className="flex justify-end">
-                         <Button type="submit" disabled={isSubmitting}>
+                         <Button type="submit" disabled={isSubmitting || isFetchingLocation}>
                             {isSubmitting ? (
                                 <>
                                     <Loader2 className="mr-2 h-4 w-4 animate-spin" /> Creating...
@@ -161,3 +235,4 @@ export default function CreateMissionPage() {
         </div>
     );
 }
+    
