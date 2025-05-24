@@ -12,7 +12,7 @@ import { Label } from '@/components/ui/label';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
 import { PlusCircle, MoreHorizontal, Search, Edit, Trash2, FileCheck, FileText, Loader2, UserPlus, Award, MapPin as MapPinIcon, Users as UsersIcon, FileSignature, ListFilter } from 'lucide-react';
-import { mockMissions, mockReports, mockAssignments, mockApplications, mockUsers } from '@/lib/mock-data'; // Import all necessary mock data, changed allMockUsers to mockUsers
+import { mockMissions, mockReports, mockAssignments, mockApplications, mockUsers } from '@/lib/mock-data'; // Import all necessary mock data
 
 import { assignMissionAction, deleteMissionAction } from '../../actions/admin-actions.js';
 import { format } from 'date-fns';
@@ -66,12 +66,16 @@ const getStatusInfo = (status) => {
   };
 
 const countSubmittedReports = (missionId) => {
-    return mockReports.filter(r => r.mission_id === missionId && r.status === 'submitted').length;
+    // Use mockReports for now
+    return mockReports.filter(r => r.missionId === missionId && r.status === 'submitted').length;
 };
 
 const getUserById = (userId) => {
+    // Use mockUsers for now
     const usersArray = Array.isArray(mockUsers) ? mockUsers : [];
-    return usersArray.find(u => u.id === userId);
+    const user = usersArray.find(u => u.id === userId);
+    // Ensure a valid structure is returned even if user not found, for AvatarFallback
+    return user || { name: 'Unknown', profile_pic_url: null };
 };
 
 
@@ -119,7 +123,7 @@ export default function AdminMissionsPage() {
             mission.id?.toLowerCase().includes(searchTerm.toLowerCase()) ||
             mission.location?.toLowerCase().includes(searchTerm.toLowerCase()) ||
             mission.status?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-             (mission.business_name && mission.business_name.toLowerCase().includes(searchTerm.toLowerCase()))
+            (mission.businessName && mission.businessName.toLowerCase().includes(searchTerm.toLowerCase()))
         );
     }, [missions, searchTerm]);
 
@@ -154,24 +158,20 @@ export default function AdminMissionsPage() {
                    const index = mockMissions.findIndex(m => m.id === missionId);
                    if (index > -1) mockMissions.splice(index, 1);
 
-                    let i = mockApplications.length;
-                    while (i--) {
-                        if (mockApplications[i].mission_id === missionId) {
-                            mockApplications.splice(i, 1);
-                        }
-                    }
-                    let j = mockAssignments.length;
-                    while (j--) {
-                        if (mockAssignments[j].mission_id === missionId) {
-                            mockAssignments.splice(j, 1);
-                        }
-                    }
-                    let k = mockReports.length;
-                    while (k--) {
-                        if (mockReports[k].mission_id === missionId) { 
-                            mockReports.splice(k, 1);
-                        }
-                    }
+                   // Update applications: Remove those associated with the deleted mission
+                    const appIndex = mockApplications.findIndex(app => app.mission_id === missionId);
+                    if (appIndex > -1) mockApplications.splice(appIndex, 1);
+
+
+                    // Update assignments: Remove those associated with the deleted mission
+                    const assignmentIndex = mockAssignments.findIndex(asg => asg.mission_id === missionId);
+                    if (assignmentIndex > -1) mockAssignments.splice(assignmentIndex, 1);
+
+
+                    // Update reports: Remove those associated with the deleted mission
+                    const reportIndex = mockReports.findIndex(rep => rep.missionId === missionId); // Corrected property name to missionId
+                    if (reportIndex > -1) mockReports.splice(reportIndex, 1);
+
                 });
                 toast({ title: "Mission Deleted", description: result.message });
              } else {
@@ -195,7 +195,10 @@ export default function AdminMissionsPage() {
         }
         setSelectedMissionForAssignment(mission);
         
-        const currentAssignees = Array.isArray(mission.assignedTo) ? mission.assignedTo : (mission.assignedTo ? [mission.assignedTo] : []);
+        // Initialize selectedUsersForAssignment with current assignees
+        const currentAssignees = mockAssignments
+          .filter(asg => asg.mission_id === mission.id)
+          .map(asg => asg.user_id);
         setSelectedUsersForAssignment(currentAssignees);
         
         setShopperSearchTerm('');
@@ -225,28 +228,24 @@ export default function AdminMissionsPage() {
         setIsAssigning(true);
 
         try {
-            // Directly call the server action with the current selected users
             const result = await assignMissionAction(missionId, selectedUsersForAssignment);
 
              if (result.success) {
                  startTransition(() => {
-                    // Update the specific mission in the local missions state
                      setMissionsState(prevMissions => prevMissions.map(m =>
-                         m.id === missionId ? { ...m, status: 'assigned', assignedTo: [...selectedUsersForAssignment] } : m
+                         m.id === missionId ? { ...m, status: 'assigned' } : m
                      ));
 
-                    // Update mockAssignments array (in-memory mock data)
-                    // Remove old assignments for this mission
+                    // Update mockAssignments: remove old, add new
                     const otherAssignments = mockAssignments.filter(a => a.mission_id !== missionId);
-                    // Add new assignments
                     const newAssignmentsForThisMission = selectedUsersForAssignment.map(userId => ({
                         id: `asg-${Date.now()}-${userId}-${Math.random().toString(16).slice(2)}`,
                         mission_id: missionId,
                         user_id: userId,
                         assigned_at: new Date().toISOString()
                     }));
-                    // Replace mockAssignments with the updated list
-                    mockAssignments.length = 0; // Clear current array
+                    // Mutate mockAssignments directly for persistence during simulation
+                    mockAssignments.length = 0;
                     mockAssignments.push(...otherAssignments, ...newAssignmentsForThisMission);
 
 
@@ -254,17 +253,15 @@ export default function AdminMissionsPage() {
                     const missionIndexGlobal = mockMissions.findIndex(m => m.id === missionId);
                     if (missionIndexGlobal > -1) {
                         mockMissions[missionIndexGlobal].status = 'assigned';
-                        mockMissions[missionIndexGlobal].assignedTo = [...selectedUsersForAssignment];
-                        // Clear appliedBy for these users if they were assigned
-                        mockMissions[missionIndexGlobal].appliedBy = mockMissions[missionIndexGlobal].appliedBy?.filter(id => !selectedUsersForAssignment.includes(id)) || [];
+                        // No longer directly storing assignedTo on mission object for multiple assignees.
+                        // This information is now in mockAssignments.
+                        // Clear appliedBy for these users if they were assigned through application flow
+                        mockApplications.forEach(app => {
+                             if (app.mission_id === missionId && selectedUsersForAssignment.includes(app.user_id)) {
+                                app.status = 'approved'; // Mark application as approved
+                             }
+                         });
                     }
-
-                    // Update corresponding applications in mockApplications
-                    mockApplications.forEach(app => {
-                        if (app.mission_id === missionId && selectedUsersForAssignment.includes(app.user_id)) {
-                            app.status = 'approved'; // Mark application as approved if they were assigned
-                        }
-                    });
                  });
                  toast({ title: "Mission Assigned", description: result.message });
                  setAssignDialogOpen(false);
@@ -322,167 +319,169 @@ export default function AdminMissionsPage() {
                 </CardHeader>
                 <CardContent>
                     <div className="overflow-x-auto">
-                        <Table>
-                            <TableHeader>
-                                <TableRow>
-                                    <TableHead className="min-w-[150px]">Title</TableHead>
-                                    <TableHead className="min-w-[120px]">Business</TableHead>
-                                    <TableHead className="min-w-[150px]">Location</TableHead>
-                                    <TableHead className="min-w-[100px]">Deadline</TableHead>
-                                    <TableHead className="min-w-[80px]">Reward</TableHead>
-                                    <TableHead className="min-w-[150px]">Status</TableHead>
-                                    <TableHead className="min-w-[150px]">Assigned To</TableHead>
-                                    <TableHead className="text-right min-w-[80px]">Actions</TableHead>
-                                </TableRow>
-                            </TableHeader>
-                            <TableBody>
-                                <TooltipProvider> {/* Ensure TooltipProvider wraps the rows */}
-                                {filteredMissions.length > 0 ? (
-                                    filteredMissions.map((mission) => {
-                                        const submittedCount = countSubmittedReports(mission.id);
-                                        const assignedUserIds = Array.isArray(mission.assignedTo) ? mission.assignedTo : (mission.assignedTo ? [mission.assignedTo] : []);
-                                        const assignedShoppersDetails = assignedUserIds.map(id => getUserById(id)).filter(Boolean);
-
-                                        const isCurrentProcessing = isProcessing === mission.id;
-                                        const statusInfo = getStatusInfo(mission.status);
-                                        const pendingApplicationsCount = mockApplications.filter(app => app.mission_id === mission.id && app.status === 'pending').length;
-
-
-                                        return (
-                                            <TableRow key={mission.id} className={isCurrentProcessing ? 'opacity-50 pointer-events-none' : ''}>
-                                                <TableCell className="font-medium">{mission.title}</TableCell>
-                                                <TableCell>{mission.business_name || 'N/A'}</TableCell>
-                                                <TableCell>{mission.location}</TableCell>
-                                                <TableCell>{format(new Date(mission.deadline), 'PP')}</TableCell>
-                                                <TableCell>${mission.reward}</TableCell>
-                                                <TableCell>
-                                                     <div className="flex items-center gap-1.5 whitespace-nowrap">
-                                                         <Badge variant={getStatusVariant(mission.status)} className={`capitalize px-2 py-1 ${statusInfo.className}`}>
-                                                             {statusInfo.text}
-                                                         </Badge>
-                                                         {mission.status === 'submitted' && submittedCount > 0 && (
-                                                            <Badge variant="destructive" className="text-[10px] px-1.5 py-0.5 h-fit leading-tight flex items-center">
-                                                                 {submittedCount}
-                                                             </Badge>
-                                                         )}
-                                                          {mission.status === 'pending_approval' && pendingApplicationsCount > 0 && (
-                                                            <Badge variant="outline" className="text-xs px-1.5 py-1 h-fit leading-tight flex items-center bg-orange-100 text-orange-800 border-orange-300">
-                                                                 {pendingApplicationsCount} New
-                                                             </Badge>
-                                                         )}
-                                                     </div>
-                                                </TableCell>
-                                                <TableCell className="text-xs max-w-[150px]">
-                                                    {assignedShoppersDetails.length > 0 ? (
-                                                        <div className="flex items-center -space-x-2">
-                                                             {assignedShoppersDetails.slice(0, 3).map((shopper) => (
-                                                                <Tooltip key={shopper.id}>
-                                                                    <TooltipTrigger asChild>
-                                                                         <Avatar className="h-6 w-6 border-2 border-background hover:z-10">
-                                                                            <AvatarImage src={shopper.profile_pic_url} alt={shopper.label} />
-                                                                            <AvatarFallback>{shopper.label?.charAt(0)?.toUpperCase() || 'U'}</AvatarFallback>
-                                                                         </Avatar>
-                                                                    </TooltipTrigger>
-                                                                     <TooltipContent>
-                                                                        <p>{shopper.label}</p>
-                                                                    </TooltipContent>
-                                                                </Tooltip>
-                                                            ))}
-                                                             {assignedShoppersDetails.length > 3 && (
-                                                                <Tooltip>
-                                                                     <TooltipTrigger asChild>
-                                                                        <Avatar className="h-6 w-6 border-2 border-background bg-muted text-muted-foreground flex items-center justify-center hover:z-10">
-                                                                            <span>+{assignedShoppersDetails.length - 3}</span>
-                                                                        </Avatar>
-                                                                    </TooltipTrigger>
-                                                                     <TooltipContent>
-                                                                         <p>{assignedShoppersDetails.slice(3).map(s => s.label).join(', ')}</p>
-                                                                     </TooltipContent>
-                                                                </Tooltip>
-                                                             )}
-                                                        </div>
-                                                    ) : (
-                                                        <span className="text-muted-foreground italic">Not Assigned</span>
-                                                    )}
-                                                </TableCell>
-                                                <TableCell className="text-right">
-                                                    <DropdownMenu>
-                                                        <DropdownMenuTrigger asChild>
-                                                            <Button variant="ghost" className="h-8 w-8 p-0" disabled={isCurrentProcessing}>
-                                                                {isCurrentProcessing ? <Loader2 className="h-4 w-4 animate-spin" /> : <MoreHorizontal className="h-4 w-4" />}
-                                                                <span className="sr-only">Open menu</span>
-                                                            </Button>
-                                                        </DropdownMenuTrigger>
-                                                        <DropdownMenuContent align="end">
-                                                            <DropdownMenuLabel>Actions</DropdownMenuLabel>
-                                                            {['available', 'assigned', 'pending_approval'].includes(mission.status) && (
-                                                                <DropdownMenuItem onClick={() => openAssignDialog(mission)} disabled={isCurrentProcessing}>
-                                                                    <UserPlus className="mr-2 h-4 w-4" /> Assign/Reassign
-                                                                </DropdownMenuItem>
-                                                            )}
-                                                             {['submitted', 'approved', 'refused', 'completed'].includes(mission.status) ? (
-                                                                <DropdownMenuItem onClick={() => handleReviewReports(mission.id)} disabled={isCurrentProcessing}>
-                                                                     <FileCheck className="mr-2 h-4 w-4" /> Review Reports
-                                                                     {submittedCount > 0 && mission.status === 'submitted' && (
-                                                                         <Badge variant="destructive" className="ml-auto text-[10px] px-1 py-0.5 flex items-center leading-none">{submittedCount}</Badge>
-                                                                     )}
-                                                                </DropdownMenuItem>
-                                                             ) : null}
-                                                            <DropdownMenuItem onClick={() => handleEditMission(mission.id)} disabled={isCurrentProcessing}>
-                                                                <Edit className="mr-2 h-4 w-4" /> Edit Mission Details
-                                                            </DropdownMenuItem>
-                                                            <DropdownMenuItem onClick={() => handleEditSurvey(mission.id)} disabled={isCurrentProcessing}>
-                                                                <FileText className="mr-2 h-4 w-4" /> Edit Survey
-                                                            </DropdownMenuItem>
-                                                            <DropdownMenuSeparator />
-                                                            <AlertDialog>
-                                                                <AlertDialogTrigger asChild>
-                                                                    <DropdownMenuItem
-                                                                        className="text-destructive focus:text-destructive focus:bg-destructive/10"
-                                                                        onSelect={(e) => e.preventDefault()}
-                                                                        disabled={isCurrentProcessing || ['assigned', 'submitted', 'pending_approval'].includes(mission.status)}
-                                                                        title={['assigned', 'submitted', 'pending_approval'].includes(mission.status) ? "Cannot delete. Unassign or resolve applications/reports first." : ""}
-                                                                    >
-                                                                        <Trash2 className="mr-2 h-4 w-4" /> Delete Mission
-                                                                    </DropdownMenuItem>
-                                                                </AlertDialogTrigger>
-                                                                <AlertDialogContent>
-                                                                    <AlertDialogHeader>
-                                                                        <AlertDialogTitle>Are you sure?</AlertDialogTitle>
-                                                                        <AlertDialogDescription>
-                                                                            This action cannot be undone. This will permanently delete the mission
-                                                                            "{mission.title}" and any associated data.
-                                                                        </AlertDialogDescription>
-                                                                    </AlertDialogHeader>
-                                                                    <AlertDialogFooter>
-                                                                        <AlertDialogCancel disabled={isCurrentProcessing}>Cancel</AlertDialogCancel>
-                                                                        <AlertDialogAction
-                                                                            className={buttonVariants({ variant: "destructive" })}
-                                                                            onClick={() => handleDeleteMission(mission.id)}
-                                                                            disabled={isCurrentProcessing}
-                                                                        >
-                                                                            {isCurrentProcessing ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
-                                                                            Delete
-                                                                        </AlertDialogAction>
-                                                                    </AlertDialogFooter>
-                                                                </AlertDialogContent>
-                                                            </AlertDialog>
-                                                        </DropdownMenuContent>
-                                                    </DropdownMenu>
-                                                </TableCell>
-                                            </TableRow>
-                                        );
-                                    })
-                                ) : (
+                        <TooltipProvider> {/* Moved TooltipProvider to wrap the Table */}
+                            <Table>
+                                <TableHeader>
                                     <TableRow>
-                                        <TableCell colSpan={8} className="h-24 text-center">
-                                            No missions found matching your search criteria.
-                                        </TableCell>
+                                        <TableHead className="min-w-[150px]">Title</TableHead>
+                                        <TableHead className="min-w-[120px]">Business</TableHead>
+                                        <TableHead className="min-w-[150px]">Location</TableHead>
+                                        <TableHead className="min-w-[100px]">Deadline</TableHead>
+                                        <TableHead className="min-w-[80px]">Reward</TableHead>
+                                        <TableHead className="min-w-[150px]">Status</TableHead>
+                                        <TableHead className="min-w-[150px]">Assigned To</TableHead>
+                                        <TableHead className="text-right min-w-[80px]">Actions</TableHead>
                                     </TableRow>
-                                )}
-                                </TooltipProvider>
-                            </TableBody>
-                        </Table>
+                                </TableHeader>
+                                <TableBody>
+                                    {filteredMissions.length > 0 ? (
+                                        filteredMissions.map((mission) => {
+                                            const submittedCount = countSubmittedReports(mission.id);
+                                            const assignedShopperIds = mockAssignments
+                                                .filter(asg => asg.mission_id === mission.id)
+                                                .map(asg => asg.user_id);
+                                            const assignedShoppersDetails = assignedShopperIds.map(id => getUserById(id)).filter(Boolean);
+
+                                            const isCurrentProcessing = isProcessing === mission.id;
+                                            const statusInfo = getStatusInfo(mission.status);
+                                            const pendingApplicationsCount = mockApplications.filter(app => app.mission_id === mission.id && app.status === 'pending').length;
+
+
+                                            return (
+                                                <TableRow key={mission.id} className={isCurrentProcessing ? 'opacity-50 pointer-events-none' : ''}>
+                                                    <TableCell className="font-medium">{mission.title}</TableCell>
+                                                    <TableCell>{mission.businessName || 'N/A'}</TableCell>
+                                                    <TableCell>{mission.location}</TableCell>
+                                                    <TableCell>{format(new Date(mission.deadline), 'PP')}</TableCell>
+                                                    <TableCell>${mission.reward}</TableCell>
+                                                    <TableCell>
+                                                        <div className="flex items-center gap-1.5 whitespace-nowrap">
+                                                            <Badge variant={getStatusVariant(mission.status)} className={`capitalize px-2 py-1 ${statusInfo.className}`}>
+                                                                {statusInfo.text}
+                                                            </Badge>
+                                                            {mission.status === 'submitted' && submittedCount > 0 && (
+                                                                <Badge variant="destructive" className="text-[10px] px-1.5 py-0.5 h-fit leading-tight flex items-center">
+                                                                    {submittedCount}
+                                                                </Badge>
+                                                            )}
+                                                            {mission.status === 'pending_approval' && pendingApplicationsCount > 0 && (
+                                                                <Badge variant="outline" className="text-xs px-2 py-1 h-fit leading-tight flex items-center bg-orange-100 text-orange-800 border-orange-300">
+                                                                    {pendingApplicationsCount} New
+                                                                </Badge>
+                                                            )}
+                                                        </div>
+                                                    </TableCell>
+                                                    <TableCell className="text-xs max-w-[150px]">
+                                                        {assignedShoppersDetails.length > 0 ? (
+                                                            <div className="flex items-center -space-x-2">
+                                                                {assignedShoppersDetails.slice(0, 3).map((shopper) => (
+                                                                    <Tooltip key={shopper.id}>
+                                                                        <TooltipTrigger asChild>
+                                                                            <Avatar className="h-6 w-6 border-2 border-background hover:z-10">
+                                                                                <AvatarImage src={shopper.profilePicUrl} alt={shopper.name} />
+                                                                                <AvatarFallback>{shopper.name?.charAt(0)?.toUpperCase() || 'U'}</AvatarFallback>
+                                                                            </Avatar>
+                                                                        </TooltipTrigger>
+                                                                        <TooltipContent>
+                                                                            <p>{shopper.name}</p>
+                                                                        </TooltipContent>
+                                                                    </Tooltip>
+                                                                ))}
+                                                                {assignedShoppersDetails.length > 3 && (
+                                                                    <Tooltip>
+                                                                        <TooltipTrigger asChild>
+                                                                            <Avatar className="h-6 w-6 border-2 border-background bg-muted text-muted-foreground flex items-center justify-center hover:z-10">
+                                                                                <span>+{assignedShoppersDetails.length - 3}</span>
+                                                                            </Avatar>
+                                                                        </TooltipTrigger>
+                                                                        <TooltipContent>
+                                                                            <p>{assignedShoppersDetails.slice(3).map(s => s.name).join(', ')}</p>
+                                                                        </TooltipContent>
+                                                                    </Tooltip>
+                                                                )}
+                                                            </div>
+                                                        ) : (
+                                                            <span className="text-muted-foreground italic">Not Assigned</span>
+                                                        )}
+                                                    </TableCell>
+                                                    <TableCell className="text-right">
+                                                        <DropdownMenu>
+                                                            <DropdownMenuTrigger asChild>
+                                                                <Button variant="ghost" className="h-8 w-8 p-0" disabled={isCurrentProcessing}>
+                                                                    {isCurrentProcessing ? <Loader2 className="h-4 w-4 animate-spin" /> : <MoreHorizontal className="h-4 w-4" />}
+                                                                    <span className="sr-only">Open menu</span>
+                                                                </Button>
+                                                            </DropdownMenuTrigger>
+                                                            <DropdownMenuContent align="end">
+                                                                <DropdownMenuLabel>Actions</DropdownMenuLabel>
+                                                                {['available', 'assigned', 'pending_approval'].includes(mission.status) && (
+                                                                    <DropdownMenuItem onClick={() => openAssignDialog(mission)} disabled={isCurrentProcessing}>
+                                                                        <UserPlus className="mr-2 h-4 w-4" /> Assign/Reassign
+                                                                    </DropdownMenuItem>
+                                                                )}
+                                                                {['submitted', 'approved', 'refused', 'completed'].includes(mission.status) ? (
+                                                                    <DropdownMenuItem onClick={() => handleReviewReports(mission.id)} disabled={isCurrentProcessing}>
+                                                                        <FileCheck className="mr-2 h-4 w-4" /> Review Reports
+                                                                        {submittedCount > 0 && mission.status === 'submitted' && (
+                                                                            <Badge variant="destructive" className="ml-auto text-[10px] px-1 py-0.5 flex items-center leading-none">{submittedCount}</Badge>
+                                                                        )}
+                                                                    </DropdownMenuItem>
+                                                                ) : null}
+                                                                <DropdownMenuItem onClick={() => handleEditMission(mission.id)} disabled={isCurrentProcessing}>
+                                                                    <Edit className="mr-2 h-4 w-4" /> Edit Mission Details
+                                                                </DropdownMenuItem>
+                                                                <DropdownMenuItem onClick={() => handleEditSurvey(mission.id)} disabled={isCurrentProcessing}>
+                                                                    <FileText className="mr-2 h-4 w-4" /> Edit Survey
+                                                                </DropdownMenuItem>
+                                                                <DropdownMenuSeparator />
+                                                                <AlertDialog>
+                                                                    <AlertDialogTrigger asChild>
+                                                                        <DropdownMenuItem
+                                                                            className="text-destructive focus:text-destructive focus:bg-destructive/10"
+                                                                            onSelect={(e) => e.preventDefault()}
+                                                                            disabled={isCurrentProcessing || ['assigned', 'submitted', 'pending_approval'].includes(mission.status)}
+                                                                            title={['assigned', 'submitted', 'pending_approval'].includes(mission.status) ? "Cannot delete. Unassign or resolve applications/reports first." : ""}
+                                                                        >
+                                                                            <Trash2 className="mr-2 h-4 w-4" /> Delete Mission
+                                                                        </DropdownMenuItem>
+                                                                    </AlertDialogTrigger>
+                                                                    <AlertDialogContent>
+                                                                        <AlertDialogHeader>
+                                                                            <AlertDialogTitle>Are you sure?</AlertDialogTitle>
+                                                                            <AlertDialogDescription>
+                                                                                This action cannot be undone. This will permanently delete the mission
+                                                                                "{mission.title}" and any associated data.
+                                                                            </AlertDialogDescription>
+                                                                        </AlertDialogHeader>
+                                                                        <AlertDialogFooter>
+                                                                            <AlertDialogCancel disabled={isCurrentProcessing}>Cancel</AlertDialogCancel>
+                                                                            <AlertDialogAction
+                                                                                className={buttonVariants({ variant: "destructive" })}
+                                                                                onClick={() => handleDeleteMission(mission.id)}
+                                                                                disabled={isCurrentProcessing}
+                                                                            >
+                                                                                {isCurrentProcessing ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
+                                                                                Delete
+                                                                            </AlertDialogAction>
+                                                                        </AlertDialogFooter>
+                                                                    </AlertDialogContent>
+                                                                </AlertDialog>
+                                                            </DropdownMenuContent>
+                                                        </DropdownMenu>
+                                                    </TableCell>
+                                                </TableRow>
+                                            );
+                                        })
+                                    ) : (
+                                        <TableRow>
+                                            <TableCell colSpan={8} className="h-24 text-center">
+                                                No missions found matching your search criteria.
+                                            </TableCell>
+                                        </TableRow>
+                                    )}
+                                </TableBody>
+                            </Table>
+                        </TooltipProvider>
                     </div>
                 </CardContent>
             </Card>
@@ -518,7 +517,7 @@ export default function AdminMissionsPage() {
                                         <Checkbox
                                             id={`user-${shopper.value}`}
                                             checked={selectedUsersForAssignment.includes(shopper.value)}
-                                            onCheckedChange={() => handleUserSelectionChange(shopper.value)}
+                                            onCheckedChange={() => handleUserSelectionChange(shopper.value)} // Ensure this allows unchecking
                                             aria-label={`Select ${shopper.label}`}
                                             disabled={isAssigning}
                                             className="shrink-0"
