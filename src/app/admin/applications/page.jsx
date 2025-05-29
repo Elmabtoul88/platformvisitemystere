@@ -2,7 +2,7 @@
 'use client';
 
 import React, { useState, useMemo, useEffect, useTransition } from 'react';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from '@/components/ui/card'; // Added CardFooter
 import { Button, buttonVariants } from '@/components/ui/button';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
@@ -49,7 +49,9 @@ export default function AdminApplicationsPage() {
         // Simulate fetching data, filter for pending applications
         setTimeout(() => {
             startTransition(() => {
-                setApplications(mockApplications.filter(app => app.status === 'pending'));
+                // Ensure mockApplications is an array before filtering
+                const apps = Array.isArray(mockApplications) ? mockApplications : [];
+                setApplications(apps.filter(app => app.status === 'pending'));
             });
             setIsLoading(false);
         }, 300);
@@ -236,7 +238,7 @@ export default function AdminApplicationsPage() {
                                                         onClick={() => handleApprove(app.id)}
                                                         disabled={isCurrentProcessing}
                                                     >
-                                                        {isCurrentProcessing ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <CheckCircle className="w-4 h-4 mr-1" />}
+                                                        {isProcessing === app.id ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <CheckCircle className="w-4 h-4 mr-1" />}
                                                         Approve
                                                     </Button>
                                                 </TableCell>
@@ -263,4 +265,3 @@ export default function AdminApplicationsPage() {
         </div>
     );
 }
-
