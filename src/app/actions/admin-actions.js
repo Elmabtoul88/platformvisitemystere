@@ -2,22 +2,36 @@
 'use server';
 
 import { revalidatePath } from 'next/cache';
-import { mockMissions, mockReports } from '@/lib/mock-data'; // Import mission and report mock data
-import { mockUsers } from '../admin/users/users-mock.js'; // Corrected: Import mockUsers using relative path
+import { mockMissions, mockReports, mockApplications } from '@/lib/mock-data'; // Import mission, report, and application mock data
+import { mockUsers } from '@/app/admin/users/users-mock.js'; // Corrected: Import mockUsers using relative path
 
 /**
  * Server Action to approve a shopper's application for a mission.
  * Updates mission status to 'assigned' and moves user from appliedBy to assignedTo.
+ * Also updates the application status in mockApplications.
  *
- * @param {string} missionId - The ID of the mission.
- * @param {string} userId - The ID of the user whose application is approved.
+ * @param {string} applicationId - The ID of the application to approve.
  * @returns {Promise<{success: boolean, message: string}>} - Result of the approval operation.
  */
-export async function approveApplicationAction(missionId, userId) {
-    console.log(`Server Action: Approving application for mission ${missionId} from user ${userId}`);
+export async function approveApplicationAction(applicationId) {
+    console.log(`Server Action: Approving application ${applicationId}`);
 
     // Simulate network delay
     await new Promise(resolve => setTimeout(resolve, 500));
+
+    const applicationIndex = mockApplications.findIndex(app => app.id === applicationId);
+    if (applicationIndex === -1) {
+        console.error("Server Action: Application not found for approval.");
+        return { success: false, message: "Application not found." };
+    }
+
+    const application = mockApplications[applicationIndex];
+    if (application.status !== 'pending') {
+        console.warn(`Server Action: Application ${applicationId} is not in 'pending' status.`);
+        return { success: false, message: `Application is already ${application.status}.` };
+    }
+
+    const { mission_id: missionId, user_id: userId } = application;
 
     const missionIndex = mockMissions.findIndex(m => m.id === missionId);
     if (missionIndex === -1) {
@@ -27,14 +41,10 @@ export async function approveApplicationAction(missionId, userId) {
 
     const mission = mockMissions[missionIndex];
 
-    // Check if user actually applied
-    if (!mission.appliedBy || !mission.appliedBy.includes(userId)) {
-        console.error(`Server Action: User ${userId} did not apply for mission ${missionId}.`);
-        return { success: false, message: `User ${userId} did not apply for this mission.` };
-    }
-
     // Update mission: remove from appliedBy, add to assignedTo, set status to 'assigned'
-    mission.appliedBy = mission.appliedBy.filter(id => id !== userId);
+    if (Array.isArray(mission.appliedBy)) {
+        mission.appliedBy = mission.appliedBy.filter(id => id !== userId);
+    }
 
     if (!Array.isArray(mission.assignedTo)) {
         mission.assignedTo = mission.assignedTo ? [mission.assignedTo] : [];
@@ -42,14 +52,17 @@ export async function approveApplicationAction(missionId, userId) {
     if (!mission.assignedTo.includes(userId)) {
         mission.assignedTo.push(userId);
     }
-    mission.status = 'assigned'; // Mission is now assigned to this user (can be assigned to others too)
+    mission.status = 'assigned';
 
-    console.log(`Server Action: Application approved for mission ${missionId}, user ${userId}. Mission status: ${mission.status}.`);
+    // Update application status
+    mockApplications[applicationIndex].status = 'approved';
+
+    console.log(`Server Action: Application ${applicationId} approved for mission ${missionId}, user ${userId}. Mission status: ${mission.status}.`);
 
     // Revalidate paths
-    revalidatePath('/admin/applications'); // Admin applications page
-    revalidatePath('/admin/missions'); // Admin mission list (status update)
-    revalidatePath('/'); // Shopper available list (mission might change or disappear if fully assigned)
+    revalidatePath('/admin/applications');
+    revalidatePath('/admin/missions');
+    revalidatePath('/'); // Shopper available list
     revalidatePath('/missions/assigned'); // Shopper's assigned list
 
     return { success: true, message: `Application for ${userId} approved. Mission ${missionId} assigned.` };
@@ -57,15 +70,14 @@ export async function approveApplicationAction(missionId, userId) {
 
 /**
  * Server Action to refuse a shopper's application for a mission.
- * Removes user from appliedBy. Mission status might change if no other applications or assignments.
+ * Updates mission status if needed and application status.
  *
- * @param {string} missionId - The ID of the mission.
- * @param {string} userId - The ID of the user whose application is refused.
+ * @param {string} applicationId - The ID of the application to refuse.
  * @param {string} reason - The reason for refusing the application.
  * @returns {Promise<{success: boolean, message: string}>} - Result of the refusal operation.
  */
-export async function refuseApplicationAction(missionId, userId, reason) {
-    console.log(`Server Action: Refusing application for mission ${missionId} from user ${userId}. Reason: ${reason}`);
+export async function refuseApplicationAction(applicationId, reason) {
+    console.log(`Server Action: Refusing application ${applicationId}. Reason: ${reason}`);
 
     if (!reason || reason.trim().length === 0) {
         console.error("Server Action: Refusal reason cannot be empty.");
@@ -75,37 +87,48 @@ export async function refuseApplicationAction(missionId, userId, reason) {
     // Simulate network delay
     await new Promise(resolve => setTimeout(resolve, 500));
 
+    const applicationIndex = mockApplications.findIndex(app => app.id === applicationId);
+    if (applicationIndex === -1) {
+        console.error("Server Action: Application not found for refusal.");
+        return { success: false, message: "Application not found." };
+    }
+    
+    const application = mockApplications[applicationIndex];
+    if (application.status !== 'pending') {
+        console.warn(`Server Action: Application ${applicationId} is not in 'pending' status.`);
+        return { success: false, message: `Application is already ${application.status}.` };
+    }
+
+    const { mission_id: missionId, user_id: userId } = application;
+
     const missionIndex = mockMissions.findIndex(m => m.id === missionId);
-    if (missionIndex === -1) {
-        console.error("Server Action: Mission not found for application refusal.");
-        return { success: false, message: "Mission not found." };
+    if (missionIndex !== -1) {
+        const mission = mockMissions[missionIndex];
+        // Update mission: remove from appliedBy
+        if (Array.isArray(mission.appliedBy)) {
+            mission.appliedBy = mission.appliedBy.filter(id => id !== userId);
+        }
+
+        // If no one else has applied and no one is assigned, set status back to 'available'
+        const otherPendingApplications = mockApplications.some(app => app.mission_id === missionId && app.id !== applicationId && app.status === 'pending');
+        if (!otherPendingApplications && (!mission.assignedTo || mission.assignedTo.length === 0)) {
+            mission.status = 'available';
+        }
+        console.log(`Server Action: Mission ${missionId} status updated to ${mission.status}.`);
+    } else {
+        console.warn(`Server Action: Mission ${missionId} not found during application refusal, but proceeding to update application status.`);
     }
 
-    const mission = mockMissions[missionIndex];
+    // Update application status
+    mockApplications[applicationIndex].status = 'refused';
+    mockApplications[applicationIndex].refusal_reason = reason;
 
-    // Check if user actually applied
-    if (!mission.appliedBy || !mission.appliedBy.includes(userId)) {
-        console.error(`Server Action: User ${userId} did not apply for mission ${missionId}. Cannot refuse.`);
-        return { success: false, message: `User ${userId} did not apply for this mission.` };
-    }
 
-    // Update mission: remove from appliedBy
-    mission.appliedBy = mission.appliedBy.filter(id => id !== userId);
-
-    // If no one else has applied and no one is assigned, set status back to 'available'
-    if (mission.appliedBy.length === 0 && (!mission.assignedTo || mission.assignedTo.length === 0)) {
-        mission.status = 'available';
-    }
-    // Otherwise, status remains 'pending_approval' if others applied, or 'assigned' if already assigned to someone else.
-
-    // TODO: Store refusal reason somewhere (e.g., a notifications system or application log)
-    // For now, it's just logged.
-    console.log(`Server Action: Application refused for mission ${missionId}, user ${userId}. Reason: ${reason}. Mission status: ${mission.status}.`);
-
+    console.log(`Server Action: Application ${applicationId} refused for user ${userId}.`);
 
     // Revalidate paths
-    revalidatePath('/admin/applications'); // Admin applications page
-    revalidatePath('/admin/missions'); // Admin mission list
+    revalidatePath('/admin/applications');
+    revalidatePath('/admin/missions');
     revalidatePath('/'); // Shopper available list
 
     return { success: true, message: `Application for ${userId} refused.` };
@@ -198,7 +221,16 @@ export async function refuseReportAction(reportId, missionId, reason) {
   // More complex logic might be needed if multiple assignees can retry.
   const missionIndex = mockMissions.findIndex(m => m.id === missionId);
   if (missionIndex !== -1) {
-      mockMissions[missionIndex].status = 'refused';
+      // Check if other assignees still have 'submitted' or 'assigned' status for this mission
+      const otherAssigneesActive = mockMissions[missionIndex].assignedTo?.some(assigneeId => {
+          if (assigneeId === mockReports[reportIndex].userId) return false; // Skip the current user
+          const theirReport = mockReports.find(r => r.missionId === missionId && r.userId === assigneeId);
+          return !theirReport || theirReport.status === 'submitted' || mockMissions[missionIndex].status === 'assigned';
+      });
+
+      if (!otherAssigneesActive) {
+        mockMissions[missionIndex].status = 'refused';
+      }
       // Keep assignedTo so the shopper knows which mission was refused.
   } else {
       console.warn(`Server Action: Mission ${missionId} not found during report refusal.`);
@@ -211,6 +243,7 @@ export async function refuseReportAction(reportId, missionId, reason) {
   revalidatePath(`/admin/missions/${missionId}/reports`); // Admin report review page
   revalidatePath('/admin/missions'); // Admin mission list
   revalidatePath('/missions/assigned'); // Shopper assigned list (mission might remain or change status)
+  revalidatePath('/missions/completed'); // So refused missions also disappear from completed if they were there by mistake
   // Consider revalidating a potential "Refused Missions" page for shoppers if it exists
 
   return { success: true, message: "Report refused and shopper notified (simulated)." };
@@ -255,9 +288,16 @@ export async function deleteMissionAction(missionId) {
             mockReports.splice(i, 1);
         }
     }
+     // Remove associated applications
+    let j = mockApplications.length;
+    while (j--) {
+        if (mockApplications[j].mission_id === missionId) {
+            mockApplications.splice(j, 1);
+        }
+    }
     // --- End Mock Data Update ---
 
-    console.log(`Server Action: Mission ${missionId} and associated reports deleted successfully (simulated).`);
+    console.log(`Server Action: Mission ${missionId} and associated reports/applications deleted successfully (simulated).`);
 
     // Revalidate paths for both admin and relevant shopper views
     revalidatePath('/admin/missions');
@@ -299,7 +339,7 @@ export async function toggleUserStatusAction(userId, currentStatus) {
 
   // Revalidate only the admin user list page
   revalidatePath('/admin/users');
-  // Revalidate mission assignment dialog's user list implicitly via mission page revalidation if needed
+  revalidatePath('/admin/missions'); // If user status affects assignability in mission dialogs
 
   return { success: true, message: `User ${userId} status updated to ${newStatus}.`, newStatus };
 }
@@ -343,17 +383,15 @@ export async function updateUserAction(userId, userData) {
 }
 
 /**
- * Server Action to assign a mission to a specific user.
+ * Server Action to assign a mission to specific users.
  * Handles multiple assignees by ensuring `assignedTo` is an array.
- * This action is called AFTER an application has been approved via approveApplicationAction.
- * Or, an admin can directly assign if bypassing application flow.
  *
  * @param {string} missionId - The ID of the mission to assign.
- * @param {string} userId - The ID of the user to assign the mission to.
+ * @param {string[]} userIds - An array of user IDs to assign the mission to.
  * @returns {Promise<{success: boolean, message: string}>} - Result of the assignment operation.
  */
-export async function assignMissionAction(missionId, userId) {
-  console.log(`Server Action: Assigning mission ${missionId} to user ${userId} (direct or post-approval)`);
+export async function assignMissionAction(missionId, userIds) {
+  console.log(`Server Action: Assigning mission ${missionId} to users: ${userIds.join(', ')}`);
 
   // Simulate network delay
   await new Promise(resolve => setTimeout(resolve, 500));
@@ -367,54 +405,78 @@ export async function assignMissionAction(missionId, userId) {
 
   const mission = mockMissions[missionIndex];
 
-  // Allow assignment if mission is 'available', 'pending_approval' (admin direct assign), OR 'assigned' (to add more users)
-   if (!['available', 'pending_approval', 'assigned'].includes(mission.status)) {
+   if (!['available', 'assigned', 'pending_approval'].includes(mission.status)) {
         console.error(`Server Action: Mission ${missionId} is not in a state that allows assignment (status: ${mission.status}).`);
         return { success: false, message: `Mission status (${mission.status}) prevents assignment.` };
    }
 
-  // Validate User
-   const userExists = mockUsers.some(u => u.id === userId && u.role === 'shopper' && u.status === 'active');
-   if (!userExists) {
-       console.error(`Server Action: User ${userId} not found, not active, or not a shopper.`);
-       return { success: false, message: `User ${userId} cannot be assigned.` };
+  // Validate Users
+   const validUserIds = [];
+   const invalidUserIds = [];
+   userIds.forEach(userId => {
+       const userExists = mockUsers.some(u => u.id === userId && u.role === 'shopper' && u.status === 'active');
+       if (userExists) {
+           validUserIds.push(userId);
+       } else {
+           invalidUserIds.push(userId);
+       }
+   });
+
+   if (invalidUserIds.length > 0) {
+       console.warn(`Server Action: Some users cannot be assigned: ${invalidUserIds.join(', ')}`);
+       // Decide if this is a partial success or full failure. For now, proceed with valid users.
+   }
+
+   if (validUserIds.length === 0) {
+        console.error(`Server Action: No valid users to assign for mission ${missionId}.`);
+        return { success: false, message: `No valid users provided for assignment.` };
    }
   // --- End Validation ---
 
   // --- Update Mock Data ---
    // Ensure assignedTo is an array
    if (!Array.isArray(mission.assignedTo)) {
-       mission.assignedTo = mission.assignedTo ? [mission.assignedTo] : []; // Initialize if not array or doesn't exist
+       mission.assignedTo = mission.assignedTo ? [mission.assignedTo] : [];
    }
 
-   // Check if user is already assigned
-   if (mission.assignedTo.includes(userId)) {
-        console.log(`Server Action: User ${userId} is already assigned to mission ${missionId}.`);
-       return { success: true, message: `User ${userId} is already assigned.` }; // Treat as success
-   }
+   let newAssignmentsCount = 0;
+   validUserIds.forEach(userId => {
+       if (!mission.assignedTo.includes(userId)) {
+           mission.assignedTo.push(userId);
+           newAssignmentsCount++;
+            // If user was in appliedBy and their application was pending, mark it as approved
+            const appIndex = mockApplications.findIndex(app => app.mission_id === missionId && app.user_id === userId && app.status === 'pending');
+            if (appIndex > -1) {
+                mockApplications[appIndex].status = 'approved';
+            }
+       }
+        // If user was in appliedBy (even if not pending, e.g., admin directly assigning over a refused app), remove them
+        if (mission.appliedBy && mission.appliedBy.includes(userId)) {
+            mission.appliedBy = mission.appliedBy.filter(id => id !== userId);
+        }
+   });
 
-   // Update mission status to 'assigned' if it wasn't already
-  if (mission.status !== 'assigned') {
+
+  // Update mission status to 'assigned' if it wasn't already and there are assignees
+  if (mission.assignedTo.length > 0 && mission.status !== 'assigned') {
        mission.status = 'assigned';
   }
-
-   // Add user to the assignedTo array
-  mission.assignedTo.push(userId);
-
-  // If user was in appliedBy, remove them (in case of direct assignment not through application flow)
-  if (mission.appliedBy && mission.appliedBy.includes(userId)) {
-    mission.appliedBy = mission.appliedBy.filter(id => id !== userId);
+  // If all applications were processed and no one ended up assigned, and it's not available, make it available.
+  const anyPendingApps = mockApplications.some(app => app.mission_id === missionId && app.status === 'pending');
+  if (!anyPendingApps && mission.assignedTo.length === 0 && mission.status !== 'available') {
+      mission.status = 'available';
   }
 
-  console.log(`Server Action: Mission ${missionId} assigned to user ${userId}. Current assignees: ${mission.assignedTo.join(', ')}. Status: ${mission.status} (simulated).`);
+
+  console.log(`Server Action: Mission ${missionId} assigned to ${newAssignmentsCount} new users. Current assignees: ${mission.assignedTo.join(', ')}. Status: ${mission.status} (simulated).`);
 
   // Revalidate paths
-  revalidatePath('/admin/missions'); // Admin mission list
-  revalidatePath('/admin/applications'); // Admin applications page
-  revalidatePath('/'); // Shopper available list
-  revalidatePath('/missions/assigned'); // Shopper assigned list
+  revalidatePath('/admin/missions');
+  revalidatePath('/admin/applications');
+  revalidatePath('/');
+  revalidatePath('/missions/assigned');
 
-  return { success: true, message: `Mission assigned to user ${userId} successfully.` };
+  return { success: true, message: `Mission assigned to ${newAssignmentsCount} users successfully. ${invalidUserIds.length > 0 ? `Could not assign to: ${invalidUserIds.join(', ')}.` : ''}`.trim() };
 }
 
 /**
@@ -449,7 +511,7 @@ export async function createMissionAction(missionData) {
     };
 
     // Add to mock data
-    mockMissions.push(newMission);
+    mockMissions.unshift(newMission); // Add to the beginning of the array for visibility
     console.log("Server Action: New mission created and added to mock data:", newMission);
 
     // Revalidate relevant paths

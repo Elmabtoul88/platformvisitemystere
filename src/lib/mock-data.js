@@ -1,4 +1,10 @@
 
+// IMPORTANT: This file maintains the mock data for the application.
+// When a server action modifies data (e.g., assigns a mission, approves a report),
+// it should directly mutate these arrays. This ensures consistency across the
+// client-side simulation.
+
+// Use `let` for arrays that will be modified by server actions
 export let mockMissions = [
   {
     id: 'mission-1',
@@ -8,9 +14,9 @@ export let mockMissions = [
     reward: 50,
     location: '34.0550,-118.2450', // Lat,Lng format near LA
     category: 'Restaurant',
-    status: 'submitted', // Multiple reports exist, some submitted, one approved for user-shopper-1
-    // assignedTo: ['user-shopper-1', 'user-shopper-2', 'user-shopper-3', 'user-shopper-4', 'user-shopper-5'], // Managed by mockAssignments
-    appliedBy: [],
+    status: 'submitted', // User-shopper-1's report is 'approved', others might be 'submitted'
+    assignedTo: ['user-shopper-1', 'user-shopper-2', 'user-shopper-3', 'user-shopper-4', 'user-shopper-5'],
+    appliedBy: [], // Assume all initial applications for this mission were processed
     businessName: 'Gourmet Place Inc.',
   },
   {
@@ -22,8 +28,8 @@ export let mockMissions = [
     location: '34.0500,-118.2500',
     category: 'Retail',
     status: 'pending_approval', // Application exists from user-shopper-2
-    // assignedTo: null, // Managed by mockAssignments
-    // appliedBy: ['user-shopper-2'], // Managed by mockApplications
+    assignedTo: [],
+    appliedBy: ['user-shopper-2'], // user-shopper-2 has applied
     businessName: 'Fashion Forward Ltd.',
   },
   {
@@ -35,8 +41,8 @@ export let mockMissions = [
     location: '34.0480,-118.2400',
     category: 'Service',
     status: 'pending_approval', // Application exists from user-shopper-3
-    // assignedTo: null,
-    // appliedBy: ['user-shopper-3'],
+    assignedTo: [],
+    appliedBy: ['user-shopper-3'],
     businessName: 'Quick Coffee Co.',
   },
   {
@@ -48,7 +54,7 @@ export let mockMissions = [
     location: '34.0600,-118.2600',
     category: 'Service',
     status: 'approved', // Report from user-shopper-1 is approved
-    // assignedTo: ['user-shopper-1'],
+    assignedTo: ['user-shopper-1'],
     appliedBy: [],
     businessName: 'Grand Hotel Group',
   },
@@ -61,8 +67,8 @@ export let mockMissions = [
     location: '34.0580,-118.2350',
     category: 'Restaurant',
     status: 'assigned', // User-shopper-1 was approved & assigned
-    // assignedTo: ['user-shopper-1'],
-    appliedBy: [],
+    assignedTo: ['user-shopper-1'],
+    appliedBy: [], // Application was processed
     businessName: 'Burger Bonanza',
   },
     {
@@ -74,7 +80,7 @@ export let mockMissions = [
     location: '34.0450,-118.2550',
     category: 'Retail',
     status: 'submitted', // Report from user-shopper-1 is submitted
-    // assignedTo: ['user-shopper-1'],
+    assignedTo: ['user-shopper-1'],
     appliedBy: [],
     businessName: 'SuperMart Foods',
   },
@@ -87,7 +93,7 @@ export let mockMissions = [
     location: '34.0650,-118.2480',
     category: 'Service',
     status: 'refused', // Report from user-shopper-7 was refused
-    // assignedTo: ['user-shopper-7'],
+    assignedTo: ['user-shopper-7'],
     appliedBy: [],
     businessName: 'City Library System',
   },
@@ -100,8 +106,8 @@ export let mockMissions = [
     location: '34.0520,-118.2700',
     category: 'Retail',
     status: 'pending_approval', // Application from user-shopper-4
-    // assignedTo: null,
-    // appliedBy: ['user-shopper-4'],
+    assignedTo: [],
+    appliedBy: ['user-shopper-4'],
     businessName: 'Tech World',
   },
   {
@@ -113,7 +119,7 @@ export let mockMissions = [
     location: '34.0700,-118.2800',
     category: 'Service',
     status: 'available',
-    // assignedTo: null,
+    assignedTo: [],
     appliedBy: [],
     businessName: 'Community Bank',
   },
@@ -126,7 +132,7 @@ export let mockMissions = [
     location: '34.0300,-118.2200',
     category: 'Entertainment',
     status: 'available',
-    // assignedTo: null,
+    assignedTo: [],
     appliedBy: [],
     businessName: 'Cineplex Central',
   },
@@ -138,9 +144,9 @@ export let mockMissions = [
     reward: 20,
     location: 'Online',
     category: 'Retail',
-    status: 'available', // Application from user-shopper-5 was refused, mission still available
-    // assignedTo: null,
-    // appliedBy: [],
+    status: 'pending_approval', // user-shopper-5 applied
+    assignedTo: [],
+    appliedBy: ['user-shopper-5'],
     businessName: 'ShopEasy Online',
   },
   {
@@ -152,8 +158,8 @@ export let mockMissions = [
     location: '34.0400,-118.2900',
     category: 'Public Service',
     status: 'pending_approval', // Application from user-shopper-6
-    // assignedTo: null,
-    // appliedBy: ['user-shopper-6'],
+    assignedTo: [],
+    appliedBy: ['user-shopper-6'],
     businessName: 'City Parks Dept.',
   },
    {
@@ -165,7 +171,7 @@ export let mockMissions = [
     location: 'Remote/Online',
     category: 'Technology',
     status: 'available',
-    // assignedTo: null,
+    assignedTo: [],
     appliedBy: [],
     businessName: 'Innovate App Co.',
   },
@@ -178,7 +184,7 @@ export let mockMissions = [
     location: '34.0620,-118.2300',
     category: 'Entertainment',
     status: 'available',
-    // assignedTo: null,
+    assignedTo: [],
     appliedBy: [],
     businessName: 'City Art Museum',
   },
@@ -191,7 +197,7 @@ export let mockMissions = [
     location: '34.0750,-118.2650',
     category: 'Service',
     status: 'assigned', // Assigned to user-shopper-2
-    // assignedTo: ['user-shopper-2'],
+    assignedTo: ['user-shopper-2'],
     appliedBy: [],
     businessName: 'FuelUp Stations',
   },
@@ -204,7 +210,7 @@ export let mockMissions = [
     location: '34.0510,-118.2750',
     category: 'Retail',
     status: 'approved', // Report from user-shopper-3 approved
-    // assignedTo: ['user-shopper-3'],
+    assignedTo: ['user-shopper-3'],
     appliedBy: [],
     businessName: 'The Reading Nook',
   },
@@ -217,40 +223,55 @@ export let mockMissions = [
     location: '34.0250,-118.2150',
     category: 'Service',
     status: 'submitted', // Report from user-shopper-4 submitted
-    // assignedTo: ['user-shopper-4'],
+    assignedTo: ['user-shopper-4'],
     appliedBy: [],
     businessName: 'Sparkle Car Wash',
   },
+   {
+    id: 'mission-18',
+    title: 'Another Pending Application Mission',
+    description: 'This mission has a pending application from user-shopper-1 and user-shopper-7.',
+    deadline: new Date(Date.now() + 9 * 24 * 60 * 60 * 1000),
+    reward: 33,
+    location: '34.0100,-118.2000',
+    category: 'Service',
+    status: 'pending_approval',
+    assignedTo: [],
+    appliedBy: ['user-shopper-1', 'user-shopper-7'],
+    businessName: 'Service Check Inc.',
+  }
 ];
 
+// Base mockUser, still used for the currently "logged-in" shopper simulation
 export const mockUser = {
   id: 'user-shopper-1',
   name: 'Alex Shopper',
   email: 'alex@example.com',
   role: 'shopper',
-  profilePicUrl: 'https://picsum.photos/seed/user-shopper-1/100/100',
+  profilePicUrl: `https://picsum.photos/seed/user-shopper-1/100/100`,
   city: 'Anytown',
   motivation: 'Passionate about improving customer experiences and providing detailed feedback.',
   cvUrl: '/mock-cv/alex_shopper_cv.pdf',
   birthYear: 1992,
   gender: 'female',
-  password: '$2b$10$1w6zI.1qhW4pc/fsTzTvCOVhSQyZajeg9AMxNhK.r1uY2hUUKb0pa',
-  registrationDate: new Date(Date.now() - 30 * 24 * 60 * 60 * 1000),
-  completedMissions: 1,
+  // Simulate a hashed password - in a real app, never store plain text passwords
+  password: '$2b$10$1w6zI.1qhW4pc/fsTzTvCOVhSQyZajeg9AMxNhK.r1uY2hUUKb0pa', // example: "password123"
+  registrationDate: new Date(Date.now() - 30 * 24 * 60 * 60 * 1000), // Registered 30 days ago
+  completedMissions: 1, // Example: User has completed 1 mission
   status: 'active',
   telephone: '+1-555-123-4567',
   unreadMessages: 0,
 };
 
-// Ensure mockUsers uses 'let' so it can be modified by server actions
+// Export mockUsers array, which is used by admin pages and auth context
 export let mockUsers = [
-  mockUser, // Alex Shopper
+  mockUser, // Alex Shopper (the "logged-in" user for shopper view)
   {
     id: 'user-admin-1',
     name: 'Admin User',
     email: 'admin@example.com',
     role: 'admin',
-    profilePicUrl: null,
+    profilePicUrl: null, // No pic for admin
     status: 'active',
     city: 'HQ',
     telephone: '+1-800-ADMIN-0',
@@ -258,7 +279,7 @@ export let mockUsers = [
     cvUrl: null,
     birthYear: null,
     gender: 'prefer_not_say',
-    password: '$2b$10$1w6zI.1qhW4pc/fsTzTvCOVhSQyZajeg9AMxNhK.r1uY2hUUKb0pa',
+    password: '$2b$10$1w6zI.1qhW4pc/fsTzTvCOVhSQyZajeg9AMxNhK.r1uY2hUUKb0pa', // example: "password123"
     registrationDate: new Date(Date.now() - 350 * 24 * 60 * 60 * 1000),
     completedMissions: 0,
     unreadMessages: 0,
@@ -268,7 +289,7 @@ export let mockUsers = [
     name: 'Beth Shopper',
     email: 'beth@example.com',
     role: 'shopper',
-    profilePicUrl: 'https://picsum.photos/seed/user-shopper-2/100/100',
+    profilePicUrl: 'https://picsum.photos/seed/user-shopper-2/40/40',
     status: 'active',
     city: 'Otherville',
     telephone: '+1-555-0002',
@@ -276,25 +297,25 @@ export let mockUsers = [
     cvUrl: null,
     birthYear: 1985,
     gender: 'male',
-    password: '$2b$10$1w6zI.1qhW4pc/fsTzTvCOVhSQyZajeg9AMxNhK.r1uY2hUUKb0pa',
+    password: '$2b$10$exampleHashedPasswordForBeth',
     registrationDate: new Date(Date.now() - 150 * 24 * 60 * 60 * 1000),
     completedMissions: 5,
-    unreadMessages: 2,
+    unreadMessages: 2, // Beth has 2 unread messages
   },
   {
     id: 'user-shopper-3',
     name: 'Charles Shopper',
     email: 'charles@example.com',
     role: 'shopper',
-    profilePicUrl: 'https://picsum.photos/seed/user-shopper-3/100/100',
-    status: 'inactive',
+    profilePicUrl: 'https://picsum.photos/seed/user-shopper-3/40/40',
+    status: 'inactive', // Charles is inactive
     city: 'Metroburg',
     telephone: '+1-555-0003',
     motivation: 'Interested in service evaluations.',
     cvUrl: '/mock-cv/charles_shopper_cv.pdf',
     birthYear: 1990,
     gender: 'male',
-    password: '$2b$10$1w6zI.1qhW4pc/fsTzTvCOVhSQyZajeg9AMxNhK.r1uY2hUUKb0pa',
+    password: '$2b$10$exampleHashedPasswordForCharles',
     registrationDate: new Date(Date.now() - 200 * 24 * 60 * 60 * 1000),
     completedMissions: 12,
     unreadMessages: 0,
@@ -304,7 +325,7 @@ export let mockUsers = [
     name: 'Diana Prince',
     email: 'diana@example.com',
     role: 'shopper',
-    profilePicUrl: 'https://picsum.photos/seed/user-shopper-4/100/100',
+    profilePicUrl: 'https://picsum.photos/seed/user-shopper-4/40/40',
     status: 'active',
     city: 'Themyscira',
     telephone: '+1-555-0004',
@@ -312,17 +333,17 @@ export let mockUsers = [
     cvUrl: null,
     birthYear: 1980,
     gender: 'female',
-    password: '$2b$10$1w6zI.1qhW4pc/fsTzTvCOVhSQyZajeg9AMxNhK.r1uY2hUUKb0pa',
+    password: '$2b$10$exampleHashedPasswordForDiana',
     registrationDate: new Date(Date.now() - 60 * 24 * 60 * 60 * 1000),
     completedMissions: 3,
-    unreadMessages: 1,
+    unreadMessages: 1, // Diana has 1 unread message
   },
   {
     id: 'user-shopper-5',
     name: 'Edward Nygma',
     email: 'edward@example.com',
     role: 'shopper',
-    profilePicUrl: 'https://picsum.photos/seed/user-shopper-5/100/100',
+    profilePicUrl: 'https://picsum.photos/seed/user-shopper-5/40/40',
     status: 'active',
     city: 'Gotham',
     telephone: '+1-555-0005',
@@ -330,7 +351,7 @@ export let mockUsers = [
     cvUrl: '/mock-cv/edward_nygma_cv.pdf',
     birthYear: 1978,
     gender: 'male',
-    password: '$2b$10$1w6zI.1qhW4pc/fsTzTvCOVhSQyZajeg9AMxNhK.r1uY2hUUKb0pa',
+    password: '$2b$10$exampleHashedPasswordForEdward',
     registrationDate: new Date(Date.now() - 90 * 24 * 60 * 60 * 1000),
     completedMissions: 8,
     unreadMessages: 0,
@@ -340,7 +361,7 @@ export let mockUsers = [
     name: 'Fiona Glenanne',
     email: 'fiona@example.com',
     role: 'shopper',
-    profilePicUrl: 'https://picsum.photos/seed/user-shopper-6/100/100',
+    profilePicUrl: 'https://picsum.photos/seed/user-shopper-6/40/40',
     status: 'active',
     city: 'Miami',
     telephone: '+1-555-0006',
@@ -348,7 +369,7 @@ export let mockUsers = [
     cvUrl: null,
     birthYear: 1988,
     gender: 'female',
-    password: '$2b$10$1w6zI.1qhW4pc/fsTzTvCOVhSQyZajeg9AMxNhK.r1uY2hUUKb0pa',
+    password: '$2b$10$exampleHashedPasswordForFiona',
     registrationDate: new Date(Date.now() - 120 * 24 * 60 * 60 * 1000),
     completedMissions: 2,
     unreadMessages: 0,
@@ -358,7 +379,7 @@ export let mockUsers = [
     name: 'George Costanza',
     email: 'george@example.com',
     role: 'shopper',
-    profilePicUrl: 'https://picsum.photos/seed/user-shopper-7/100/100',
+    profilePicUrl: 'https://picsum.photos/seed/user-shopper-7/40/40',
     status: 'active',
     city: 'New York',
     telephone: '+1-555-0007',
@@ -366,7 +387,7 @@ export let mockUsers = [
     cvUrl: null,
     birthYear: 1970,
     gender: 'male',
-    password: '$2b$10$1w6zI.1qhW4pc/fsTzTvCOVhSQyZajeg9AMxNhK.r1uY2hUUKb0pa',
+    password: '$2b$10$exampleHashedPasswordForGeorge',
     registrationDate: new Date(Date.now() - 10 * 24 * 60 * 60 * 1000),
     completedMissions: 0,
     unreadMessages: 0,
@@ -376,136 +397,137 @@ export let mockUsers = [
 export let mockReports = [
   {
     id: 'report-1',
-    missionId: 'mission-4',
+    missionId: 'mission-4', // Hotel Check-in
     userId: 'user-shopper-1',
     answers: {
-        'q_hotel_checkin_efficiency_rating': { type: 'rating', value: 4 },
-        'q_hotel_staff_friendliness_text': { type: 'text', value: 'Check-in was smooth, staff were polite. Lobby was clean but a bit dated.' },
-        'q_hotel_lobby_photo_image_upload': { type: 'image_upload', value: ['https://picsum.photos/seed/report1img/400/300'] }
+        'hotel_checkin_efficiency_rating': { type: 'rating', value: 4 },
+        'hotel_staff_friendliness_text': { type: 'text', value: 'Check-in was smooth, staff were polite. Lobby was clean but a bit dated.' },
+        'hotel_lobby_photo_image_upload': { type: 'image_upload', value: ['https://picsum.photos/seed/report1img/400/300'] }
     },
     submittedAt: new Date(Date.now() - 1 * 24 * 60 * 60 * 1000),
-    status: 'approved',
+    status: 'approved', // Approved
     refusalReason: null,
   },
    {
     id: 'report-2',
-    missionId: 'mission-1',
+    missionId: 'mission-1', // Gourmet Place
     userId: 'user-shopper-1',
     answers: {
-        'q_gourmet_service_rating': { type: 'rating', value: 5 },
-        'q_gourmet_food_ambiance_text': { type: 'text', value: 'Service was excellent, food was delicious.' },
-        'q_gourmet_main_course_photo_image_upload': { type: 'image_upload', value: ['https://picsum.photos/seed/report2img/400/300'] }
+        'gourmet_service': { type: 'rating', value: 5 },
+        'gourmet_food_ambiance': { type: 'text', value: 'Service was excellent, food was delicious.' },
+        'gourmet_main_course_photo': { type: 'image_upload', value: ['https://picsum.photos/seed/report2img/400/300'] }
     },
     submittedAt: new Date(Date.now() - 0.5 * 24 * 60 * 60 * 1000),
-    status: 'approved',
+    status: 'approved', // User-shopper-1's report for mission-1 is approved
     refusalReason: null,
   },
     {
     id: 'report-5',
-    missionId: 'mission-1',
+    missionId: 'mission-1', // Gourmet Place
     userId: 'user-shopper-2',
     answers: {
-        'q_gourmet_service_rating': { type: 'rating', value: 4 },
-        'q_gourmet_food_ambiance_text': { type: 'text', value: 'Good experience overall. The waiter seemed a bit rushed.'},
-        'q_gourmet_main_course_photo_image_upload': { type: 'image_upload', value: ['https://picsum.photos/seed/report5img/400/300'] }
+        'gourmet_service': { type: 'rating', value: 4 },
+        'gourmet_food_ambiance': { type: 'text', value: 'Good experience overall. The waiter seemed a bit rushed.'},
+        'gourmet_main_course_photo': { type: 'image_upload', value: ['https://picsum.photos/seed/report5img/400/300'] }
     },
     submittedAt: new Date(Date.now() - 0.3 * 24 * 60 * 60 * 1000),
-    status: 'submitted',
+    status: 'submitted', // Submitted, awaiting review
     refusalReason: null,
   },
     {
     id: 'report-6',
-    missionId: 'mission-1',
+    missionId: 'mission-1', // Gourmet Place
     userId: 'user-shopper-3',
     answers: {
-        'q_gourmet_service_rating': { type: 'rating', value: 3 },
-        'q_gourmet_food_ambiance_text': { type: 'text', value: 'Food was okay, service could be faster.'},
-        'q_gourmet_main_course_photo_image_upload': { type: 'image_upload', value: null }
+        'gourmet_service': { type: 'rating', value: 3 },
+        'gourmet_food_ambiance': { type: 'text', value: 'Food was okay, service could be faster.'},
+        'gourmet_main_course_photo': { type: 'image_upload', value: null }
     },
     submittedAt: new Date(Date.now() - 0.1 * 24 * 60 * 60 * 1000),
-    status: 'submitted',
+    status: 'submitted', // Submitted, awaiting review
     refusalReason: null,
   },
      {
     id: 'report-7',
-    missionId: 'mission-1',
+    missionId: 'mission-1', // Gourmet Place
     userId: 'user-shopper-4',
     answers: {
-        'q_gourmet_service_rating': { type: 'rating', value: 4 },
-        'q_gourmet_food_ambiance_text': { type: 'text', value: 'Food was great, service was acceptable.'},
-        'q_gourmet_main_course_photo_image_upload': { type: 'image_upload', value: ['https://picsum.photos/seed/report7img/400/300'] }
+        'gourmet_service': { type: 'rating', value: 4 },
+        'gourmet_food_ambiance': { type: 'text', value: 'Food was great, service was acceptable.'},
+        'gourmet_main_course_photo': { type: 'image_upload', value: ['https://picsum.photos/seed/report7img/400/300'] }
     },
     submittedAt: new Date(Date.now() - 0.4 * 24 * 60 * 60 * 1000),
-    status: 'submitted',
+    status: 'submitted', // Submitted, awaiting review
     refusalReason: null,
   },
      {
     id: 'report-8',
-    missionId: 'mission-1',
+    missionId: 'mission-1', // Gourmet Place
     userId: 'user-shopper-5',
     answers: {
-        'q_gourmet_service_rating': { type: 'rating', value: 2 },
-        'q_gourmet_food_ambiance_text': { type: 'text', value: 'Waited a long time for food, and it was cold.'},
-        'q_gourmet_main_course_photo_image_upload': { type: 'image_upload', value: ['https://picsum.photos/seed/report8img/400/300'] }
+        'gourmet_service': { type: 'rating', value: 2 },
+        'gourmet_food_ambiance': { type: 'text', value: 'Waited a long time for food, and it was cold.'},
+        'gourmet_main_course_photo': { type: 'image_upload', value: ['https://picsum.photos/seed/report8img/400/300'] }
     },
     submittedAt: new Date(Date.now() - 0.25 * 24 * 60 * 60 * 1000),
-    status: 'submitted',
+    status: 'submitted', // Submitted, awaiting review
     refusalReason: null,
   },
    {
     id: 'report-4',
-    missionId: 'mission-6',
+    missionId: 'mission-6', // Grocery Store
     userId: 'user-shopper-1',
     answers: {
-        'q_grocery_checkout_speed_rating': { type: 'rating', value: 4 },
-        'q_grocery_cashier_friendliness_rating': { type: 'rating', value: 5 },
-        'q_grocery_payment_methods_checkboxes': { type: 'checkboxes', value: { 'opt_cash': true, 'opt_card': true, 'opt_mobile': false, 'opt_app': false } }, // Using actual option IDs
-        'q_grocery_location_capture_gps_capture': { type: 'gps_capture', value: { lat: 34.0450, lng: -118.2550 } },
-        'q_grocery_receipt_photo_image_upload': { type: 'image_upload', value: ['https://picsum.photos/seed/report4img1/400/300', 'https://picsum.photos/seed/report4img2/400/300'] },
-        'q_grocery_suggestions_text': { type: 'text', value: 'Checkout line moved quickly. Cashier was very friendly and efficient.'}
+        'q_grocery_1_rating': { type: 'rating', value: 4 },
+        'q_grocery_2_rating': { type: 'rating', value: 5 },
+        'q_grocery_3_checkboxes': { type: 'checkboxes', value: { 'opt_cash': true, 'opt_card': true, 'opt_mobile': false, 'opt_app': false } }, // Using actual option IDs
+        'q_grocery_4_gps_capture': { type: 'gps_capture', value: { lat: 34.0450, lng: -118.2550 } },
+        'q_grocery_6_image_upload': { type: 'image_upload', value: ['https://picsum.photos/seed/report4img1/400/300', 'https://picsum.photos/seed/report4img2/400/300'] },
+        'q_grocery_7_text': { type: 'text', value: 'Checkout line moved quickly. Cashier was very friendly and efficient.'}
     },
     submittedAt: new Date(Date.now() - 0.1 * 24 * 60 * 60 * 1000),
-    status: 'submitted',
+    status: 'submitted', // Submitted, awaiting review
     refusalReason: null,
   },
    {
     id: 'report-9',
-    missionId: 'mission-7',
+    missionId: 'mission-7', // Library Ambiance
     userId: 'user-shopper-7',
     answers: {
-        'q_library_ambiance_text': {type: 'text', value: 'It was quiet.'}
+        'library_ambiance_text': {type: 'text', value: 'It was quiet.'}
     },
     submittedAt: new Date(Date.now() - 4 * 24 * 60 * 60 * 1000),
-    status: 'refused',
+    status: 'refused', // Refused
     refusalReason: "Report was too brief and lacked sufficient detail about the ambiance.",
   },
   {
     id: 'report-10',
-    missionId: 'mission-16',
+    missionId: 'mission-16', // Bookstore
     userId: 'user-shopper-3',
     answers: {
-        'q_bookstore_recommendation_rating': { type: 'rating', value: 5 },
-        'q_bookstore_staff_knowledge_text': { type: 'text', value: 'Staff was very knowledgeable and gave an excellent recommendation.' },
+        'bookstore_recommendation_rating': { type: 'rating', value: 5 },
+        'bookstore_staff_knowledge_text': { type: 'text', value: 'Staff was very knowledgeable and gave an excellent recommendation.' },
     },
     submittedAt: new Date(Date.now() - 6.5 * 24 * 60 * 60 * 1000),
-    status: 'approved',
+    status: 'approved', // Approved
     refusalReason: null,
   },
   {
     id: 'report-11',
-    missionId: 'mission-17',
+    missionId: 'mission-17', // Car Wash
     userId: 'user-shopper-4',
     answers: {
-        'q_carwash_quality_rating': { type: 'rating', value: 3 },
-        'q_carwash_missed_areas_text': { type: 'text', value: 'The car wash was okay, but some spots were missed on the wheels.' },
-        'q_carwash_photo_image_upload': { type: 'image_upload', value: ['https://picsum.photos/seed/report11img/400/300'] },
+        'carwash_quality_rating': { type: 'rating', value: 3 },
+        'carwash_missed_areas_text': { type: 'text', value: 'The car wash was okay, but some spots were missed on the wheels.' },
+        'carwash_photo_image_upload': { type: 'image_upload', value: ['https://picsum.photos/seed/report11img/400/300'] },
     },
     submittedAt: new Date(Date.now() - 0.5 * 24 * 60 * 60 * 1000),
-    status: 'submitted',
+    status: 'submitted', // Submitted, awaiting review
     refusalReason: null,
   },
 ];
 
+// Mock survey questions
 export let mockSurveyQuestions = {
   'mission-1': [ // Gourmet Place
        { id: 'gourmet_service', type: 'rating', text: 'Rate the overall service quality.', isRequired: true, maxRating: 5, minLabel: 'Poor', maxLabel: 'Excellent' },
@@ -519,13 +541,13 @@ export let mockSurveyQuestions = {
     { id: 'retail_storefront_photo_image_upload', type: 'image_upload', text: 'Upload a photo of the storefront.', isRequired: true, allowMultiple: false, maxImages: 1 },
   ],
   'mission-6': [ // Grocery Store Checkout
-    { id: 'grocery_checkout_speed_rating', type: 'rating', text: 'Rate the speed of the checkout process.', isRequired: true, maxRating: 5, minLabel: 'Very Slow', maxLabel: 'Very Fast' },
-    { id: 'grocery_cashier_friendliness_rating', type: 'rating', text: 'Rate the friendliness of the cashier.', isRequired: true, maxRating: 5, minLabel: 'Unfriendly', maxLabel: 'Very Friendly' },
-    { id: 'grocery_payment_methods_checkboxes', type: 'checkboxes', text: 'Which payment methods were clearly available?', isRequired: false, options: [{id: 'opt_cash', text: 'Cash'}, {id: 'opt_card', text: 'Credit/Debit Card'}, {id: 'opt_mobile', text: 'Mobile Pay (Apple/Google Pay)'}, {id: 'opt_app', text: 'Store App'}] },
-    { id: 'grocery_location_capture_gps_capture', type: 'gps_capture', text: 'Capture your location upon leaving the store.', isRequired: true },
-    { id: 'grocery_noise_level_audio_recording', type: 'audio_recording', text: 'Record a brief audio comment about the checkout noise level (optional).', isRequired: false, maxDurationSeconds: 30 },
-    { id: 'grocery_receipt_photo_image_upload', type: 'image_upload', text: 'Upload photos of your receipt and purchased items (up to 3 images).', isRequired: true, allowMultiple: true, maxImages: 3 },
-    { id: 'grocery_suggestions_text', type: 'text', text: 'Any suggestions for improvement?', isRequired: false },
+    { id: 'q_grocery_1_rating', type: 'rating', text: 'Rate the speed of the checkout process.', isRequired: true, maxRating: 5, minLabel: 'Very Slow', maxLabel: 'Very Fast' },
+    { id: 'q_grocery_2_rating', type: 'rating', text: 'Rate the friendliness of the cashier.', isRequired: true, maxRating: 5, minLabel: 'Unfriendly', maxLabel: 'Very Friendly' },
+    { id: 'q_grocery_3_checkboxes', type: 'checkboxes', text: 'Which payment methods were clearly available?', isRequired: false, options: [{id: 'opt_cash', text: 'Cash'}, {id: 'opt_card', text: 'Credit/Debit Card'}, {id: 'opt_mobile', text: 'Mobile Pay (Apple/Google Pay)'}, {id: 'opt_app', text: 'Store App'}] },
+    { id: 'q_grocery_4_gps_capture', type: 'gps_capture', text: 'Capture your location upon leaving the store.', isRequired: true },
+    { id: 'q_grocery_5_audio_recording', type: 'audio_recording', text: 'Record a brief audio comment about the checkout noise level (optional).', isRequired: false, maxDurationSeconds: 30 },
+    { id: 'q_grocery_6_image_upload', type: 'image_upload', text: 'Upload photos of your receipt and purchased items (up to 3 images).', isRequired: true, allowMultiple: true, maxImages: 3 },
+    { id: 'q_grocery_7_text', type: 'text', text: 'Any suggestions for improvement?', isRequired: false },
   ],
   'mission-4': [ // Hotel Check-in
         { id: 'hotel_checkin_efficiency_rating', type: 'rating', text: 'Rate the check-in efficiency.', isRequired: true, maxRating: 5 },
@@ -546,7 +568,22 @@ export let mockSurveyQuestions = {
     ],
 };
 
-// Ensures mockAssignments uses 'let'
+
+// Mock applications data
+export let mockApplications = [
+  { id: 'app-1', mission_id: 'mission-2', user_id: 'user-shopper-2', status: 'pending', applied_at: new Date(Date.now() - 1 * 24 * 60 * 60 * 1000), refusal_reason: null },
+  { id: 'app-2', mission_id: 'mission-3', user_id: 'user-shopper-3', status: 'pending', applied_at: new Date(Date.now() - 2 * 24 * 60 * 60 * 1000), refusal_reason: null },
+  { id: 'app-3', mission_id: 'mission-5', user_id: 'user-shopper-1', status: 'approved', applied_at: new Date(Date.now() - 0.5 * 24 * 60 * 60 * 1000), refusal_reason: null }, // This one was approved, mission-5 is 'assigned'
+  { id: 'app-4', mission_id: 'mission-8', user_id: 'user-shopper-4', status: 'pending', applied_at: new Date(Date.now() - 0.2 * 24 * 60 * 60 * 1000), refusal_reason: null },
+  { id: 'app-5', mission_id: 'mission-11', user_id: 'user-shopper-5', status: 'pending', applied_at: new Date(Date.now() - 3 * 24 * 60 * 60 * 1000), refusal_reason: null },
+  { id: 'app-6', mission_id: 'mission-12', user_id: 'user-shopper-6', status: 'pending', applied_at: new Date(Date.now() - 0.1 * 24 * 60 * 60 * 1000), refusal_reason: null },
+  { id: 'app-7', mission_id: 'mission-18', user_id: 'user-shopper-1', status: 'pending', applied_at: new Date(Date.now() - 0.5 * 24 * 60 * 60 * 1000), refusal_reason: null },
+  { id: 'app-8', mission_id: 'mission-18', user_id: 'user-shopper-7', status: 'pending', applied_at: new Date(Date.now() - 0.4 * 24 * 60 * 60 * 1000), refusal_reason: null },
+];
+
+
+// This data is not directly used by the frontend but would be managed by the backend
+// For simulation, it's useful to understand how `assignedTo` on `mockMissions` relates
 export let mockAssignments = [
     { id: 'asg-1', mission_id: 'mission-1', user_id: 'user-shopper-1', assigned_at: new Date(Date.now() - 2 * 24 * 60 * 60 * 1000) },
     { id: 'asg-2', mission_id: 'mission-1', user_id: 'user-shopper-2', assigned_at: new Date(Date.now() - 2 * 24 * 60 * 60 * 1000) },
@@ -560,17 +597,4 @@ export let mockAssignments = [
     { id: 'asg-10', mission_id: 'mission-15', user_id: 'user-shopper-2', assigned_at: new Date(Date.now() - 1 * 24 * 60 * 60 * 1000) },
     { id: 'asg-11', mission_id: 'mission-16', user_id: 'user-shopper-3', assigned_at: new Date(Date.now() - 8 * 24 * 60 * 60 * 1000) },
     { id: 'asg-12', mission_id: 'mission-17', user_id: 'user-shopper-4', assigned_at: new Date(Date.now() - 0.8 * 24 * 60 * 60 * 1000) },
-];
-
-// Ensures mockApplications uses 'let'
-export let mockApplications = [
-  { id: 'app-1', mission_id: 'mission-2', user_id: 'user-shopper-2', status: 'pending', applied_at: new Date(Date.now() - 1 * 24 * 60 * 60 * 1000) },
-  { id: 'app-2', mission_id: 'mission-3', user_id: 'user-shopper-3', status: 'pending', applied_at: new Date(Date.now() - 2 * 24 * 60 * 60 * 1000) },
-  // app-3 was for mission-5, user-shopper-1. This application would have been 'approved' and moved to assignments. So, it shouldn't be in pending applications.
-  // Let's assume it was processed and mission-5 is now 'assigned' to user-shopper-1.
-  { id: 'app-4', mission_id: 'mission-8', user_id: 'user-shopper-4', status: 'pending', applied_at: new Date(Date.now() - 0.2 * 24 * 60 * 60 * 1000) },
-  { id: 'app-5', mission_id: 'mission-11', user_id: 'user-shopper-5', status: 'refused', refusal_reason: 'Applicant does not meet experience criteria for online evaluations.', applied_at: new Date(Date.now() - 3 * 24 * 60 * 60 * 1000) },
-  { id: 'app-6', mission_id: 'mission-12', user_id: 'user-shopper-6', status: 'pending', applied_at: new Date(Date.now() - 0.1 * 24 * 60 * 60 * 1000) },
-  // Adding a new pending application for mission-9
-  { id: 'app-7', mission_id: 'mission-9', user_id: 'user-shopper-1', status: 'pending', applied_at: new Date(Date.now() - 0.5 * 24 * 60 *60 * 1000)},
 ];
