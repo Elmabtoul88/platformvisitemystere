@@ -11,8 +11,8 @@ import { Badge } from '@/components/ui/badge';
 import { Label } from '@/components/ui/label';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
-import { PlusCircle, MoreHorizontal, Search, Edit, Trash2, FileCheck, FileText, Loader2, UserPlus, Award, MapPin as MapPinIcon, Users as UsersIcon, FileSignature, ListFilter } from 'lucide-react';
-import { mockMissions, mockReports, mockAssignments, mockApplications, mockUsers } from '@/lib/mock-data'; // Import all necessary mock data
+import { PlusCircle, MoreHorizontal, Search, Edit, Trash2, FileCheck, FileText, Loader2, UserPlus, Award, MapPin as MapPinIcon, Users as UsersIcon, FileSignature, ListFilter, UserCheck as UserCheckIcon } from 'lucide-react';
+import { mockMissions, mockReports, mockUsers, mockAssignments, mockApplications } from '@/lib/mock-data'; // Import all necessary mock data
 
 import { assignMissionAction, deleteMissionAction } from '../../actions/admin-actions.js';
 import { format } from 'date-fns';
@@ -66,16 +66,13 @@ const getStatusInfo = (status) => {
   };
 
 const countSubmittedReports = (missionId) => {
-    // Use mockReports for now
     return mockReports.filter(r => r.missionId === missionId && r.status === 'submitted').length;
 };
 
 const getUserById = (userId) => {
-    // Use mockUsers for now
     const usersArray = Array.isArray(mockUsers) ? mockUsers : [];
     const user = usersArray.find(u => u.id === userId);
-    // Ensure a valid structure is returned even if user not found, for AvatarFallback
-    return user || { name: 'Unknown', profile_pic_url: null };
+    return user || { name: 'Unknown', profilePicUrl: null };
 };
 
 
@@ -108,7 +105,7 @@ export default function AdminMissionsPage() {
                         email: u.email,
                         city: u.city || 'N/A',
                         completedMissions: u.completed_missions_count ?? 0,
-                        profilePicUrl: u.profile_pic_url,
+                        profilePicUrl: u.profilePicUrl,
                      }));
                 setActiveShoppers(filteredActiveShoppers);
             });
@@ -158,19 +155,26 @@ export default function AdminMissionsPage() {
                    const index = mockMissions.findIndex(m => m.id === missionId);
                    if (index > -1) mockMissions.splice(index, 1);
 
-                   // Update applications: Remove those associated with the deleted mission
-                    const appIndex = mockApplications.findIndex(app => app.mission_id === missionId);
-                    if (appIndex > -1) mockApplications.splice(appIndex, 1);
+                    let appIndex = mockApplications.length;
+                    while(appIndex--){
+                        if(mockApplications[appIndex].mission_id === missionId){
+                            mockApplications.splice(appIndex, 1);
+                        }
+                    }
 
-
-                    // Update assignments: Remove those associated with the deleted mission
-                    const assignmentIndex = mockAssignments.findIndex(asg => asg.mission_id === missionId);
-                    if (assignmentIndex > -1) mockAssignments.splice(assignmentIndex, 1);
-
-
-                    // Update reports: Remove those associated with the deleted mission
-                    const reportIndex = mockReports.findIndex(rep => rep.missionId === missionId); // Corrected property name to missionId
-                    if (reportIndex > -1) mockReports.splice(reportIndex, 1);
+                    let assignmentIndex = mockAssignments.length;
+                    while(assignmentIndex--){
+                        if(mockAssignments[assignmentIndex].mission_id === missionId){
+                            mockAssignments.splice(assignmentIndex, 1);
+                        }
+                    }
+                    
+                    let reportIndex = mockReports.length;
+                    while(reportIndex--){
+                         if(mockReports[reportIndex].missionId === missionId){
+                            mockReports.splice(reportIndex, 1);
+                        }
+                    }
 
                 });
                 toast({ title: "Mission Deleted", description: result.message });
@@ -189,13 +193,12 @@ export default function AdminMissionsPage() {
     };
 
     const openAssignDialog = (mission) => {
-        if (!['available', 'assigned', 'pending_approval'].includes(mission.status)) {
-            toast({ variant: "destructive", title: "Cannot Assign", description: `Mission status (${mission.status}) prevents assignment.` });
+        if (!['available', 'assigned'].includes(mission.status)) { // Removed 'pending_approval' as it has its own action
+            toast({ variant: "destructive", title: "Cannot Assign", description: `Mission status (${mission.status}) prevents direct assignment here. Review applications first or change status.` });
             return;
         }
         setSelectedMissionForAssignment(mission);
         
-        // Initialize selectedUsersForAssignment with current assignees
         const currentAssignees = mockAssignments
           .filter(asg => asg.mission_id === mission.id)
           .map(asg => asg.user_id);
@@ -207,7 +210,7 @@ export default function AdminMissionsPage() {
     };
 
      const handleUserSelectionChange = (userId) => {
-         if (isAssigning) return; // Prevent changes while submitting
+         if (isAssigning) return; 
          setSelectedUsersForAssignment(prevSelected => {
              const isSelected = prevSelected.includes(userId);
              if (isSelected) {
@@ -233,35 +236,31 @@ export default function AdminMissionsPage() {
              if (result.success) {
                  startTransition(() => {
                      setMissionsState(prevMissions => prevMissions.map(m =>
-                         m.id === missionId ? { ...m, status: 'assigned' } : m
+                         m.id === missionId ? { ...m, status: 'assigned', appliedBy: m.appliedBy?.filter(uid => !selectedUsersForAssignment.includes(uid)) } : m // Clear assigned users from appliedBy
                      ));
-
-                    // Update mockAssignments: remove old, add new
-                    const otherAssignments = mockAssignments.filter(a => a.mission_id !== missionId);
+                    
+                    const missionIndexGlobal = mockMissions.findIndex(m => m.id === missionId);
+                    if (missionIndexGlobal > -1) {
+                        mockMissions[missionIndexGlobal].status = 'assigned';
+                        mockMissions[missionIndexGlobal].appliedBy = mockMissions[missionIndexGlobal].appliedBy?.filter(uid => !selectedUsersForAssignment.includes(uid));
+                    }
+                    
+                    // Update mockAssignments
+                    let currentAssignments = mockAssignments.filter(a => a.mission_id !== missionId);
                     const newAssignmentsForThisMission = selectedUsersForAssignment.map(userId => ({
                         id: `asg-${Date.now()}-${userId}-${Math.random().toString(16).slice(2)}`,
                         mission_id: missionId,
                         user_id: userId,
                         assigned_at: new Date().toISOString()
                     }));
-                    // Mutate mockAssignments directly for persistence during simulation
-                    mockAssignments.length = 0;
-                    mockAssignments.push(...otherAssignments, ...newAssignmentsForThisMission);
+                    mockAssignments.splice(0, mockAssignments.length, ...currentAssignments, ...newAssignmentsForThisMission);
 
-
-                    // Update mission in global mockMissions array
-                    const missionIndexGlobal = mockMissions.findIndex(m => m.id === missionId);
-                    if (missionIndexGlobal > -1) {
-                        mockMissions[missionIndexGlobal].status = 'assigned';
-                        // No longer directly storing assignedTo on mission object for multiple assignees.
-                        // This information is now in mockAssignments.
-                        // Clear appliedBy for these users if they were assigned through application flow
-                        mockApplications.forEach(app => {
-                             if (app.mission_id === missionId && selectedUsersForAssignment.includes(app.user_id)) {
-                                app.status = 'approved'; // Mark application as approved
-                             }
-                         });
-                    }
+                    // Update related applications to 'approved'
+                     mockApplications.forEach(app => {
+                         if (app.mission_id === missionId && selectedUsersForAssignment.includes(app.user_id)) {
+                            app.status = 'approved';
+                         }
+                     });
                  });
                  toast({ title: "Mission Assigned", description: result.message });
                  setAssignDialogOpen(false);
@@ -295,7 +294,7 @@ export default function AdminMissionsPage() {
                 </h1>
                 <div className="flex flex-col sm:flex-row gap-2 w-full sm:w-auto">
                      <Button onClick={() => router.push('/admin/applications')} variant="outline" size="sm" className="w-full sm:w-auto">
-                         <ListFilter className="w-4 h-4 mr-2" /> View Applications
+                         <ListFilter className="w-4 h-4 mr-2" /> View All Applications
                     </Button>
                     <Button onClick={handleCreateMission} size="sm" className="w-full sm:w-auto">
                         <PlusCircle className="w-4 h-4 mr-2" /> Create New Mission
@@ -319,7 +318,7 @@ export default function AdminMissionsPage() {
                 </CardHeader>
                 <CardContent>
                     <div className="overflow-x-auto">
-                        <TooltipProvider> {/* Moved TooltipProvider to wrap the Table */}
+                        <TooltipProvider>
                             <Table>
                                 <TableHeader>
                                     <TableRow>
@@ -345,7 +344,6 @@ export default function AdminMissionsPage() {
                                             const isCurrentProcessing = isProcessing === mission.id;
                                             const statusInfo = getStatusInfo(mission.status);
                                             const pendingApplicationsCount = mockApplications.filter(app => app.mission_id === mission.id && app.status === 'pending').length;
-
 
                                             return (
                                                 <TableRow key={mission.id} className={isCurrentProcessing ? 'opacity-50 pointer-events-none' : ''}>
@@ -414,11 +412,16 @@ export default function AdminMissionsPage() {
                                                             </DropdownMenuTrigger>
                                                             <DropdownMenuContent align="end">
                                                                 <DropdownMenuLabel>Actions</DropdownMenuLabel>
-                                                                {['available', 'assigned', 'pending_approval'].includes(mission.status) && (
+                                                                {mission.status === 'pending_approval' && pendingApplicationsCount > 0 ? (
+                                                                    <DropdownMenuItem onClick={() => router.push(`/admin/applications?missionId=${mission.id}`)} disabled={isCurrentProcessing}>
+                                                                        <UserCheckIcon className="mr-2 h-4 w-4" /> View Applications ({pendingApplicationsCount})
+                                                                    </DropdownMenuItem>
+                                                                ) : ['available', 'assigned'].includes(mission.status) ? (
                                                                     <DropdownMenuItem onClick={() => openAssignDialog(mission)} disabled={isCurrentProcessing}>
                                                                         <UserPlus className="mr-2 h-4 w-4" /> Assign/Reassign
                                                                     </DropdownMenuItem>
-                                                                )}
+                                                                ) : null}
+
                                                                 {['submitted', 'approved', 'refused', 'completed'].includes(mission.status) ? (
                                                                     <DropdownMenuItem onClick={() => handleReviewReports(mission.id)} disabled={isCurrentProcessing}>
                                                                         <FileCheck className="mr-2 h-4 w-4" /> Review Reports
@@ -517,7 +520,7 @@ export default function AdminMissionsPage() {
                                         <Checkbox
                                             id={`user-${shopper.value}`}
                                             checked={selectedUsersForAssignment.includes(shopper.value)}
-                                            onCheckedChange={() => handleUserSelectionChange(shopper.value)} // Ensure this allows unchecking
+                                            onCheckedChange={() => handleUserSelectionChange(shopper.value)}
                                             aria-label={`Select ${shopper.label}`}
                                             disabled={isAssigning}
                                             className="shrink-0"
