@@ -1,3 +1,4 @@
+
 'use client';
 
 import React, { useMemo, useState } from 'react';
@@ -67,7 +68,7 @@ export default function ClientMissionDetailPage() {
 
         const allReportsForMission = mockReports.filter(r => r.missionId === missionId);
         const submitted = allReportsForMission.filter(r => r.status === 'submitted');
-        const approved = allReportsFor-mission.filter(r => r.status === 'approved');
+        const approved = allReportsForMission.filter(r => r.status === 'approved');
         
         const rate = allReportsForMission.length > 0
             ? (approved.length / allReportsForMission.length) * 100
