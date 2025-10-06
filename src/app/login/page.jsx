@@ -6,94 +6,63 @@ import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle }
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { useToast } from "@/hooks/use-toast";
-import { LogIn, Loader2, ShieldCheck } from 'lucide-react'; // Added ShieldCheck for admin indication
+import { LogIn, Loader2, ShieldCheck } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
-import { useAuth } from '@/context/auth-context'; // Import useAuth
-
-// Define Admin Credentials (for simulation)
-const ADMIN_EMAIL = "admin@example.com";
-const ADMIN_PASSWORD = "password123"; // Keep password requirements reasonable
+import { useAuth } from '@/context/auth-context';
 
 export default function LoginPage() {
   const { toast } = useToast();
   const router = useRouter();
-  const { isAuthenticated, setAuthState, isLoading, userRole } = useAuth(); // Use auth context, get setAuthState
+  const { isAuthenticated, login, isLoading, user } = useAuth();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
 
-  // Redirect if already authenticated based on role
+  // Effect to redirect if already authenticated
   useEffect(() => {
-    if (!isLoading && isAuthenticated) {
-      if (userRole === 'admin') {
-        console.log("Admin already authenticated, redirecting to /admin...");
+    if (!isLoading && isAuthenticated && user) {
+      if (user.role === 'admin') {
         router.push('/admin');
-      } else if (userRole === 'shopper') {
-        console.log("Shopper already authenticated, redirecting to /...");
-        router.push('/');
+      } else if (user.role === 'client') {
+        router.push('/client');
       } else {
-         // Fallback if role is somehow null/undefined but authenticated
-         console.log("Authenticated but no role, redirecting to login...");
-         router.push('/login'); // Or handle appropriately
+        router.push('/');
       }
     }
-  }, [isAuthenticated, isLoading, userRole, router]);
-
+  }, [isAuthenticated, isLoading, user, router]);
 
   const handleLogin = async (event) => {
     event.preventDefault();
+    if (!email || !password) {
+        toast({ variant: "destructive", title: "Missing Fields", description: "Please enter both email and password." });
+        return;
+    }
     setIsSubmitting(true);
 
-    // --- Simulate Login ---
-    console.log(`Simulating login for email: ${email}`);
-    await new Promise(resolve => setTimeout(resolve, 1000)); // Shorter delay
-
-    let loggedIn = false;
-    let role = null;
-
-    // Check for Admin
-    if (email === ADMIN_EMAIL && password === ADMIN_PASSWORD) {
-      console.log("Admin login successful (simulated)");
-      loggedIn = true;
-      role = 'admin';
-      toast({
-        title: "Admin Login Successful",
-        description: "Welcome, Administrator!",
-      });
+    try {
+        const result = await login(email, password); // Use the login function from context
+        if (result.success) {
+            toast({
+                title: "Login Successful",
+                description: result.message,
+            });
+            // Redirection is handled by the useEffect hook
+        } else {
+            throw new Error(result.message);
+        }
+    } catch (error) {
+        toast({
+            variant: "destructive",
+            title: "Login Failed",
+            description: error.message || "An unknown error occurred.",
+        });
+        setIsSubmitting(false); // Only stop submitting on failure
     }
-    // Check for Shopper (basic validation for simulation)
-    else if (email.includes('@') && password.length >= 6) {
-      console.log("Shopper login successful (simulated)");
-      loggedIn = true;
-      role = 'shopper';
-      toast({
-        title: "Login Successful",
-        description: "Welcome back!",
-      });
-    }
-    // Login Failed
-    else {
-      console.error("Login failed (simulated)");
-      toast({
-        variant: "destructive",
-        title: "Login Failed",
-        description: "Invalid email or password. Please try again.",
-      });
-    }
-
-    // Update Auth State and Redirect (handled by useEffect)
-    if (loggedIn && role) {
-      setAuthState(true, role); // Update auth state and role using the context function
-       // Redirection will be handled by the useEffect hook based on the new role
-    } else {
-      setIsSubmitting(false); // Only set submitting false if login failed
-    }
-    // --- End Simulation ---
   };
 
-   // Show loading indicator while auth state is loading or redirecting
-   if (isLoading || (!isLoading && isAuthenticated)) {
+  // Show a loading state while auth is being checked or if a redirect is imminent
+  if (isLoading || (!isLoading && isAuthenticated)) {
     return (
        <div className="flex min-h-screen items-center justify-center bg-background p-4">
           <Loader2 className="h-8 w-8 animate-spin text-primary" />
@@ -142,10 +111,11 @@ export default function LoginPage() {
                 disabled={isSubmitting}
               />
             </div>
-             {/* Hint for admin login */}
-            <p className="text-xs text-muted-foreground text-center pt-2">
-                Admin Login: <code className="bg-secondary px-1 rounded">admin@example.com</code> / <code className="bg-secondary px-1 rounded">password123</code>
-            </p>
+            <div className="text-xs text-muted-foreground text-center pt-2 space-y-1">
+                 <p>Admin: <code className="bg-secondary px-1 rounded">admin@example.com</code> / <code className="bg-secondary px-1 rounded">password123</code></p>
+                 <p>Client: <code className="bg-secondary px-1 rounded">client@gourmet.com</code> / <code className="bg-secondary px-1 rounded">password123</code></p>
+                 <p>Shopper: <code className="bg-secondary px-1 rounded">alex@example.com</code> / <code className="bg-secondary px-1 rounded">password123</code></p>
+            </div>
           </CardContent>
           <CardFooter className="flex flex-col gap-4">
             <Button type="submit" className="w-full" disabled={isSubmitting}>

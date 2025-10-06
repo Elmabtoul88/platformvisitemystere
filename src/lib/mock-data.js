@@ -18,6 +18,7 @@ export let mockMissions = [
     assignedTo: ['user-shopper-1', 'user-shopper-2', 'user-shopper-3', 'user-shopper-4', 'user-shopper-5'],
     appliedBy: [], // Assume all initial applications for this mission were processed
     businessName: 'Gourmet Place Inc.',
+    clientId: 'client-1', // Link to client
   },
   {
     id: 'mission-2',
@@ -31,6 +32,7 @@ export let mockMissions = [
     assignedTo: [],
     appliedBy: ['user-shopper-2'], // user-shopper-2 has applied
     businessName: 'Fashion Forward Ltd.',
+    clientId: 'client-2', // Link to client
   },
   {
     id: 'mission-3',
@@ -44,6 +46,7 @@ export let mockMissions = [
     assignedTo: [],
     appliedBy: ['user-shopper-3'],
     businessName: 'Quick Coffee Co.',
+    clientId: 'client-1',
   },
   {
     id: 'mission-4',
@@ -57,6 +60,7 @@ export let mockMissions = [
     assignedTo: ['user-shopper-1'],
     appliedBy: [],
     businessName: 'Grand Hotel Group',
+    clientId: 'client-3',
   },
    {
     id: 'mission-5',
@@ -70,6 +74,7 @@ export let mockMissions = [
     assignedTo: ['user-shopper-1'],
     appliedBy: [], // Application was processed
     businessName: 'Burger Bonanza',
+    clientId: 'client-1',
   },
     {
     id: 'mission-6',
@@ -83,6 +88,7 @@ export let mockMissions = [
     assignedTo: ['user-shopper-1'],
     appliedBy: [],
     businessName: 'SuperMart Foods',
+    clientId: 'client-2',
   },
    {
     id: 'mission-7',
@@ -96,6 +102,7 @@ export let mockMissions = [
     assignedTo: ['user-shopper-7'],
     appliedBy: [],
     businessName: 'City Library System',
+    clientId: null, // No client
   },
    {
     id: 'mission-8',
@@ -109,6 +116,7 @@ export let mockMissions = [
     assignedTo: [],
     appliedBy: ['user-shopper-4'],
     businessName: 'Tech World',
+    clientId: 'client-3',
   },
   {
     id: 'mission-9',
@@ -122,6 +130,7 @@ export let mockMissions = [
     assignedTo: [],
     appliedBy: [],
     businessName: 'Community Bank',
+    clientId: 'client-3',
   },
   {
     id: 'mission-10',
@@ -135,6 +144,7 @@ export let mockMissions = [
     assignedTo: [],
     appliedBy: [],
     businessName: 'Cineplex Central',
+    clientId: 'client-1',
   },
    {
     id: 'mission-11',
@@ -148,6 +158,7 @@ export let mockMissions = [
     assignedTo: [],
     appliedBy: ['user-shopper-5'],
     businessName: 'ShopEasy Online',
+    clientId: 'client-2',
   },
   {
     id: 'mission-12',
@@ -161,6 +172,7 @@ export let mockMissions = [
     assignedTo: [],
     appliedBy: ['user-shopper-6'],
     businessName: 'City Parks Dept.',
+    clientId: null,
   },
    {
     id: 'mission-13',
@@ -174,6 +186,7 @@ export let mockMissions = [
     assignedTo: [],
     appliedBy: [],
     businessName: 'Innovate App Co.',
+    clientId: 'client-3',
   },
   {
     id: 'mission-14',
@@ -187,6 +200,7 @@ export let mockMissions = [
     assignedTo: [],
     appliedBy: [],
     businessName: 'City Art Museum',
+    clientId: null,
   },
   {
     id: 'mission-15',
@@ -200,6 +214,7 @@ export let mockMissions = [
     assignedTo: ['user-shopper-2'],
     appliedBy: [],
     businessName: 'FuelUp Stations',
+    clientId: 'client-1',
   },
    {
     id: 'mission-16',
@@ -213,6 +228,7 @@ export let mockMissions = [
     assignedTo: ['user-shopper-3'],
     appliedBy: [],
     businessName: 'The Reading Nook',
+    clientId: 'client-2',
   },
   {
     id: 'mission-17',
@@ -226,6 +242,7 @@ export let mockMissions = [
     assignedTo: ['user-shopper-4'],
     appliedBy: [],
     businessName: 'Sparkle Car Wash',
+    clientId: 'client-1',
   },
    {
     id: 'mission-18',
@@ -239,6 +256,7 @@ export let mockMissions = [
     assignedTo: [],
     appliedBy: ['user-shopper-1', 'user-shopper-7'],
     businessName: 'Service Check Inc.',
+    clientId: 'client-3',
   }
 ];
 

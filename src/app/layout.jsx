@@ -7,7 +7,7 @@ import Link from 'next/link';
 import { Button } from '@/components/ui/button';
 import {
     Home, ListChecks, CheckSquare, LogIn, Shield, Users, Settings as SettingsIcon,
-    Map, Loader2, FileSignature, Menu, Bell, UserCheck as UserCheckIcon // Added UserCheckIcon for applications
+    Map, Loader2, FileSignature, Menu, Bell, UserCheck as UserCheckIcon, Briefcase
 } from 'lucide-react';
 import { ProfileMenu } from '@/components/profile-menu';
 import React, { useEffect, useState, Suspense } from 'react';
@@ -27,7 +27,8 @@ const geistMono = Geist_Mono({
 });
 
 function AppLayout({ children }) {
-  const { isAuthenticated, userRole, isLoading } = useAuth();
+  const { isAuthenticated, user, isLoading } = useAuth();
+  const userRole = user?.role;
   const pathname = usePathname();
   const router = useRouter();
   const [isDarkMode, setIsDarkMode] = useState(false);
@@ -65,40 +66,6 @@ function AppLayout({ children }) {
   }, []);
 
   useEffect(() => {
-    if (isLoading) {
-      return;
-    }
-
-    const isPublicRoute = pathname === '/login' || pathname === '/signup';
-    const isAdminRoute = pathname.startsWith('/admin');
-    const isShopperRoute = !isPublicRoute && !isAdminRoute;
-
-    if (!isAuthenticated) {
-      if (!isPublicRoute) {
-        router.push('/login');
-      }
-    } else {
-      if (userRole === 'admin') {
-        if (!isAdminRoute && !isPublicRoute) {
-          router.push('/admin');
-        } else if (isPublicRoute) {
-          router.push('/admin');
-        }
-      } else if (userRole === 'shopper') {
-        if (isAdminRoute) {
-          router.push('/');
-        } else if (isPublicRoute) {
-          router.push('/');
-        }
-      } else {
-        if (!isPublicRoute) {
-          router.push('/login');
-        }
-      }
-    }
-  }, [isAuthenticated, userRole, isLoading, pathname, router]);
-
-  useEffect(() => {
     document.title = 'MissionView App';
   }, []);
 
@@ -108,7 +75,7 @@ function AppLayout({ children }) {
 
   const closeMobileMenu = () => setIsMobileMenuOpen(false);
 
-  if (isLoading && !isAuthPage) {
+  if (isLoading) {
     return (
         <html lang="en" className={isDarkMode ? 'dark' : ''}>
            <head><meta name="description" content="Manage your mystery shopper missions." /><link rel="icon" href="/favicon.ico" sizes="any" /></head>
@@ -123,7 +90,7 @@ function AppLayout({ children }) {
     );
   }
 
-  const homeLink = isAuthenticated ? (userRole === 'admin' ? '/admin' : '/') : '/login';
+  const homeLink = isAuthenticated ? (userRole === 'admin' ? '/admin' : userRole === 'client' ? '/client' : '/') : '/login';
 
   const commonNavLinks = (
     <>
@@ -173,12 +140,14 @@ function AppLayout({ children }) {
               <Users className="w-4 h-4" /> Manage Users
             </Link>
           </Button>
-          <Button variant={pathname.startsWith('/admin/chat') ? "secondary" : "ghost"} size="sm" asChild onClick={closeMobileMenu}>
-            <Link href="/admin/chat" className="flex items-center gap-1">
-              <Bell className="w-4 h-4" /> Chat
+        </>
+      )}
+      {userRole === 'client' && (
+         <Button variant={pathname === '/client' ? "secondary" : "ghost"} size="sm" asChild onClick={closeMobileMenu}>
+            <Link href="/client" className="flex items-center gap-1">
+              <Briefcase className="w-4 h-4" /> My Missions
             </Link>
           </Button>
-        </>
       )}
     </>
   );
@@ -193,7 +162,7 @@ function AppLayout({ children }) {
               <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" className="w-6 h-6">
                 <path fillRule="evenodd" d="M11.54 22.351l.07.04.028.016a.76.76 0 00.723 0l.028-.015.071-.041a16.975 16.975 0 001.144-.742 19.58 19.58 0 002.683-2.282c1.944-1.99 3.963-4.98 3.963-8.827a8.25 8.25 0 00-16.5 0c0 3.846 2.02 6.837 3.963 8.827a19.58 19.58 0 002.682 2.282 16.975 16.975 0 001.145.742zM12 13.5a3 3 0 100-6 3 3 0 000 6z" clipRule="evenodd" />
               </svg>
-              MissionView {userRole === 'admin' && <span className="text-xs font-normal text-muted-foreground">(Admin)</span>}
+              MissionView {userRole && <span className="text-xs font-normal text-muted-foreground">({userRole})</span>}
             </Link>
 
             <div className="hidden md:flex items-center gap-2">
@@ -235,12 +204,6 @@ function AppLayout({ children }) {
                       {showHeaderNav && commonNavLinks}
                       {isAuthenticated && (
                         <>
-                          <Button variant={pathname.startsWith('/settings') || pathname.startsWith('/admin/settings') ? "secondary" : "ghost"} size="sm" asChild onClick={closeMobileMenu}>
-                            <Link href={userRole === 'admin' ? "/admin/settings" : "/settings"} className="flex items-center gap-1">
-                              <SettingsIcon className="w-4 h-4" /> Settings
-                            </Link>
-                          </Button>
-                           {/* Add ProfileMenu component in the Sheet for mobile, but style it differently */}
                            <div className="border-t pt-2 mt-2">
                                <ProfileMenu isMobile={true} onLinkClick={closeMobileMenu} />
                            </div>

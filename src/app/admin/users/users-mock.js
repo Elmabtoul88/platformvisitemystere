@@ -6,6 +6,21 @@ const generateMockUsers = (count) => {
     const users = [];
     const usedIds = new Set(); // Keep track of used IDs
 
+    // Add mock clients
+    users.push({
+        id: 'client-1', name: 'Gourmet Place Client', email: 'client@gourmet.com', role: 'client', password: '$2b$10$clientPasswordHash1', status: 'active', registrationDate: new Date(Date.now() - 400 * 24 * 60 * 60 * 1000), unreadMessages: 1, profilePicUrl: 'https://picsum.photos/seed/client-1/40/40',
+    });
+    usedIds.add('client-1');
+    users.push({
+        id: 'client-2', name: 'Fashion Forward Client', email: 'client@fashion.com', role: 'client', password: '$2b$10$clientPasswordHash2', status: 'active', registrationDate: new Date(Date.now() - 300 * 24 * 60 * 60 * 1000), unreadMessages: 0, profilePicUrl: 'https://picsum.photos/seed/client-2/40/40',
+    });
+    usedIds.add('client-2');
+     users.push({
+        id: 'client-3', name: 'General Services Client', email: 'client@services.com', role: 'client', password: '$2b$10$clientPasswordHash3', status: 'active', registrationDate: new Date(Date.now() - 500 * 24 * 60 * 60 * 1000), unreadMessages: 0, profilePicUrl: 'https://picsum.photos/seed/client-3/40/40',
+    });
+    usedIds.add('client-3');
+
+
     // Generate shoppers
     for (let i = 1; i <= count; i++) {
         const userId = `user-shopper-${i}`;
@@ -27,6 +42,7 @@ const generateMockUsers = (count) => {
              registrationDate: new Date(Date.now() - Math.floor(Math.random() * 365 + 1) * 24 * 60 * 60 * 1000),
             completedMissions: Math.floor(Math.random() * 35), // Wider mission count range
             unreadMessages: i % 5 === 0 ? Math.floor(Math.random() * 5) + 1 : 0, // Add simulated unread messages for some users
+            password: `$2b$10$shopperPasswordHash${i}`
         });
         usedIds.add(userId);
     }
@@ -71,6 +87,7 @@ const generateMockUsers = (count) => {
             registrationDate: new Date(Date.now() - 350 * 24 * 60 * 60 * 1000),
             completedMissions: 0,
             unreadMessages: 0, // Admins don't have unread messages in this context
+            password: '$2b$10$1w6zI.1qhW4pc/fsTzTvCOVhSQyZajeg9AMxNhK.r1uY2hUUKb0pa',
         });
         usedIds.add(adminUserId);
     }
