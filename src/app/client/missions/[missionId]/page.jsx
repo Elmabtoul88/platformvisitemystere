@@ -24,6 +24,10 @@ const getShopperName = (userId) => mockUsers.find(u => u.id === userId)?.name ||
 // Helper to find the survey question text
 const getQuestionText = (missionId, answerKey) => {
     const questions = mockSurveyQuestions[missionId] || [];
+    // Handle potential malformed answerKey
+    if (!answerKey || typeof answerKey.split !== 'function' || answerKey.split('_').length < 2) {
+        return 'Invalid Question Key';
+    }
     const questionId = answerKey.split('_')[1];
     const question = questions.find(q => String(q.id) === questionId);
     return question ? question.text : 'Unknown Question';
@@ -47,7 +51,10 @@ const formatAnswerValue = (answer) => {
         case 'image_upload':
             return Array.isArray(answer.value) ? `${answer.value.length} image(s)` : '1 image';
         case 'gps_capture':
-            return `Lat: ${answer.value.lat.toFixed(4)}, Lng: ${answer.value.lng.toFixed(4)}`;
+             if (answer.value && typeof answer.value.lat === 'number' && typeof answer.value.lng === 'number') {
+                return `Lat: ${answer.value.lat.toFixed(4)}, Lng: ${answer.value.lng.toFixed(4)}`;
+            }
+            return 'Invalid Coordinates';
         case 'audio_recording':
             return 'Audio submitted';
         default:
@@ -133,6 +140,7 @@ export default function ClientMissionDetailPage() {
         return <div className="flex justify-center items-center h-screen"><Loader2 className="w-8 h-8 animate-spin" /></div>;
     }
     
+    // Authorization Check: Ensure the logged-in client owns this mission
     if (!mission || mission.clientId !== user?.id) {
         return (
             <div className="container mx-auto py-8 px-4 flex flex-col items-center">
@@ -201,16 +209,16 @@ export default function ClientMissionDetailPage() {
 
             {/* Approved Reports Table */}
             <Card>
-                <CardHeader className="flex flex-row items-center justify-between">
+                <CardHeader className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
                     <div>
                         <CardTitle>Approved Reports</CardTitle>
                         <CardDescription>Detailed view of all approved shopper submissions.</CardDescription>
                     </div>
-                    <div className="flex gap-2">
-                        <Button variant="outline" size="sm" onClick={() => handleExport('csv')} disabled={isExporting || exportData.length === 0}>
+                    <div className="flex gap-2 w-full sm:w-auto">
+                        <Button className="flex-1 sm:flex-initial" variant="outline" size="sm" onClick={() => handleExport('csv')} disabled={isExporting || exportData.length === 0}>
                             <FileDown className="w-4 h-4 mr-2"/> Export CSV
                         </Button>
-                        <Button variant="outline" size="sm" onClick={() => handleExport('pdf')} disabled={isExporting || exportData.length === 0}>
+                        <Button className="flex-1 sm:flex-initial" variant="outline" size="sm" onClick={() => handleExport('pdf')} disabled={isExporting || exportData.length === 0}>
                             <FileText className="w-4 h-4 mr-2"/> Export PDF
                         </Button>
                     </div>
@@ -229,12 +237,14 @@ export default function ClientMissionDetailPage() {
                            {approvedReports.length > 0 ? approvedReports.map(report => {
                                 const ratingAnswer = Object.values(report.answers).find(a => a.type === 'rating');
                                 const textAnswer = Object.values(report.answers).find(a => a.type === 'text');
+                                const textAnswerKey = Object.keys(report.answers).find(k => k.includes('_text'));
+
                                 return (
                                     <TableRow key={report.id}>
                                         <TableCell>{getShopperName(report.userId)}</TableCell>
                                         <TableCell>{format(new Date(report.submittedAt), 'PP')}</TableCell>
                                         <TableCell className="max-w-xs truncate">
-                                            <span className="text-muted-foreground text-xs">{getQuestionText(missionId, Object.keys(report.answers).find(k => k.includes('_text')) || '')}:</span>
+                                            <span className="text-muted-foreground text-xs">{getQuestionText(missionId, textAnswerKey || '')}:</span>
                                             <p>{textAnswer?.value || 'N/A'}</p>
                                         </TableCell>
                                         <TableCell className="text-right">
