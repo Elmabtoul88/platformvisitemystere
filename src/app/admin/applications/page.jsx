@@ -11,7 +11,7 @@ import {
   AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
   AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger
 } from "@/components/ui/alert-dialog";
-import { Loader2, CheckCircle, XCircle, UserCheck, Search, Filter, Users as UsersIcon, Info } from 'lucide-react';
+import { Loader2, CheckCircle, XCircle, UserCheck, Search, Filter, Users as UsersIcon, Info, MapPin, Building, FileText } from 'lucide-react';
 import { mockApplications, mockMissions, mockUsers } from '@/lib/mock-data'; // Import all necessary mock data
 import { approveApplicationAction, refuseApplicationAction } from '../../actions/admin-actions.js';
 import { format } from 'date-fns';
@@ -21,10 +21,10 @@ import { useToast } from '@/hooks/use-toast';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Input } from '@/components/ui/input';
 
-// Helper to get mission title by ID
-const getMissionTitle = (missionId) => {
+// Helper to get mission details by ID
+const getMissionDetails = (missionId) => {
     const mission = mockMissions.find(m => m.id === missionId);
-    return mission ? mission.title : 'Unknown Mission';
+    return mission || { title: 'Unknown Mission', location: 'N/A', businessName: 'N/A', description: 'N/A' };
 };
 
 // Helper to get user details by ID
@@ -32,6 +32,13 @@ const getUserDetails = (userId) => {
     const user = mockUsers.find(u => u.id === userId);
     return user || { name: 'Unknown User', email: 'N/A', profilePicUrl: null };
 };
+
+// Helper to check if location is lat/long
+const isLatLong = (location) => {
+    if (typeof location !== 'string') return false;
+    const parts = location.split(',');
+    return parts.length === 2 && !isNaN(parseFloat(parts[0])) && !isNaN(parseFloat(parts[1]));
+}
 
 export default function AdminApplicationsPage() {
     const router = useRouter();
@@ -41,6 +48,7 @@ export default function AdminApplicationsPage() {
     const [isProcessing, setIsProcessing] = useState(null); // Track processing application ID
     const [refusalReason, setRefusalReason] = useState('');
     const [applicationToRefuse, setApplicationToRefuse] = useState(null); // Track which application modal is open for
+    const [applicationToApprove, setApplicationToApprove] = useState(null); // Track which app modal is open for approval
     const [searchTerm, setSearchTerm] = useState('');
     const [isTransitioning, startTransition] = useTransition();
 
@@ -59,7 +67,7 @@ export default function AdminApplicationsPage() {
 
     const filteredApplications = useMemo(() => {
         return applications.filter(app => {
-            const missionTitle = getMissionTitle(app.mission_id).toLowerCase();
+            const missionTitle = getMissionDetails(app.mission_id).title.toLowerCase();
             const userName = getUserDetails(app.user_id).name.toLowerCase();
             const userEmail = getUserDetails(app.user_id).email.toLowerCase();
             const term = searchTerm.toLowerCase();
@@ -80,6 +88,7 @@ export default function AdminApplicationsPage() {
                     const appIndex = mockApplications.findIndex(a => a.id === applicationId);
                     if (appIndex !== -1) mockApplications[appIndex].status = 'approved';
                 });
+                 setApplicationToApprove(null); // Close the modal on success
             } else {
                 throw new Error(result.message || "Failed to approve application.");
             }
@@ -167,7 +176,7 @@ export default function AdminApplicationsPage() {
                             <TableBody>
                                 {filteredApplications.length > 0 ? (
                                     filteredApplications.map((app) => {
-                                        const missionTitle = getMissionTitle(app.mission_id);
+                                        const mission = getMissionDetails(app.mission_id);
                                         const user = getUserDetails(app.user_id);
                                         const isCurrentProcessing = isProcessing === app.id;
 
@@ -187,12 +196,13 @@ export default function AdminApplicationsPage() {
                                                 </TableCell>
                                                 <TableCell>
                                                     <Link href={`/admin/missions/${app.mission_id}/edit`} className="hover:underline text-primary font-medium">
-                                                        {missionTitle}
+                                                        {mission.title}
                                                     </Link>
                                                 </TableCell>
                                                 <TableCell>{format(new Date(app.applied_at), 'PPp')}</TableCell>
                                                 <TableCell className="text-xs text-muted-foreground">{app.id}</TableCell>
                                                 <TableCell className="text-right space-x-2">
+                                                    {/* Refuse Dialog */}
                                                     <AlertDialog open={applicationToRefuse?.id === app.id} onOpenChange={(isOpen) => { if (!isOpen) { setApplicationToRefuse(null); setRefusalReason(''); }}}>
                                                         <AlertDialogTrigger asChild>
                                                             <Button
@@ -206,7 +216,7 @@ export default function AdminApplicationsPage() {
                                                         </AlertDialogTrigger>
                                                         <AlertDialogContent>
                                                             <AlertDialogHeader>
-                                                                <AlertDialogTitle>Refuse Application for {missionTitle}?</AlertDialogTitle>
+                                                                <AlertDialogTitle>Refuse Application for {mission.title}?</AlertDialogTitle>
                                                                 <AlertDialogDescription>
                                                                     Shopper: {user.name}. Please provide a reason for refusal. This may be shared with the shopper.
                                                                 </AlertDialogDescription>
@@ -231,16 +241,60 @@ export default function AdminApplicationsPage() {
                                                             </AlertDialogFooter>
                                                         </AlertDialogContent>
                                                     </AlertDialog>
-                                                    <Button
-                                                        variant="default"
-                                                        size="sm"
-                                                        className="bg-green-600 hover:bg-green-700 text-white"
-                                                        onClick={() => handleApprove(app.id)}
-                                                        disabled={isCurrentProcessing}
-                                                    >
-                                                        {isProcessing === app.id ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <CheckCircle className="w-4 h-4 mr-1" />}
-                                                        Approve
-                                                    </Button>
+                                                    
+                                                    {/* Approve Dialog */}
+                                                    <AlertDialog open={applicationToApprove?.id === app.id} onOpenChange={(isOpen) => { if (!isOpen) setApplicationToApprove(null); }}>
+                                                        <AlertDialogTrigger asChild>
+                                                            <Button
+                                                                variant="default"
+                                                                size="sm"
+                                                                className="bg-green-600 hover:bg-green-700 text-white"
+                                                                onClick={() => setApplicationToApprove(app)}
+                                                                disabled={isCurrentProcessing}
+                                                            >
+                                                                <CheckCircle className="w-4 h-4 mr-1" /> Approve
+                                                            </Button>
+                                                        </AlertDialogTrigger>
+                                                        <AlertDialogContent>
+                                                            <AlertDialogHeader>
+                                                                <AlertDialogTitle>Approve & Assign Mission?</AlertDialogTitle>
+                                                                <AlertDialogDescription>
+                                                                    Please review the mission details before assigning it to <strong>{user.name}</strong>.
+                                                                </AlertDialogDescription>
+                                                            </AlertDialogHeader>
+                                                            <div className="my-4 text-sm space-y-3 p-3 border rounded-md bg-secondary/50">
+                                                                <div className="font-semibold text-primary">{mission.title}</div>
+                                                                <div className="flex items-start gap-2">
+                                                                    <Building className="w-4 h-4 mt-0.5 text-muted-foreground" />
+                                                                    <div><strong>Store:</strong> {mission.businessName}</div>
+                                                                </div>
+                                                                <div className="flex items-start gap-2">
+                                                                    <MapPin className="w-4 h-4 mt-0.5 text-muted-foreground" />
+                                                                    <div>
+                                                                        <strong>Address:</strong> {mission.location}
+                                                                        {isLatLong(mission.location) && (
+                                                                            <a href={`https://www.google.com/maps?q=${mission.location}`} target="_blank" rel="noopener noreferrer" className="text-xs text-primary underline ml-1">(View on Map)</a>
+                                                                        )}
+                                                                    </div>
+                                                                </div>
+                                                                <div className="flex items-start gap-2">
+                                                                    <FileText className="w-4 h-4 mt-0.5 text-muted-foreground" />
+                                                                    <div><strong>Scenario:</strong> <p className="text-muted-foreground whitespace-pre-wrap">{mission.description}</p></div>
+                                                                </div>
+                                                            </div>
+                                                            <AlertDialogFooter>
+                                                                <AlertDialogCancel disabled={isCurrentProcessing}>Cancel</AlertDialogCancel>
+                                                                <AlertDialogAction
+                                                                    onClick={() => handleApprove(app.id)}
+                                                                    disabled={isCurrentProcessing}
+                                                                    className={buttonVariants({ variant: "default", className: "bg-green-600 hover:bg-green-700 text-white" })}
+                                                                >
+                                                                    {isCurrentProcessing ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <CheckCircle className="mr-2 h-4 w-4"/>}
+                                                                    Confirm Approval
+                                                                </AlertDialogAction>
+                                                            </AlertDialogFooter>
+                                                        </AlertDialogContent>
+                                                    </AlertDialog>
                                                 </TableCell>
                                             </TableRow>
                                         );
