@@ -14,7 +14,8 @@ import {
   AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger
 } from "@/components/ui/alert-dialog";
 import { Loader2, CheckCircle, XCircle, UserCheck, Search, Info, MapPin, Building, FileText } from 'lucide-react';
-import { mockApplications, mockMissions, mockUsers } from '@/lib/mock-data'; // Import all necessary mock data
+import { mockApplications, mockMissions } from '@/lib/mock-data'; // Import all necessary mock data
+import { mockUsers } from '@/app/admin/users/users-mock.js';
 import { approveApplicationAction, refuseApplicationAction } from '../../actions/admin-actions.js';
 import { format } from 'date-fns';
 import Link from 'next/link';

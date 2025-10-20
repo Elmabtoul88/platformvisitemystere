@@ -4,7 +4,7 @@
 
 import { revalidatePath } from 'next/cache';
 import { mockMissions, mockReports, mockApplications, mockAssignments } from '@/lib/mock-data'; // Import all mock data
-import { allMockUsers } from '@/app/admin/users/users-mock.js'; // Use allMockUsers from the consolidated file
+import { mockUsers } from '@/app/admin/users/users-mock.js'; // Use mockUsers from the consolidated file
 
 /**
  * Server Action to approve a shopper's application for a mission with specific details.
@@ -346,12 +346,12 @@ export async function toggleUserStatusAction(userId, currentStatus) {
   await new Promise(resolve => setTimeout(resolve, 500));
 
   // --- Update Mock Data ---
-   const userIndex = allMockUsers.findIndex(u => u.id === userId);
+   const userIndex = mockUsers.findIndex(u => u.id === userId);
    if (userIndex === -1) {
        console.error("Server Action: User not found.");
        return { success: false, message: "User not found." };
    }
-   allMockUsers[userIndex].status = newStatus;
+   mockUsers[userIndex].status = newStatus;
    // --- End Mock Data Update ---
 
   console.log(`Server Action: User ${userId} status updated to ${newStatus} (simulated).`);
@@ -377,17 +377,17 @@ export async function updateUserAction(userId, userData) {
     await new Promise(resolve => setTimeout(resolve, 500));
 
     // --- Update Mock Data ---
-    const userIndex = allMockUsers.findIndex(u => u.id === userId);
+    const userIndex = mockUsers.findIndex(u => u.id === userId);
     if (userIndex === -1) {
         console.error("Server Action: User not found for update.");
         return { success: false, message: "User not found." };
     }
 
     // Update the user object, preserving read-only fields like email
-    allMockUsers[userIndex] = {
-        ...allMockUsers[userIndex], // Start with existing data
+    mockUsers[userIndex] = {
+        ...mockUsers[userIndex], // Start with existing data
         ...userData, // Apply updates from form
-        email: allMockUsers[userIndex].email, // Ensure email is not changed
+        email: mockUsers[userIndex].email, // Ensure email is not changed
     };
     // --- End Mock Data Update ---
 
@@ -433,7 +433,7 @@ export async function assignMissionAction(missionId, userIds) {
    const validUserIds = [];
    const invalidUserIds = [];
    userIds.forEach(userId => {
-       const userExists = allMockUsers.some(u => u.id === userId && u.role === 'shopper' && u.status === 'active');
+       const userExists = mockUsers.some(u => u.id === userId && u.role === 'shopper' && u.status === 'active');
        if (userExists) {
            validUserIds.push(userId);
        } else {
