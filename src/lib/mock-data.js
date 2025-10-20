@@ -1,4 +1,5 @@
 
+
 // IMPORTANT: This file maintains the mock data for the application.
 // When a server action modifies data (e.g., assigns a mission, approves a report),
 // it should directly mutate these arrays. This ensures consistency across the
@@ -281,136 +282,30 @@ export const mockUser = {
   unreadMessages: 0,
 };
 
-// Export mockUsers array, which is used by admin pages and auth context
-export let mockUsers = [
-  mockUser, // Alex Shopper (the "logged-in" user for shopper view)
-  {
-    id: 'user-admin-1',
-    name: 'Admin User',
-    email: 'admin@example.com',
-    role: 'admin',
-    profilePicUrl: null, // No pic for admin
-    status: 'active',
-    city: 'HQ',
-    telephone: '+1-800-ADMIN-0',
-    motivation: 'System Administrator.',
-    cvUrl: null,
-    birthYear: null,
-    gender: 'prefer_not_say',
-    password: '$2b$10$1w6zI.1qhW4pc/fsTzTvCOVhSQyZajeg9AMxNhK.r1uY2hUUKb0pa', // example: "password123"
-    registrationDate: new Date(Date.now() - 350 * 24 * 60 * 60 * 1000),
-    completedMissions: 0,
-    unreadMessages: 0,
-  },
-  {
-    id: 'user-shopper-2',
-    name: 'Beth Shopper',
-    email: 'beth@example.com',
-    role: 'shopper',
-    profilePicUrl: 'https://picsum.photos/seed/user-shopper-2/40/40',
-    status: 'active',
-    city: 'Otherville',
-    telephone: '+1-555-0002',
-    motivation: 'Looking for new opportunities.',
-    cvUrl: null,
-    birthYear: 1985,
-    gender: 'male',
-    password: '$2b$10$exampleHashedPasswordForBeth',
-    registrationDate: new Date(Date.now() - 150 * 24 * 60 * 60 * 1000),
-    completedMissions: 5,
-    unreadMessages: 2, // Beth has 2 unread messages
-  },
-  {
-    id: 'user-shopper-3',
-    name: 'Charles Shopper',
-    email: 'charles@example.com',
-    role: 'shopper',
-    profilePicUrl: 'https://picsum.photos/seed/user-shopper-3/40/40',
-    status: 'inactive', // Charles is inactive
-    city: 'Metroburg',
-    telephone: '+1-555-0003',
-    motivation: 'Interested in service evaluations.',
-    cvUrl: '/mock-cv/charles_shopper_cv.pdf',
-    birthYear: 1990,
-    gender: 'male',
-    password: '$2b$10$exampleHashedPasswordForCharles',
-    registrationDate: new Date(Date.now() - 200 * 24 * 60 * 60 * 1000),
-    completedMissions: 12,
-    unreadMessages: 0,
-  },
+// Export all mock users together, including the primary mockUser for context
+export const allMockUsers = [
+    mockUser, // Alex Shopper (the "logged-in" user for shopper view)
     {
-    id: 'user-shopper-4',
-    name: 'Diana Prince',
-    email: 'diana@example.com',
-    role: 'shopper',
-    profilePicUrl: 'https://picsum.photos/seed/user-shopper-4/40/40',
-    status: 'active',
-    city: 'Themyscira',
-    telephone: '+1-555-0004',
-    motivation: 'Seeking truth and justice in customer service.',
-    cvUrl: null,
-    birthYear: 1980,
-    gender: 'female',
-    password: '$2b$10$exampleHashedPasswordForDiana',
-    registrationDate: new Date(Date.now() - 60 * 24 * 60 * 60 * 1000),
-    completedMissions: 3,
-    unreadMessages: 1, // Diana has 1 unread message
-  },
-  {
-    id: 'user-shopper-5',
-    name: 'Edward Nygma',
-    email: 'edward@example.com',
-    role: 'shopper',
-    profilePicUrl: 'https://picsum.photos/seed/user-shopper-5/40/40',
-    status: 'active',
-    city: 'Gotham',
-    telephone: '+1-555-0005',
-    motivation: 'I have a penchant for puzzles and detailed observations.',
-    cvUrl: '/mock-cv/edward_nygma_cv.pdf',
-    birthYear: 1978,
-    gender: 'male',
-    password: '$2b$10$exampleHashedPasswordForEdward',
-    registrationDate: new Date(Date.now() - 90 * 24 * 60 * 60 * 1000),
-    completedMissions: 8,
-    unreadMessages: 0,
-  },
-  {
-    id: 'user-shopper-6',
-    name: 'Fiona Glenanne',
-    email: 'fiona@example.com',
-    role: 'shopper',
-    profilePicUrl: 'https://picsum.photos/seed/user-shopper-6/40/40',
-    status: 'active',
-    city: 'Miami',
-    telephone: '+1-555-0006',
-    motivation: 'Good with details and not afraid to speak my mind.',
-    cvUrl: null,
-    birthYear: 1988,
-    gender: 'female',
-    password: '$2b$10$exampleHashedPasswordForFiona',
-    registrationDate: new Date(Date.now() - 120 * 24 * 60 * 60 * 1000),
-    completedMissions: 2,
-    unreadMessages: 0,
-  },
-   {
-    id: 'user-shopper-7',
-    name: 'George Costanza',
-    email: 'george@example.com',
-    role: 'shopper',
-    profilePicUrl: 'https://picsum.photos/seed/user-shopper-7/40/40',
-    status: 'active',
-    city: 'New York',
-    telephone: '+1-555-0007',
-    motivation: 'Always looking for an angle, and I notice things.',
-    cvUrl: null,
-    birthYear: 1970,
-    gender: 'male',
-    password: '$2b$10$exampleHashedPasswordForGeorge',
-    registrationDate: new Date(Date.now() - 10 * 24 * 60 * 60 * 1000),
-    completedMissions: 0,
-    unreadMessages: 0,
-  }
+        id: 'user-admin-1',
+        name: 'Admin User',
+        email: 'admin@example.com',
+        role: 'admin',
+        profilePicUrl: null, // No pic for admin
+        status: 'active',
+        city: 'HQ',
+        telephone: '+1-800-ADMIN-0',
+        motivation: 'System Administrator.',
+        cvUrl: null,
+        birthYear: null,
+        gender: 'prefer_not_say',
+        password: '$2b$10$1w6zI.1qhW4pc/fsTzTvCOVhSQyZajeg9AMxNhK.r1uY2hUUKb0pa', // example: "password123"
+        registrationDate: new Date(Date.now() - 350 * 24 * 60 * 60 * 1000),
+        completedMissions: 0,
+        unreadMessages: 0,
+    },
+    ...generateMockUsers(25).filter(u => u.id !== 'user-shopper-1'), // Generate more shoppers and ensure no duplicates
 ];
+
 
 export let mockReports = [
   {
@@ -431,12 +326,25 @@ export let mockReports = [
     missionId: 'mission-1', // Gourmet Place
     userId: 'user-shopper-1',
     answers: {
-        'gourmet_service': { type: 'rating', value: 5 },
-        'gourmet_food_ambiance': { type: 'text', value: 'Service was excellent, food was delicious.' },
-        'gourmet_main_course_photo': { type: 'image_upload', value: ['https://picsum.photos/seed/report2img/400/300'] }
+        'q_gourmet_1_rating': { type: 'rating', value: 5 },
+        'q_gourmet_2_rating': { type: 'rating', value: 4 },
+        'q_gourmet_3_text': { type: 'text', value: 'Service was excellent, food was delicious.' },
     },
-    submittedAt: new Date(Date.now() - 0.5 * 24 * 60 * 60 * 1000),
+    submittedAt: new Date(new Date().setMonth(new Date().getMonth() - 1)), // Last month
     status: 'approved', // User-shopper-1's report for mission-1 is approved
+    refusalReason: null,
+  },
+  {
+    id: 'report-3',
+    missionId: 'mission-1', // Gourmet Place
+    userId: 'user-shopper-2',
+    answers: {
+        'q_gourmet_1_rating': { type: 'rating', value: 4 },
+        'q_gourmet_2_rating': { type: 'rating', value: 3 },
+        'q_gourmet_3_text': { type: 'text', value: 'Good, but the waiter was a bit slow.' },
+    },
+    submittedAt: new Date(new Date().setMonth(new Date().getMonth() - 1)), // Last month
+    status: 'approved',
     refusalReason: null,
   },
     {
@@ -543,14 +451,41 @@ export let mockReports = [
     status: 'submitted', // Submitted, awaiting review
     refusalReason: null,
   },
+  {
+    id: 'report-12',
+    missionId: 'mission-1',
+    userId: 'user-shopper-3',
+    answers: {
+      'q_gourmet_1_rating': { type: 'rating', value: 3 },
+      'q_gourmet_2_rating': { type: 'rating', value: 4 },
+      'q_gourmet_3_text': { type: 'text', value: 'Average experience. Nothing special.' },
+    },
+    submittedAt: new Date(new Date().setMonth(new Date().getMonth() - 2)), // Two months ago
+    status: 'approved',
+    refusalReason: null,
+  },
+  {
+    id: 'report-13',
+    missionId: 'mission-1',
+    userId: 'user-shopper-4',
+    answers: {
+      'q_gourmet_1_rating': { type: 'rating', value: 5 },
+      'q_gourmet_2_rating': { type: 'rating', value: 5 },
+      'q_gourmet_3_text': { type: 'text', value: 'Absolutely fantastic! Will come again.' },
+    },
+    submittedAt: new Date(), // This month
+    status: 'approved',
+    refusalReason: null,
+  },
 ];
 
 // Mock survey questions
 export let mockSurveyQuestions = {
   'mission-1': [ // Gourmet Place
-       { id: 'gourmet_service', type: 'rating', text: 'Rate the overall service quality.', isRequired: true, maxRating: 5, minLabel: 'Poor', maxLabel: 'Excellent' },
-       { id: 'gourmet_food_ambiance', type: 'text', text: 'Comments on food and ambiance.', isRequired: true },
-       { id: 'gourmet_main_course_photo', type: 'image_upload', text: 'Upload a photo of your main course.', isRequired: false, allowMultiple: false, maxImages: 1 },
+       { id: 'gourmet_1', type: 'rating', text: 'Rate the overall service quality.', isRequired: true, maxRating: 5, minLabel: 'Poor', maxLabel: 'Excellent' },
+       { id: 'gourmet_2', type: 'rating', text: 'Rate the food quality.', isRequired: true, maxRating: 5, minLabel: 'Poor', maxLabel: 'Excellent' },
+       { id: 'gourmet_3', type: 'text', text: 'Comments on food and ambiance.', isRequired: true },
+       { id: 'gourmet_4', type: 'image_upload', text: 'Upload a photo of your main course.', isRequired: false, allowMultiple: false, maxImages: 1 },
    ],
   'mission-2': [ // Retail Store Cleanliness
     { id: 'retail_cleanliness_rating', type: 'rating', text: 'Rate the overall cleanliness of the store.', isRequired: true, maxRating: 5, minLabel: 'Dirty', maxLabel: 'Spotless' },
@@ -599,20 +534,77 @@ export let mockApplications = [
   { id: 'app-8', mission_id: 'mission-18', user_id: 'user-shopper-7', status: 'pending', applied_at: new Date(Date.now() - 0.4 * 24 * 60 * 60 * 1000), refusal_reason: null },
 ];
 
-
-// This data is not directly used by the frontend but would be managed by the backend
-// For simulation, it's useful to understand how `assignedTo` on `mockMissions` relates
+/**
+ * NEW: mockAssignments
+ * This array stores specific details for a mission assigned to a user.
+ * It's created when an admin approves an application and provides specific details.
+ */
 export let mockAssignments = [
-    { id: 'asg-1', mission_id: 'mission-1', user_id: 'user-shopper-1', assigned_at: new Date(Date.now() - 2 * 24 * 60 * 60 * 1000) },
-    { id: 'asg-2', mission_id: 'mission-1', user_id: 'user-shopper-2', assigned_at: new Date(Date.now() - 2 * 24 * 60 * 60 * 1000) },
-    { id: 'asg-3', mission_id: 'mission-1', user_id: 'user-shopper-3', assigned_at: new Date(Date.now() - 2 * 24 * 60 * 60 * 1000) },
-    { id: 'asg-4', mission_id: 'mission-1', user_id: 'user-shopper-4', assigned_at: new Date(Date.now() - 2 * 24 * 60 * 60 * 1000) },
-    { id: 'asg-5', mission_id: 'mission-1', user_id: 'user-shopper-5', assigned_at: new Date(Date.now() - 2 * 24 * 60 * 60 * 1000) },
-    { id: 'asg-6', mission_id: 'mission-4', user_id: 'user-shopper-1', assigned_at: new Date(Date.now() - 3 * 24 * 60 * 60 * 1000) },
-    { id: 'asg-7', mission_id: 'mission-5', user_id: 'user-shopper-1', assigned_at: new Date(Date.now() - 0.4 * 24 * 60 * 60 * 1000) },
-    { id: 'asg-8', mission_id: 'mission-6', user_id: 'user-shopper-1', assigned_at: new Date(Date.now() - 1 * 24 * 60 * 60 * 1000) },
-    { id: 'asg-9', mission_id: 'mission-7', user_id: 'user-shopper-7', assigned_at: new Date(Date.now() - 6 * 24 * 60 * 60 * 1000) },
-    { id: 'asg-10', mission_id: 'mission-15', user_id: 'user-shopper-2', assigned_at: new Date(Date.now() - 1 * 24 * 60 * 60 * 1000) },
-    { id: 'asg-11', mission_id: 'mission-16', user_id: 'user-shopper-3', assigned_at: new Date(Date.now() - 8 * 24 * 60 * 60 * 1000) },
-    { id: 'asg-12', mission_id: 'mission-17', user_id: 'user-shopper-4', assigned_at: new Date(Date.now() - 0.8 * 24 * 60 * 60 * 1000) },
+    // This assignment is created when app-3 for mission-5 was approved for user-shopper-1
+    {
+        id: 'asg-1',
+        mission_id: 'mission-5',
+        user_id: 'user-shopper-1',
+        assigned_at: new Date(Date.now() - 0.5 * 24 * 60 * 60 * 1000),
+        specificStoreAddress: '123 Burger Lane, Anytown', // Admin could override the mission's general location
+        specificScenario: 'Order the "Mega Burger" combo with a vanilla shake.' // Admin could provide a more specific scenario
+    },
+    // Other initial assignments for pre-assigned missions
+    { id: 'asg-2', mission_id: 'mission-1', user_id: 'user-shopper-1', assigned_at: new Date(Date.now() - 2 * 24 * 60 * 60 * 1000) },
+    { id: 'asg-3', mission_id: 'mission-4', user_id: 'user-shopper-1', assigned_at: new Date(Date.now() - 3 * 24 * 60 * 60 * 1000) },
+    { id: 'asg-4', mission_id: 'mission-6', user_id: 'user-shopper-1', assigned_at: new Date(Date.now() - 1 * 24 * 60 * 60 * 1000) },
+    { id: 'asg-5', mission_id: 'mission-7', user_id: 'user-shopper-7', assigned_at: new Date(Date.now() - 6 * 24 * 60 * 60 * 1000) },
+    { id: 'asg-6', mission_id: 'mission-15', user_id: 'user-shopper-2', assigned_at: new Date(Date.now() - 1 * 24 * 60 * 60 * 1000) },
+    { id: 'asg-7', mission_id: 'mission-16', user_id: 'user-shopper-3', assigned_at: new Date(Date.now() - 8 * 24 * 60 * 60 * 1000) },
+    { id: 'asg-8', mission_id: 'mission-17', user_id: 'user-shopper-4', assigned_at: new Date(Date.now() - 0.8 * 24 * 60 * 60 * 1000) },
 ];
+
+
+
+// Helper function to generate mock users - NOT exported
+function generateMockUsers(count) {
+    const users = [];
+    const usedIds = new Set(); // Keep track of used IDs
+
+    // Add mock clients
+    users.push({
+        id: 'client-1', name: 'Gourmet Place Client', email: 'client@gourmet.com', role: 'client', password: '$2b$10$clientPasswordHash1', status: 'active', registrationDate: new Date(Date.now() - 400 * 24 * 60 * 60 * 1000), unreadMessages: 1, profilePicUrl: 'https://picsum.photos/seed/client-1/40/40',
+    });
+    usedIds.add('client-1');
+    users.push({
+        id: 'client-2', name: 'Fashion Forward Client', email: 'client@fashion.com', role: 'client', password: '$2b$10$clientPasswordHash2', status: 'active', registrationDate: new Date(Date.now() - 300 * 24 * 60 * 60 * 1000), unreadMessages: 0, profilePicUrl: 'https://picsum.photos/seed/client-2/40/40',
+    });
+    usedIds.add('client-2');
+     users.push({
+        id: 'client-3', name: 'General Services Client', email: 'client@services.com', role: 'client', password: '$2b$10$clientPasswordHash3', status: 'active', registrationDate: new Date(Date.now() - 500 * 24 * 60 * 60 * 1000), unreadMessages: 0, profilePicUrl: 'https://picsum.photos/seed/client-3/40/40',
+    });
+    usedIds.add('client-3');
+
+
+    // Generate shoppers
+    for (let i = 1; i <= count; i++) {
+        const userId = `user-shopper-${i}`;
+        if (usedIds.has(userId)) continue; // Skip if ID already used
+        users.push({
+            id: userId,
+            name: `Shopper ${i}`,
+            email: `shopper${i}@example.com`,
+            role: 'shopper',
+            profilePicUrl: `https://picsum.photos/seed/${userId}/40/40`,
+            status: i % 3 !== 0 ? 'active' : 'inactive', // Make roughly 2/3 active
+            city: ['Anytown', 'Otherville', 'Metroburg', 'Smalltown'][i % 4], // Cycle through cities
+            telephone: `+1-555-00${String(i).padStart(2, '0')}`, // Example phone
+            motivation: `Interested shopper #${i} looking for opportunities.`,
+            cvUrl: i % 6 === 0 ? `/mock-cv/cv_${userId}.pdf` : null, // More CVs
+            birthYear: 1980 + (i % 25), // Wider age range
+            gender: ['female', 'male', 'other', 'prefer_not_say'][i % 4], // Cycle genders
+             // Simulate varied registration dates over the last year (approx)
+             registrationDate: new Date(Date.now() - Math.floor(Math.random() * 365 + 1) * 24 * 60 * 60 * 1000),
+            completedMissions: Math.floor(Math.random() * 35), // Wider mission count range
+            unreadMessages: i % 5 === 0 ? Math.floor(Math.random() * 5) + 1 : 0, // Add simulated unread messages for some users
+            password: `$2b$10$shopperPasswordHash${i}`
+        });
+        usedIds.add(userId);
+    }
+    return users;
+};

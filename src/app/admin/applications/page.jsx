@@ -2,16 +2,18 @@
 'use client';
 
 import React, { useState, useMemo, useEffect, useTransition } from 'react';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from '@/components/ui/card'; // Added CardFooter
+import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from '@/components/ui/card';
 import { Button, buttonVariants } from '@/components/ui/button';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
 import { Textarea } from '@/components/ui/textarea';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
 import {
   AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
   AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger
 } from "@/components/ui/alert-dialog";
-import { Loader2, CheckCircle, XCircle, UserCheck, Search, Filter, Users as UsersIcon, Info, MapPin, Building, FileText } from 'lucide-react';
+import { Loader2, CheckCircle, XCircle, UserCheck, Search, Info, MapPin, Building, FileText } from 'lucide-react';
 import { mockApplications, mockMissions, mockUsers } from '@/lib/mock-data'; // Import all necessary mock data
 import { approveApplicationAction, refuseApplicationAction } from '../../actions/admin-actions.js';
 import { format } from 'date-fns';
@@ -19,7 +21,6 @@ import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useToast } from '@/hooks/use-toast';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
-import { Input } from '@/components/ui/input';
 
 // Helper to get mission details by ID
 const getMissionDetails = (missionId) => {
@@ -52,12 +53,17 @@ export default function AdminApplicationsPage() {
     const [searchTerm, setSearchTerm] = useState('');
     const [isTransitioning, startTransition] = useTransition();
 
+    // State for the editable fields in the approval modal
+    const [assignmentDetails, setAssignmentDetails] = useState({
+        specificStoreAddress: '',
+        specificScenario: ''
+    });
+
     useEffect(() => {
         setIsLoading(true);
         // Simulate fetching data, filter for pending applications
         setTimeout(() => {
             startTransition(() => {
-                // Ensure mockApplications is an array before filtering
                 const apps = Array.isArray(mockApplications) ? mockApplications : [];
                 setApplications(apps.filter(app => app.status === 'pending'));
             });
@@ -75,20 +81,22 @@ export default function AdminApplicationsPage() {
         });
     }, [applications, searchTerm]);
 
-    const handleApprove = async (applicationId) => {
+    const handleApprove = async () => {
+        if (!applicationToApprove) return;
+        const applicationId = applicationToApprove.id;
+
         setIsProcessing(applicationId);
         try {
-            const result = await approveApplicationAction(applicationId);
+            // Pass the specific assignment details to the server action
+            const result = await approveApplicationAction(applicationId, assignmentDetails);
             if (result.success) {
                 toast({ title: "Application Approved", description: result.message });
                 startTransition(() => {
-                    // Update local state optimistically or refetch
                     setApplications(prev => prev.filter(app => app.id !== applicationId));
-                    // Also update the main mockApplications array for global consistency
                     const appIndex = mockApplications.findIndex(a => a.id === applicationId);
                     if (appIndex !== -1) mockApplications[appIndex].status = 'approved';
                 });
-                 setApplicationToApprove(null); // Close the modal on success
+                setApplicationToApprove(null); // Close the modal on success
             } else {
                 throw new Error(result.message || "Failed to approve application.");
             }
@@ -97,6 +105,16 @@ export default function AdminApplicationsPage() {
         } finally {
             setIsProcessing(null);
         }
+    };
+    
+    // When opening the approval modal, populate the assignment details
+    const openApproveModal = (app) => {
+        const mission = getMissionDetails(app.mission_id);
+        setApplicationToApprove(app);
+        setAssignmentDetails({
+            specificStoreAddress: mission.location,
+            specificScenario: mission.description
+        });
     };
 
     const handleRefuse = async () => {
@@ -111,9 +129,7 @@ export default function AdminApplicationsPage() {
             if (result.success) {
                 toast({ title: "Application Refused", description: result.message });
                  startTransition(() => {
-                    // Update local state optimistically or refetch
                     setApplications(prev => prev.filter(app => app.id !== applicationId));
-                     // Also update the main mockApplications array
                     const appIndex = mockApplications.findIndex(a => a.id === applicationId);
                     if (appIndex !== -1) {
                         mockApplications[appIndex].status = 'refused';
@@ -249,7 +265,7 @@ export default function AdminApplicationsPage() {
                                                                 variant="default"
                                                                 size="sm"
                                                                 className="bg-green-600 hover:bg-green-700 text-white"
-                                                                onClick={() => setApplicationToApprove(app)}
+                                                                onClick={() => openApproveModal(app)}
                                                                 disabled={isCurrentProcessing}
                                                             >
                                                                 <CheckCircle className="w-4 h-4 mr-1" /> Approve
@@ -257,40 +273,41 @@ export default function AdminApplicationsPage() {
                                                         </AlertDialogTrigger>
                                                         <AlertDialogContent>
                                                             <AlertDialogHeader>
-                                                                <AlertDialogTitle>Approve & Assign Mission?</AlertDialogTitle>
+                                                                <AlertDialogTitle>Approve & Assign Mission</AlertDialogTitle>
                                                                 <AlertDialogDescription>
-                                                                    Please review the mission details before assigning it to <strong>{user.name}</strong>.
+                                                                    Review and edit the specific details for this assignment to <strong>{user.name}</strong>.
                                                                 </AlertDialogDescription>
                                                             </AlertDialogHeader>
-                                                            <div className="my-4 text-sm space-y-3 p-3 border rounded-md bg-secondary/50">
+                                                            <div className="my-4 text-sm space-y-4 p-3 border rounded-md bg-secondary/50">
                                                                 <div className="font-semibold text-primary">{mission.title}</div>
-                                                                <div className="flex items-start gap-2">
-                                                                    <Building className="w-4 h-4 mt-0.5 text-muted-foreground" />
-                                                                    <div><strong>Store:</strong> {mission.businessName}</div>
+                                                                <div className="space-y-1">
+                                                                    <Label htmlFor="specificStoreAddress" className="flex items-center gap-2"><MapPin className="w-4 h-4 mt-0.5 text-muted-foreground" /> Specific Store Address</Label>
+                                                                    <Input 
+                                                                        id="specificStoreAddress"
+                                                                        value={assignmentDetails.specificStoreAddress}
+                                                                        onChange={(e) => setAssignmentDetails(prev => ({...prev, specificStoreAddress: e.target.value}))}
+                                                                        className="bg-background"
+                                                                    />
                                                                 </div>
-                                                                <div className="flex items-start gap-2">
-                                                                    <MapPin className="w-4 h-4 mt-0.5 text-muted-foreground" />
-                                                                    <div>
-                                                                        <strong>Address:</strong> {mission.location}
-                                                                        {isLatLong(mission.location) && (
-                                                                            <a href={`https://www.google.com/maps?q=${mission.location}`} target="_blank" rel="noopener noreferrer" className="text-xs text-primary underline ml-1">(View on Map)</a>
-                                                                        )}
-                                                                    </div>
-                                                                </div>
-                                                                <div className="flex items-start gap-2">
-                                                                    <FileText className="w-4 h-4 mt-0.5 text-muted-foreground" />
-                                                                    <div><strong>Scenario:</strong> <p className="text-muted-foreground whitespace-pre-wrap">{mission.description}</p></div>
+                                                                <div className="space-y-1">
+                                                                     <Label htmlFor="specificScenario" className="flex items-center gap-2"><FileText className="w-4 h-4 mt-0.5 text-muted-foreground" /> Specific Scenario / Description</Label>
+                                                                     <Textarea
+                                                                        id="specificScenario"
+                                                                        value={assignmentDetails.specificScenario}
+                                                                        onChange={(e) => setAssignmentDetails(prev => ({...prev, specificScenario: e.target.value}))}
+                                                                        className="bg-background min-h-[100px]"
+                                                                     />
                                                                 </div>
                                                             </div>
                                                             <AlertDialogFooter>
                                                                 <AlertDialogCancel disabled={isCurrentProcessing}>Cancel</AlertDialogCancel>
                                                                 <AlertDialogAction
-                                                                    onClick={() => handleApprove(app.id)}
-                                                                    disabled={isCurrentProcessing}
+                                                                    onClick={handleApprove}
+                                                                    disabled={isCurrentProcessing || !assignmentDetails.specificStoreAddress.trim()}
                                                                     className={buttonVariants({ variant: "default", className: "bg-green-600 hover:bg-green-700 text-white" })}
                                                                 >
                                                                     {isCurrentProcessing ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <CheckCircle className="mr-2 h-4 w-4"/>}
-                                                                    Confirm Approval
+                                                                    Confirm Approval & Assign
                                                                 </AlertDialogAction>
                                                             </AlertDialogFooter>
                                                         </AlertDialogContent>

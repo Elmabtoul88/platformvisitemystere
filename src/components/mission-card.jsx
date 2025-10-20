@@ -3,8 +3,9 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { MapPin, Calendar, DollarSign, Tag, Briefcase, UserCheck } from "lucide-react";
 import { format } from 'date-fns';
+import { mockUser } from "@/lib/mock-data"; // Import mockUser to check assignment
 
-export function MissionCard({ mission, onViewDetails, onApply, showApplyButton = true, detailsButtonText = "View Details" }) { // Added detailsButtonText prop
+export function MissionCard({ mission, onViewDetails, onApply, showApplyButton = true, detailsButtonText = "View Details" }) {
   const getStatusVariant = (status) => {
     switch (status) {
       case 'available': return 'secondary';
@@ -41,8 +42,8 @@ export function MissionCard({ mission, onViewDetails, onApply, showApplyButton =
   }
 
   const isAssignedToCurrentUser = Array.isArray(mission.assignedTo)
-    ? mission.assignedTo.includes('user-shopper-1') // Replace 'user-shopper-1' with actual current user ID logic
-    : mission.assignedTo === 'user-shopper-1';
+    ? mission.assignedTo.includes(mockUser.id) // Use the imported mockUser's ID
+    : mission.assignedTo === mockUser.id;
 
 
   return (

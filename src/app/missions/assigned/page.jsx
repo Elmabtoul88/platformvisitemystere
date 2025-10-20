@@ -1,8 +1,9 @@
+
 "use client";
 
-import React, { useState, useMemo } from 'react';
+import React, { useMemo } from 'react';
 import { MissionCard } from '@/components/mission-card';
-import { mockMissions, mockUser } from '@/lib/mock-data'; // Using mock data
+import { mockMissions, mockUser, mockAssignments } from '@/lib/mock-data'; // Import mockAssignments
 import { useRouter } from 'next/navigation';
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { ClipboardList, SearchX, ArrowLeft } from 'lucide-react';
@@ -11,16 +12,32 @@ import Link from 'next/link';
 
 export default function AssignedMissionsPage() {
   const router = useRouter();
+
   // Filter missions assigned to the mock user
   const assignedMissions = useMemo(() => {
-    return mockMissions.filter(mission =>
-        (mission.status === 'assigned' || mission.status === 'submitted') // Show assigned and submitted but not yet approved/refused
-         && (Array.isArray(mission.assignedTo) ? mission.assignedTo.includes(mockUser.id) : mission.assignedTo === mockUser.id) // Handle array or single ID
-    );
-  }, []); // Dependency array is empty as mock data doesn't change
+    return mockMissions
+      .filter(mission =>
+        (mission.status === 'assigned' || mission.status === 'submitted') &&
+        (Array.isArray(mission.assignedTo) ? mission.assignedTo.includes(mockUser.id) : mission.assignedTo === mockUser.id)
+      )
+      .map(mission => {
+        // Find the specific assignment details for this user and mission
+        const assignment = mockAssignments.find(a => a.mission_id === mission.id && a.user_id === mockUser.id);
+        if (assignment) {
+          // If a specific assignment exists, override the mission's location and description
+          return {
+            ...mission,
+            location: assignment.specificStoreAddress || mission.location,
+            description: assignment.specificScenario || mission.description,
+            assignmentId: assignment.id // Pass assignment ID for reference
+          };
+        }
+        return mission; // Return the original mission if no specific assignment is found
+      });
+  }, []);
 
   const handleStartOrViewReport = (missionId) => {
-    // Navigate to the report submission/view page regardless of status (assigned or submitted)
+    // Navigate to the report submission/view page
     router.push(`/report/${missionId}`);
   };
 
@@ -42,10 +59,8 @@ export default function AssignedMissionsPage() {
             <MissionCard
               key={mission.id}
               mission={mission}
-              // Use onViewDetails to navigate to the report page
               onViewDetails={handleStartOrViewReport}
-              showApplyButton={false} // Don't show apply button for assigned missions
-              // Customize button text based on status
+              showApplyButton={false}
               detailsButtonText={mission.status === 'submitted' ? 'View Report' : 'Start Report'}
             />
           ))}

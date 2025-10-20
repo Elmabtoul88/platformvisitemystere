@@ -1,20 +1,23 @@
 
+
 'use server';
 
 import { revalidatePath } from 'next/cache';
-import { mockMissions, mockReports, mockApplications } from '@/lib/mock-data'; // Import mission, report, and application mock data
-import { mockUsers } from '@/app/admin/users/users-mock.js'; // Corrected: Import mockUsers using relative path
+import { mockMissions, mockReports, mockApplications, mockAssignments } from '@/lib/mock-data'; // Import all mock data
+import { allMockUsers } from '@/app/admin/users/users-mock.js'; // Use allMockUsers from the consolidated file
 
 /**
- * Server Action to approve a shopper's application for a mission.
- * Updates mission status to 'assigned' and moves user from appliedBy to assignedTo.
- * Also updates the application status in mockApplications.
+ * Server Action to approve a shopper's application for a mission with specific details.
+ * Creates a new assignment in mockAssignments.
  *
  * @param {string} applicationId - The ID of the application to approve.
+ * @param {object} assignmentDetails - The specific details for this assignment.
+ * @param {string} assignmentDetails.specificStoreAddress - The specific store address.
+ * @param {string} assignmentDetails.specificScenario - The specific scenario/description.
  * @returns {Promise<{success: boolean, message: string}>} - Result of the approval operation.
  */
-export async function approveApplicationAction(applicationId) {
-    console.log(`Server Action: Approving application ${applicationId}`);
+export async function approveApplicationAction(applicationId, assignmentDetails) {
+    console.log(`Server Action: Approving application ${applicationId} with details:`, assignmentDetails);
 
     // Simulate network delay
     await new Promise(resolve => setTimeout(resolve, 500));
@@ -39,6 +42,18 @@ export async function approveApplicationAction(applicationId) {
         return { success: false, message: "Mission not found." };
     }
 
+    // Create a new assignment with the specific details
+    const newAssignment = {
+        id: `asg-${Date.now()}-${userId}`,
+        mission_id: missionId,
+        user_id: userId,
+        assigned_at: new Date(),
+        specificStoreAddress: assignmentDetails.specificStoreAddress,
+        specificScenario: assignmentDetails.specificScenario
+    };
+    mockAssignments.push(newAssignment);
+    console.log("Server Action: Created new assignment:", newAssignment);
+
     const mission = mockMissions[missionIndex];
 
     // Update mission: remove from appliedBy, add to assignedTo, set status to 'assigned'
@@ -52,12 +67,15 @@ export async function approveApplicationAction(applicationId) {
     if (!mission.assignedTo.includes(userId)) {
         mission.assignedTo.push(userId);
     }
+    
+    // Mission status becomes 'assigned' as soon as one person is assigned.
+    // If it was 'pending_approval' because of other applications, it should now be 'assigned'.
     mission.status = 'assigned';
 
     // Update application status
     mockApplications[applicationIndex].status = 'approved';
 
-    console.log(`Server Action: Application ${applicationId} approved for mission ${missionId}, user ${userId}. Mission status: ${mission.status}.`);
+    console.log(`Server Action: Application ${applicationId} approved. New assignment created for user ${userId} on mission ${missionId}.`);
 
     // Revalidate paths
     revalidatePath('/admin/applications');
@@ -67,6 +85,7 @@ export async function approveApplicationAction(applicationId) {
 
     return { success: true, message: `Application for ${userId} approved. Mission ${missionId} assigned.` };
 }
+
 
 /**
  * Server Action to refuse a shopper's application for a mission.
@@ -327,12 +346,12 @@ export async function toggleUserStatusAction(userId, currentStatus) {
   await new Promise(resolve => setTimeout(resolve, 500));
 
   // --- Update Mock Data ---
-   const userIndex = mockUsers.findIndex(u => u.id === userId);
+   const userIndex = allMockUsers.findIndex(u => u.id === userId);
    if (userIndex === -1) {
        console.error("Server Action: User not found.");
        return { success: false, message: "User not found." };
    }
-   mockUsers[userIndex].status = newStatus;
+   allMockUsers[userIndex].status = newStatus;
    // --- End Mock Data Update ---
 
   console.log(`Server Action: User ${userId} status updated to ${newStatus} (simulated).`);
@@ -358,17 +377,17 @@ export async function updateUserAction(userId, userData) {
     await new Promise(resolve => setTimeout(resolve, 500));
 
     // --- Update Mock Data ---
-    const userIndex = mockUsers.findIndex(u => u.id === userId);
+    const userIndex = allMockUsers.findIndex(u => u.id === userId);
     if (userIndex === -1) {
         console.error("Server Action: User not found for update.");
         return { success: false, message: "User not found." };
     }
 
     // Update the user object, preserving read-only fields like email
-    mockUsers[userIndex] = {
-        ...mockUsers[userIndex], // Start with existing data
+    allMockUsers[userIndex] = {
+        ...allMockUsers[userIndex], // Start with existing data
         ...userData, // Apply updates from form
-        email: mockUsers[userIndex].email, // Ensure email is not changed
+        email: allMockUsers[userIndex].email, // Ensure email is not changed
     };
     // --- End Mock Data Update ---
 
@@ -414,7 +433,7 @@ export async function assignMissionAction(missionId, userIds) {
    const validUserIds = [];
    const invalidUserIds = [];
    userIds.forEach(userId => {
-       const userExists = mockUsers.some(u => u.id === userId && u.role === 'shopper' && u.status === 'active');
+       const userExists = allMockUsers.some(u => u.id === userId && u.role === 'shopper' && u.status === 'active');
        if (userExists) {
            validUserIds.push(userId);
        } else {
@@ -444,6 +463,18 @@ export async function assignMissionAction(missionId, userIds) {
        if (!mission.assignedTo.includes(userId)) {
            mission.assignedTo.push(userId);
            newAssignmentsCount++;
+
+            // Create a default assignment if assigning directly without an application
+            const newAssignment = {
+                id: `asg-${Date.now()}-${userId}`,
+                mission_id: missionId,
+                user_id: userId,
+                assigned_at: new Date(),
+                specificStoreAddress: mission.location, // Default to mission location
+                specificScenario: mission.description, // Default to mission description
+            };
+            mockAssignments.push(newAssignment);
+
             // If user was in appliedBy and their application was pending, mark it as approved
             const appIndex = mockApplications.findIndex(app => app.mission_id === missionId && app.user_id === userId && app.status === 'pending');
             if (appIndex > -1) {
