@@ -1,9 +1,6 @@
-
-
 "use client";
 
 import { useForm, Controller } from "react-hook-form";
-// Removed zodResolver and reportSchema as validation will be based on dynamic fields
 import { Button } from "@/components/ui/button";
 import {
   Form,
@@ -17,17 +14,16 @@ import {
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
-import { Star, Upload, Send, Loader2, MapPin, Mic, Image as ImageIcon, Trash2, AlertCircle, RadioGroupIndicator, TextCursorInput, ListOrdered, CheckSquare } from "lucide-react"; // Import base icons
+import { Star, Upload, Send, Loader2, MapPin, Mic, Image as ImageIcon, Trash2, AlertCircle, RadioGroupIndicator, TextCursorInput, ListOrdered, CheckSquare, Columns } from "lucide-react";
 import { useState, useEffect, useRef } from "react";
 import Image from 'next/image';
 import { useRouter } from 'next/navigation';
 import { useToast } from "@/hooks/use-toast";
 import { mockUser } from '@/lib/mock-data';
 import { Checkbox } from "@/components/ui/checkbox";
-import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group"; // Assuming RadioGroup exists
-import { Alert, AlertTitle } from "@/components/ui/alert"; // For GPS/Audio messages
+import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
+import { Alert, AlertTitle } from "@/components/ui/alert";
 
-// Helper to get icon for display
 const getIconForType = (type) => {
     switch(type) {
         case 'text': return <TextCursorInput className="w-4 h-4 mr-1" />;
@@ -37,41 +33,32 @@ const getIconForType = (type) => {
         case 'image_upload': return <ImageIcon className="w-4 h-4 mr-1" />;
         case 'gps_capture': return <MapPin className="w-4 h-4 mr-1" />;
         case 'audio_recording': return <Mic className="w-4 h-4 mr-1" />;
+        case 'section_header': return <Columns className="w-4 h-4 mr-1" />;
         default: return null;
     }
 };
 
 
-// Component now receives surveyQuestions prop
 export function ReportSubmissionForm({ mission, surveyQuestions = [], onSubmitAction }) {
   const router = useRouter();
   const { toast } = useToast();
   const [isSubmitting, setIsSubmitting] = useState(false);
-  // State to manage dynamic field previews/data
-  const [imagePreviews, setImagePreviews] = useState({}); // { questionId: [url1, url2] }
-  const [gpsCoords, setGpsCoords] = useState({}); // { questionId: { lat: num, lng: num } | null }
-  const [audioData, setAudioData] = useState({}); // { questionId: { url: '...', status: 'idle'|'recording'|'recorded' } }
+  const [imagePreviews, setImagePreviews] = useState({});
+  const [gpsCoords, setGpsCoords] = useState({});
+  const [audioData, setAudioData] = useState({});
   const audioRecorderRef = useRef(null);
   const audioChunksRef = useRef([]);
 
+   const form = useForm({});
 
-   // Initialize react-hook-form without resolver, as fields are dynamic
-   const form = useForm({
-       // No defaultValues needed here initially, they are set based on questions
-   });
-
-   // Helper function to generate unique field name for RHF based on question id and type
    const getFieldName = (q) => `q_${q.id}_${q.type}`;
 
-   // --- Media Handling ---
-
-   // Image Upload Handling
    const handleImageChange = async (event, questionId, maxImages, allowMultiple) => {
     const files = Array.from(event.target.files);
     if (!files.length) return;
 
     const currentPreviews = imagePreviews[questionId] || [];
-    const filesToProcess = allowMultiple ? files.slice(0, maxImages - currentPreviews.length) : [files[0]]; // Respect limits
+    const filesToProcess = allowMultiple ? files.slice(0, maxImages - currentPreviews.length) : [files[0]];
 
     if (filesToProcess.length === 0 && !allowMultiple && currentPreviews.length > 0) {
          toast({ variant: "destructive", title: "Limit Reached", description: "Only one image allowed for this question." });
@@ -86,54 +73,45 @@ export function ReportSubmissionForm({ mission, surveyQuestions = [], onSubmitAc
 
     const uploadPromises = filesToProcess.map(file => {
       return new Promise(async (resolve) => {
-        // 1. Create Preview
         const reader = new FileReader();
         reader.onloadend = () => {
           setImagePreviews(prev => ({
             ...prev,
-            [questionId]: [...(prev[questionId] || []), reader.result] // Add preview URL immediately
+            [questionId]: [...(prev[questionId] || []), reader.result]
           }));
-          newPreviews[questionId].push(reader.result); // Also keep track for form value setting
+          newPreviews[questionId].push(reader.result);
         };
         reader.readAsDataURL(file);
 
-        // 2. Simulate Upload & Get URL
         console.log(`Simulating upload for ${file.name}...`);
-        await new Promise(res => setTimeout(res, 1000 + Math.random() * 500)); // Simulate variable delay
+        await new Promise(res => setTimeout(res, 1000 + Math.random() * 500));
         const placeholderUrl = `https://picsum.photos/400/300?random=${Math.random()}`;
         console.log(`Simulated upload complete for ${file.name}: ${placeholderUrl}`);
-        resolve(placeholderUrl); // Resolve with the simulated URL
+        resolve(placeholderUrl);
       });
     });
 
-    // Wait for all simulations to complete
      const uploadedUrls = await Promise.all(uploadPromises);
-
-     // Set RHF value: store array of URLs if multiple, single URL otherwise
      const existingUrls = form.getValues(getFieldName({ id: questionId, type: 'image_upload' })) || [];
-     const finalUrls = allowMultiple ? [...existingUrls, ...uploadedUrls] : [uploadedUrls[0]]; // If not multiple, replace existing
+     const finalUrls = allowMultiple ? [...existingUrls, ...uploadedUrls] : [uploadedUrls[0]];
      form.setValue(getFieldName({ id: questionId, type: 'image_upload' }), finalUrls);
 
      toast({ title: `Uploaded ${uploadedUrls.length} image(s)`, description: "Placeholder URLs generated." });
   };
 
-    // Remove Image
-  const removeImage = (questionId, indexToRemove) => {
+    const removeImage = (questionId, indexToRemove) => {
         const currentUrls = form.getValues(getFieldName({ id: questionId, type: 'image_upload' })) || [];
         const updatedUrls = currentUrls.filter((_, index) => index !== indexToRemove);
         form.setValue(getFieldName({ id: questionId, type: 'image_upload' }), updatedUrls);
 
-         // Update previews
         setImagePreviews(prev => ({
             ...prev,
              [questionId]: (prev[questionId] || []).filter((_, index) => index !== indexToRemove)
         }));
     };
 
-
-  // GPS Capture Handling
   const handleGpsCapture = (questionId) => {
-        setGpsCoords(prev => ({ ...prev, [questionId]: 'loading' })); // Show loading state
+        setGpsCoords(prev => ({ ...prev, [questionId]: 'loading' }));
         if (navigator.geolocation) {
           navigator.geolocation.getCurrentPosition(
             async (position) => {
@@ -142,17 +120,17 @@ export function ReportSubmissionForm({ mission, surveyQuestions = [], onSubmitAc
                 lng: position.coords.longitude,
               };
               setGpsCoords(prev => ({ ...prev, [questionId]: coords }));
-              form.setValue(getFieldName({ id: questionId, type: 'gps_capture' }), coords); // Set RHF value
+              form.setValue(getFieldName({ id: questionId, type: 'gps_capture' }), coords);
               toast({ title: "Location Captured", description: `Lat: ${coords.lat.toFixed(4)}, Lng: ${coords.lng.toFixed(4)}` });
               console.log("GPS Captured:", coords);
             },
             (error) => {
-               setGpsCoords(prev => ({ ...prev, [questionId]: 'error' })); // Show error state
+               setGpsCoords(prev => ({ ...prev, [questionId]: 'error' }));
                console.error("Error getting location:", error);
                toast({ variant: "destructive", title: "Location Error", description: error.message });
-               form.setValue(getFieldName({ id: questionId, type: 'gps_capture' }), null); // Clear RHF value on error
+               form.setValue(getFieldName({ id: questionId, type: 'gps_capture' }), null);
             },
-            { enableHighAccuracy: true, timeout: 10000, maximumAge: 0 } // Options
+            { enableHighAccuracy: true, timeout: 10000, maximumAge: 0 }
           );
         } else {
             setGpsCoords(prev => ({ ...prev, [questionId]: 'error' }));
@@ -161,35 +139,30 @@ export function ReportSubmissionForm({ mission, surveyQuestions = [], onSubmitAc
         }
     };
 
-
-  // Audio Recording Handling
     const startRecording = async (questionId, maxDurationSeconds) => {
         try {
             const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
             audioRecorderRef.current = new MediaRecorder(stream);
-            audioChunksRef.current = []; // Reset chunks
+            audioChunksRef.current = [];
 
             audioRecorderRef.current.ondataavailable = event => {
                 audioChunksRef.current.push(event.data);
             };
 
             audioRecorderRef.current.onstop = async () => {
-                const audioBlob = new Blob(audioChunksRef.current, { type: 'audio/webm' }); // Or appropriate type
-                // Simulate upload
+                const audioBlob = new Blob(audioChunksRef.current, { type: 'audio/webm' });
                 console.log(`Simulating audio upload (${(audioBlob.size / 1024).toFixed(2)} KB)...`);
                 await new Promise(res => setTimeout(res, 1500));
-                const placeholderAudioUrl = `/audio/simulated_${questionId}_${Date.now()}.webm`; // Placeholder URL
+                const placeholderAudioUrl = `/audio/simulated_${questionId}_${Date.now()}.webm`;
                 console.log("Simulated audio upload complete:", placeholderAudioUrl);
 
                 setAudioData(prev => ({
                     ...prev,
                     [questionId]: { url: placeholderAudioUrl, status: 'recorded' }
                 }));
-                form.setValue(getFieldName({ id: questionId, type: 'audio_recording' }), placeholderAudioUrl); // Set RHF value
+                form.setValue(getFieldName({ id: questionId, type: 'audio_recording' }), placeholderAudioUrl);
 
                 toast({ title: "Audio Recorded & Uploaded (Simulated)" });
-
-                 // Stop tracks to release mic
                 stream.getTracks().forEach(track => track.stop());
             };
 
@@ -197,7 +170,6 @@ export function ReportSubmissionForm({ mission, surveyQuestions = [], onSubmitAc
             setAudioData(prev => ({ ...prev, [questionId]: { url: null, status: 'recording' } }));
             toast({ title: "Recording Started...", description: `Max ${maxDurationSeconds} seconds.` });
 
-            // Stop recording after max duration
             setTimeout(() => {
                 if (audioRecorderRef.current && audioRecorderRef.current.state === "recording") {
                     stopRecording(questionId);
@@ -214,78 +186,68 @@ export function ReportSubmissionForm({ mission, surveyQuestions = [], onSubmitAc
     const stopRecording = (questionId) => {
         if (audioRecorderRef.current && audioRecorderRef.current.state === "recording") {
             audioRecorderRef.current.stop();
-            // Status update happens in 'onstop' handler
         }
     };
 
     const removeAudio = (questionId) => {
         setAudioData(prev => ({ ...prev, [questionId]: { url: null, status: 'idle' } }));
-        form.setValue(getFieldName({ id: questionId, type: 'audio_recording' }), null); // Clear RHF value
+        form.setValue(getFieldName({ id: questionId, type: 'audio_recording' }), null);
          if (audioRecorderRef.current && audioRecorderRef.current.state === "recording") {
-            audioRecorderRef.current.stop(); // Stop recording if active
-            // Stop tracks
+            audioRecorderRef.current.stop();
             audioRecorderRef.current.stream?.getTracks().forEach(track => track.stop());
         }
          toast({ title: "Audio Removed" });
     };
 
-
-  // Form Submission Logic
   const processSubmit = async (data) => {
     setIsSubmitting(true);
-    // Structure data before sending to server action
-    const submittedData = {
-        answers: data // data directly contains the { q_id_type: value } structure
-    };
+    const submittedData = { answers: {} };
+
+    // Structure data and filter out section headers
+    Object.keys(data).forEach(key => {
+        const questionId = key.split('_')[1];
+        const question = surveyQuestions.find(q => String(q.id) === questionId);
+        if (question && question.type !== 'section_header') {
+            submittedData.answers[key] = {
+                type: question.type,
+                value: data[key]
+            };
+        }
+    });
+
     console.log("Submitting structured report data:", JSON.stringify(submittedData, null, 2));
 
-     // --- Validation (Client-side, basic) ---
      let isValid = true;
      surveyQuestions.forEach(q => {
+         if (q.type === 'section_header') return;
          const fieldName = getFieldName(q);
          const value = data[fieldName];
          if (q.isRequired) {
              if (q.type === 'checkboxes') {
-                 // Check if the value object exists and if at least one checkbox is true
                  if (!value || !Object.values(value).some(v => v === true)) {
                     form.setError(fieldName, { type: 'required', message: 'Please select at least one option.' });
                     isValid = false;
                  }
-             } else if (value === undefined || value === null || value === '') { // Check for empty/null/undefined values
+             } else if (value === undefined || value === null || value === '') {
                  form.setError(fieldName, { type: 'required', message: 'This field is required.' });
                  isValid = false;
              }
          }
-         // Add more specific validation if needed (e.g., text length for 'text' type)
      });
-
 
      if (!isValid) {
         toast({ variant: "destructive", title: "Validation Error", description: "Please fill in all required fields." });
         setIsSubmitting(false);
         return;
      }
-     // --- End Validation ---
-
 
     try {
-        // Call the server action passed as a prop
         await onSubmitAction(submittedData, mission.id, mockUser.id);
-
-        toast({
-            title: "Report Submitted Successfully!",
-            description: `Your report for "${mission.title}" has been submitted.`,
-            variant: "default", // Use default style for success
-          });
-        // Redirect to a success page or mission list after successful submission
-        router.push('/missions/completed'); // Adjust route as needed
+        toast({ title: "Report Submitted Successfully!", description: `Your report for "${mission.title}" has been submitted.`, variant: "default" });
+        router.push('/missions/completed');
     } catch (error) {
         console.error("Submission failed:", error);
-        toast({
-            title: "Submission Failed",
-            description: error.message || "Could not submit the report. Please try again.", // Show server action error message if available
-            variant: "destructive",
-          });
+        toast({ title: "Submission Failed", description: error.message || "Could not submit the report. Please try again.", variant: "destructive" });
     } finally {
         setIsSubmitting(false);
     }
@@ -296,39 +258,44 @@ export function ReportSubmissionForm({ mission, surveyQuestions = [], onSubmitAc
     <Card className="w-full max-w-3xl mx-auto shadow-lg">
         <CardHeader>
             <CardTitle className="text-xl font-semibold text-primary">Submit Report: {mission.title}</CardTitle>
-            <CardDescription>Complete the survey questions below for mission ID: {mission.id}</CardDescription>
+            <CardDescription>Complete the survey items below for mission ID: {mission.id}</CardDescription>
         </CardHeader>
         <Form {...form}>
-            {/* Use RHF's handleSubmit to trigger validation and then call processSubmit */}
             <form onSubmit={form.handleSubmit(processSubmit)} className="space-y-8">
                 <CardContent className="space-y-6">
                 {surveyQuestions.length === 0 && (
                     <p className="text-muted-foreground text-center py-4">No survey questions found for this mission.</p>
                 )}
-                {surveyQuestions.map((q, index) => {
-                     const fieldName = getFieldName(q);
+                {surveyQuestions.map((q) => {
+                    if (q.type === 'section_header') {
+                        return (
+                            <div key={q.id} className="pt-6 pb-2 first:pt-0">
+                                <h2 className="text-xl font-bold text-primary border-b pb-2">{q.title}</h2>
+                            </div>
+                        );
+                    }
+
+                    const fieldName = getFieldName(q);
+                    const questionNumber = surveyQuestions.filter(item => item.type !== 'section_header').findIndex(item => item.id === q.id) + 1;
+
                      return (
                         <FormField
                             control={form.control}
-                            name={fieldName} // Use the main field name for the top-level Field
+                            name={fieldName}
                             rules={{ required: q.isRequired }}
                             key={q.id}
-                            render={({ field }) => ( // field here represents the top-level RHF field state
+                            render={({ field }) => (
                                 <FormItem className="border-t pt-6 first:border-t-0 first:pt-0">
-                                    {/* Question Label with Type Icon */}
                                     <FormLabel className="font-semibold text-md flex items-center gap-2">
                                         {getIconForType(q.type)}
-                                        {index + 1}. {q.text}
+                                        {questionNumber}. {q.text}
                                         {q.isRequired && <span className="text-destructive text-xs ml-1">*</span>}
                                     </FormLabel>
-                                    {/* Optional Description */}
                                     {q.description && (
                                         <FormDescription className="text-sm ml-6">{q.description}</FormDescription>
                                     )}
 
-                                    {/* Render input based on question type */}
                                     <FormControl className="pl-6 mt-2">
-                                        {/* Wrap content in a div to receive props from Slot */}
                                         <div>
                                             {q.type === 'text' && (
                                                 <Textarea placeholder="Your answer..." {...field} />
@@ -346,7 +313,7 @@ export function ReportSubmissionForm({ mission, surveyQuestions = [], onSubmitAc
                                                                 variant={field.value >= ratingValue ? "default" : "outline"}
                                                                 size="icon"
                                                                 className={`h-8 w-8 ${field.value >= ratingValue ? 'bg-accent text-accent-foreground border-accent' : 'text-muted-foreground'} hover:bg-accent/80 hover:text-accent-foreground transition-colors`}
-                                                                onClick={() => form.setValue(fieldName, ratingValue, { shouldValidate: true })} // Use form.setValue to trigger RHF update
+                                                                onClick={() => form.setValue(fieldName, ratingValue, { shouldValidate: true })}
                                                             >
                                                                 <Star className="w-5 h-5" fill={field.value >= ratingValue ? 'currentColor' : 'none'} />
                                                             </Button>
@@ -357,11 +324,7 @@ export function ReportSubmissionForm({ mission, surveyQuestions = [], onSubmitAc
                                             )}
 
                                             {q.type === 'multiple_choice' && (
-                                                <RadioGroup
-                                                    onValueChange={field.onChange} // RHF's onChange handles the update
-                                                    value={field.value} // RHF controls the value
-                                                    className="space-y-2"
-                                                >
+                                                <RadioGroup onValueChange={field.onChange} value={field.value} className="space-y-2">
                                                     {q.options?.map((opt) => (
                                                         <FormItem key={opt.id} className="flex items-center space-x-3 space-y-0">
                                                             <FormControl>
@@ -379,14 +342,11 @@ export function ReportSubmissionForm({ mission, surveyQuestions = [], onSubmitAc
                                                         <FormField
                                                             key={opt.id}
                                                             control={form.control}
-                                                            name={`${fieldName}.${opt.id}`} // Nested field name
-                                                            render={({ field: checkboxField }) => ( // Use a different name for nested field
+                                                            name={`${fieldName}.${opt.id}`}
+                                                            render={({ field: checkboxField }) => (
                                                                 <FormItem className="flex items-center space-x-3 space-y-0">
                                                                     <FormControl>
-                                                                        <Checkbox
-                                                                            checked={checkboxField.value || false}
-                                                                            onCheckedChange={checkboxField.onChange}
-                                                                        />
+                                                                        <Checkbox checked={checkboxField.value || false} onCheckedChange={checkboxField.onChange} />
                                                                     </FormControl>
                                                                     <FormLabel className="font-normal">{opt.text}</FormLabel>
                                                                 </FormItem>
@@ -402,7 +362,7 @@ export function ReportSubmissionForm({ mission, surveyQuestions = [], onSubmitAc
                                                         id={`q-img-${q.id}`}
                                                         type="file"
                                                         accept="image/*"
-                                                        multiple={q.allowMultiple ?? true} // Default to true if undefined
+                                                        multiple={q.allowMultiple ?? true}
                                                         onChange={(e) => handleImageChange(e, q.id, q.maxImages ?? 5, q.allowMultiple ?? true)}
                                                         disabled={(imagePreviews[q.id]?.length || 0) >= (q.maxImages ?? 5) && q.allowMultiple}
                                                         className="block w-full max-w-xs text-sm text-slate-500 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-primary/10 file:text-primary hover:file:bg-primary/20"
@@ -411,20 +371,8 @@ export function ReportSubmissionForm({ mission, surveyQuestions = [], onSubmitAc
                                                         <div className="mt-2 flex flex-wrap gap-2">
                                                             {(imagePreviews[q.id] || []).map((url, index) => (
                                                                 <div key={index} className="relative group">
-                                                                    <Image
-                                                                        src={url}
-                                                                        alt={`Preview ${index + 1}`}
-                                                                        width={100}
-                                                                        height={75}
-                                                                        className="rounded-md object-cover border"
-                                                                    />
-                                                                    <Button
-                                                                        type="button"
-                                                                        variant="destructive"
-                                                                        size="icon"
-                                                                        className="absolute top-0 right-0 h-5 w-5 opacity-0 group-hover:opacity-100 transition-opacity"
-                                                                        onClick={() => removeImage(q.id, index)}
-                                                                    >
+                                                                    <Image src={url} alt={`Preview ${index + 1}`} width={100} height={75} className="rounded-md object-cover border" />
+                                                                    <Button type="button" variant="destructive" size="icon" className="absolute top-0 right-0 h-5 w-5 opacity-0 group-hover:opacity-100 transition-opacity" onClick={() => removeImage(q.id, index)}>
                                                                         <Trash2 className="h-3 w-3"/>
                                                                     </Button>
                                                                 </div>
@@ -434,7 +382,6 @@ export function ReportSubmissionForm({ mission, surveyQuestions = [], onSubmitAc
                                                     <FormDescription className="text-xs">
                                                         {q.allowMultiple ? `Upload up to ${q.maxImages ?? 5} images.` : `Upload 1 image.`} Allowed types: JPG, PNG.
                                                     </FormDescription>
-                                                    {/* Hidden input managed internally by RHF */}
                                                 </div>
                                             )}
 
@@ -451,19 +398,13 @@ export function ReportSubmissionForm({ mission, surveyQuestions = [], onSubmitAc
                                                     {gpsCoords[q.id] === 'error' && (
                                                         <p className="text-sm text-destructive">Could not capture location.</p>
                                                     )}
-                                                    {/* Hidden input managed internally by RHF */}
                                                 </div>
                                             )}
 
                                             {q.type === 'audio_recording' && (
                                                 <div className="space-y-3">
                                                     <div className="flex items-center gap-2">
-                                                        <Button
-                                                            type="button"
-                                                            variant="outline"
-                                                            onClick={() => startRecording(q.id, q.maxDurationSeconds ?? 60)}
-                                                            disabled={audioData[q.id]?.status === 'recording' || !!audioData[q.id]?.url}
-                                                        >
+                                                        <Button type="button" variant="outline" onClick={() => startRecording(q.id, q.maxDurationSeconds ?? 60)} disabled={audioData[q.id]?.status === 'recording' || !!audioData[q.id]?.url}>
                                                             <Mic className="w-4 h-4 mr-2"/> Start Recording
                                                         </Button>
                                                         {audioData[q.id]?.status === 'recording' && (
@@ -477,7 +418,6 @@ export function ReportSubmissionForm({ mission, surveyQuestions = [], onSubmitAc
                                                     </div>
                                                     {audioData[q.id]?.url && (
                                                          <div className="flex items-center gap-2 p-2 border rounded bg-secondary">
-                                                             {/* Check if it's a simulated URL before rendering the player */}
                                                              {audioData[q.id].url.startsWith('/audio/simulated_') ? (
                                                                  <div className="flex items-center gap-2 text-muted-foreground text-sm italic flex-grow">
                                                                      <Mic className="w-4 h-4" />
@@ -499,12 +439,10 @@ export function ReportSubmissionForm({ mission, surveyQuestions = [], onSubmitAc
                                                     <FormDescription className="text-xs">
                                                         Record audio up to {q.maxDurationSeconds ?? 60} seconds.
                                                     </FormDescription>
-                                                    {/* Hidden input managed internally by RHF */}
                                                 </div>
                                             )}
                                         </div>
                                     </FormControl>
-                                    {/* Validation Message */}
                                     <FormMessage className="pl-6" />
                                 </FormItem>
                             )}
@@ -527,16 +465,6 @@ export function ReportSubmissionForm({ mission, surveyQuestions = [], onSubmitAc
                 </CardFooter>
             </form>
         </Form>
-         {/* Global error for permissions if needed */}
-         {/* Example: Display if camera/mic/location is generally denied */}
-         {/* <Alert variant="destructive" className="mt-4">
-            <AlertCircle className="h-4 w-4" />
-            <AlertTitle>Permissions Required</AlertTitle>
-            <AlertDescription>
-                 Please ensure location, microphone, and camera permissions are enabled in your browser settings to use all features.
-            </AlertDescription>
-         </Alert> */}
     </Card>
   );
 }
-
