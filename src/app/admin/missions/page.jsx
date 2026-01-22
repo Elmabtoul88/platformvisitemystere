@@ -12,7 +12,8 @@ import { Label } from '@/components/ui/label';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
 import { PlusCircle, MoreHorizontal, Search, Edit, Trash2, FileCheck, FileText, Loader2, UserPlus, Award, MapPin as MapPinIcon, Users as UsersIcon, FileSignature, ListFilter, UserCheck as UserCheckIcon } from 'lucide-react';
-import { mockMissions, mockReports, mockUsers, mockAssignments, mockApplications } from '@/lib/mock-data'; // Import all necessary mock data
+import { mockMissions, mockReports, mockAssignments, mockApplications } from '@/lib/mock-data'; // Import all necessary mock data
+import { mockUsers } from '../users/users-mock.js'; // Use the shared mock data
 
 import { assignMissionAction, deleteMissionAction } from '../../actions/admin-actions.js';
 import { format } from 'date-fns';
