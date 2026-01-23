@@ -1,0 +1,19 @@
+
+{
+  "compilerOptions": {
+    "baseUrl": ".",
+    "paths": {
+      "@/components/*": ["src/components/*"],
+      "@/lib/*": ["src/lib/*"],
+      "@/ui/*": ["src/components/ui/*"],
+      "@/hooks/*": ["src/hooks/*"],
+      "@/ai/*": ["src/ai/*"],
+      "@/services/*": ["src/services/*"],
+      "@/context/*": ["src/context/*"],
+      "@/app/*": ["src/app/*"] // Explicitly add alias for app directory
+    }
+  },
+  "include": ["src/**/*", "next-env.d.ts"],
+  "exclude": ["node_modules"]
+}
+

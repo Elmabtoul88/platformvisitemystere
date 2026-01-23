@@ -1,0 +1,232 @@
+/* Container responsive */
+.responsive-container {
+  width: 100%;
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 0 1rem;
+}
+
+/* Navigation responsive */
+.nav-desktop {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.nav-mobile {
+  display: none;
+}
+
+.mobile-menu {
+  display: none;
+  position: absolute;
+  top: 100%;
+  left: 0;
+  right: 0;
+  background: hsl(var(--background));
+  border-top: 1px solid hsl(var(--border));
+  padding: 1rem;
+  z-index: 50;
+}
+
+.mobile-menu.open {
+  display: block;
+}
+
+.mobile-menu-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0.5rem;
+}
+
+/* Boutons responsive */
+.nav-button {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.5rem 1rem;
+  border-radius: 0.375rem;
+  transition: all 0.2s;
+}
+
+.nav-button-text {
+  display: inline;
+}
+
+/* Logo responsive */
+.logo {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-weight: bold;
+}
+
+.logo-icon {
+  width: 1.5rem;
+  height: 1.5rem;
+}
+
+.logo-text {
+  font-size: 1rem;
+}
+
+.admin-badge {
+  display: inline;
+  font-size: 0.75rem;
+  font-weight: normal;
+  opacity: 0.7;
+  margin-left: 0.25rem;
+}
+
+/* Header responsive */
+.header {
+  position: sticky;
+  top: 0;
+  z-index: 50;
+  width: 100%;
+  border-bottom: 1px solid hsl(var(--border));
+  background: hsl(var(--background));
+  backdrop-filter: blur(8px);
+}
+
+.header-nav {
+  display: flex;
+  height: 3.5rem;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 1rem;
+}
+
+/* Main content responsive */
+.main-content {
+  flex-grow: 1;
+  padding: 1rem;
+}
+
+/* Footer responsive */
+.footer {
+  padding: 1rem 0;
+  border-top: 1px solid hsl(var(--border));
+  text-align: center;
+  font-size: 0.75rem;
+  opacity: 0.7;
+}
+
+/*  MEDIA QUERIES RESPONSIVE  */
+
+/* TABLETTES (768px et plus) */
+@media (min-width: 768px) {
+  .responsive-container {
+    padding: 0 1.5rem;
+  }
+  
+  .header-nav {
+    padding: 0 1.5rem;
+  }
+  
+  .main-content {
+    padding: 1.5rem;
+  }
+  
+  .footer {
+    padding: 1.5rem 0;
+    font-size: 0.875rem;
+  }
+  
+  .logo-icon {
+    width: 1.75rem;
+    height: 1.75rem;
+  }
+  
+  .logo-text {
+    font-size: 1.125rem;
+  }
+}
+
+/* DESKTOP (1024px et plus) */
+@media (min-width: 1024px) {
+  .nav-button-text {
+    display: inline; 
+  }
+  
+  .main-content {
+    padding: 2rem;
+  }
+}
+
+/* MOBILE (767px et moins) */
+@media (max-width: 767px) {
+  .nav-desktop {
+    display: none;
+  }
+    .nav-mobile {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+  }
+  
+  .admin-badge {
+    display: none;
+  }
+  
+  .nav-button-text {
+    display: none;
+  }
+  
+  /* Menu mobile */
+  .mobile-menu-button {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 2.5rem;
+    height: 2.5rem;
+    border-radius: 0.375rem;
+    background: transparent;
+    border: 1px solid hsl(var(--border));
+  }
+  
+  /* Boutons dans le menu mobile */
+  .mobile-menu .nav-button {
+    width: 100%;
+    justify-content: flex-start;
+    padding: 0.75rem 1rem;
+  }
+  
+  .mobile-menu .nav-button-text {
+    display: inline;
+  }
+  
+  /* Logo plus petit sur mobile */
+  .logo-icon {
+    width: 1.25rem;
+    height: 1.25rem;
+  }
+  
+  .logo-text {
+    font-size: 0.875rem;
+  }
+}
+
+/* TRÈS PETITS ÉCRANS (480px et moins) */
+@media (max-width: 480px) {
+  .responsive-container,
+  .header-nav,
+  .main-content {
+    padding-left: 0.75rem;
+    padding-right: 0.75rem;
+  }
+  
+  .main-content {
+    padding-top: 0.75rem;
+    padding-bottom: 0.75rem;
+  }
+  
+  .mobile-menu {
+    padding: 0.75rem;
+  }
+  
+  /* Une seule colonne sur très petits écrans */
+  .mobile-menu-grid {
+    grid-template-columns: 1fr;
+  }
+}
