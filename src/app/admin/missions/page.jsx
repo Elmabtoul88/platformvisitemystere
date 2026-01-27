@@ -6,6 +6,7 @@ import React, { useState, useMemo, useTransition, useEffect } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button, buttonVariants } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import { Textarea } from '@/components/ui/textarea'; // Import Textarea
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
 import { Label } from '@/components/ui/label';
@@ -90,6 +91,10 @@ export default function AdminMissionsPage() {
     const [selectedMissionForAssignment, setSelectedMissionForAssignment] = useState(null);
     const [selectedUsersForAssignment, setSelectedUsersForAssignment] = useState([]);
     const [shopperSearchTerm, setShopperSearchTerm] = useState('');
+    const [assignmentDetails, setAssignmentDetails] = useState({
+        specificStoreAddress: '',
+        specificScenario: ''
+    });
     const [isTransitioning, startTransition] = useTransition();
 
     useEffect(() => {
@@ -194,16 +199,23 @@ export default function AdminMissionsPage() {
     };
 
     const openAssignDialog = (mission) => {
-        if (!['available', 'assigned'].includes(mission.status)) { // Removed 'pending_approval' as it has its own action
+        if (!['available', 'assigned', 'pending_approval'].includes(mission.status)) {
             toast({ variant: "destructive", title: "Cannot Assign", description: `Mission status (${mission.status}) prevents direct assignment here. Review applications first or change status.` });
             return;
         }
         setSelectedMissionForAssignment(mission);
         
+        // Pre-populate with current assignees
         const currentAssignees = mockAssignments
           .filter(asg => asg.mission_id === mission.id)
           .map(asg => asg.user_id);
         setSelectedUsersForAssignment(currentAssignees);
+
+        // Pre-populate details from mission, but they can be overridden
+        setAssignmentDetails({
+            specificStoreAddress: mission.location,
+            specificScenario: mission.description
+        });
         
         setShopperSearchTerm('');
         setIsAssigning(false); 
@@ -232,27 +244,30 @@ export default function AdminMissionsPage() {
         setIsAssigning(true);
 
         try {
-            const result = await assignMissionAction(missionId, selectedUsersForAssignment);
+            const result = await assignMissionAction(missionId, selectedUsersForAssignment, assignmentDetails);
 
              if (result.success) {
                  startTransition(() => {
                      setMissionsState(prevMissions => prevMissions.map(m =>
-                         m.id === missionId ? { ...m, status: 'assigned', appliedBy: m.appliedBy?.filter(uid => !selectedUsersForAssignment.includes(uid)) } : m // Clear assigned users from appliedBy
+                         m.id === missionId ? { ...m, status: 'assigned', assignedTo: selectedUsersForAssignment, appliedBy: m.appliedBy?.filter(uid => !selectedUsersForAssignment.includes(uid)) } : m
                      ));
                     
                     const missionIndexGlobal = mockMissions.findIndex(m => m.id === missionId);
                     if (missionIndexGlobal > -1) {
                         mockMissions[missionIndexGlobal].status = 'assigned';
+                        mockMissions[missionIndexGlobal].assignedTo = selectedUsersForAssignment;
                         mockMissions[missionIndexGlobal].appliedBy = mockMissions[missionIndexGlobal].appliedBy?.filter(uid => !selectedUsersForAssignment.includes(uid));
                     }
                     
                     // Update mockAssignments
-                    let currentAssignments = mockAssignments.filter(a => a.mission_id !== missionId);
+                    let currentAssignments = mockAssignments.filter(a => a.mission_id !== missionId || !selectedUsersForAssignment.includes(a.user_id));
                     const newAssignmentsForThisMission = selectedUsersForAssignment.map(userId => ({
                         id: `asg-${Date.now()}-${userId}-${Math.random().toString(16).slice(2)}`,
                         mission_id: missionId,
                         user_id: userId,
-                        assigned_at: new Date().toISOString()
+                        assigned_at: new Date().toISOString(),
+                        specificStoreAddress: assignmentDetails.specificStoreAddress,
+                        specificScenario: assignmentDetails.specificScenario
                     }));
                     mockAssignments.splice(0, mockAssignments.length, ...currentAssignments, ...newAssignmentsForThisMission);
 
@@ -417,7 +432,7 @@ export default function AdminMissionsPage() {
                                                                     <DropdownMenuItem onClick={() => router.push(`/admin/applications?missionId=${mission.id}`)} disabled={isCurrentProcessing}>
                                                                         <UserCheckIcon className="mr-2 h-4 w-4" /> View Applications ({pendingApplicationsCount})
                                                                     </DropdownMenuItem>
-                                                                ) : ['available', 'assigned'].includes(mission.status) ? (
+                                                                ) : ['available', 'assigned', 'pending_approval'].includes(mission.status) ? (
                                                                     <DropdownMenuItem onClick={() => openAssignDialog(mission)} disabled={isCurrentProcessing}>
                                                                         <UserPlus className="mr-2 h-4 w-4" /> Assign/Reassign
                                                                     </DropdownMenuItem>
@@ -493,66 +508,86 @@ export default function AdminMissionsPage() {
             <AlertDialog open={assignDialogOpen} onOpenChange={setAssignDialogOpen}>
                 <AlertDialogContent className="sm:max-w-lg">
                     <AlertDialogHeader>
-                        <AlertDialogTitle>Assign Mission: {selectedMissionForAssignment?.title}</AlertDialogTitle>
+                        <AlertDialogTitle>Assign/Reassign: {selectedMissionForAssignment?.title}</AlertDialogTitle>
                         <AlertDialogDescription>
-                            Select one or more active shoppers to assign this mission to. They will be notified.
+                            Assign shoppers and provide specific details for them. Existing assignments for selected users will be updated.
                         </AlertDialogDescription>
                     </AlertDialogHeader>
-                    <div className="py-4 space-y-2">
-                        <Label htmlFor="shopper-search">Select Shopper(s)</Label>
-                         <Command className="rounded-lg border shadow-sm">
-                          <CommandInput
-                            id="shopper-search"
-                            placeholder="Search by name or email..."
-                            value={shopperSearchTerm}
-                            onValueChange={setShopperSearchTerm}
-                          />
-                          <CommandList>
-                            <CommandEmpty>No active shoppers found.</CommandEmpty>
-                             <ScrollArea className="h-[200px]">
-                                <CommandGroup>
-                                {filteredShoppersForDialog.length > 0 ? filteredShoppersForDialog.map((shopper) => (
-                                    <CommandItem
-                                        key={shopper.value}
-                                        value={`${shopper.label} ${shopper.email}`} 
-                                        onSelect={() => handleUserSelectionChange(shopper.value)}
-                                        className="flex items-center gap-2 cursor-pointer aria-selected:bg-accent/50"
-                                    >
-                                        <Checkbox
-                                            id={`user-${shopper.value}`}
-                                            checked={selectedUsersForAssignment.includes(shopper.value)}
-                                            onCheckedChange={() => handleUserSelectionChange(shopper.value)}
-                                            aria-label={`Select ${shopper.label}`}
-                                            disabled={isAssigning}
-                                            className="shrink-0"
-                                         />
-                                        <Label htmlFor={`user-${shopper.value}`} className="flex flex-col text-sm flex-grow cursor-pointer pl-2">
-                                            <div className="flex items-center gap-2">
-                                                <Avatar className="h-6 w-6 border">
-                                                  <AvatarImage src={shopper.profilePicUrl} alt={shopper.label} />
-                                                  <AvatarFallback>{shopper.label?.charAt(0)?.toUpperCase() || 'U'}</AvatarFallback>
-                                                </Avatar>
-                                                <span>{shopper.label}</span>
-                                            </div>
-                                            <span className="text-xs text-muted-foreground ml-8">{shopper.email}</span>
-                                            <div className="flex items-center gap-2 text-xs text-muted-foreground mt-1 ml-8">
-                                                 <span className="flex items-center gap-1"><MapPinIcon className="w-3 h-3"/> {shopper.city}</span>
-                                                 <span className="flex items-center gap-1"><Award className="w-3 h-3"/> {shopper.completedMissions} done</span>
-                                             </div>
-                                        </Label>
-                                    </CommandItem>
-                                )) : (
-                                    <div className="p-4 text-center text-sm text-muted-foreground">No matching active shoppers found.</div>
-                                )}
-                                </CommandGroup>
-                             </ScrollArea>
-                          </CommandList>
-                        </Command>
-                        {selectedUsersForAssignment.length > 0 && (
-                             <div className="pt-2 text-xs text-muted-foreground">
-                                 Selected: {selectedUsersForAssignment.map(id => activeShoppers.find(s => s.value === id)?.label).filter(Boolean).join(', ')}
-                             </div>
-                         )}
+                    <div className="space-y-4 py-4">
+                        <div className="space-y-1">
+                            <Label htmlFor="specificStoreAddress" className="flex items-center gap-2"><MapPinIcon className="w-4 h-4 text-muted-foreground" /> Specific Store Address</Label>
+                            <Input 
+                                id="specificStoreAddress" 
+                                value={assignmentDetails.specificStoreAddress} 
+                                onChange={(e) => setAssignmentDetails(prev => ({...prev, specificStoreAddress: e.target.value}))}
+                                disabled={isAssigning}
+                            />
+                        </div>
+                        <div className="space-y-1">
+                             <Label htmlFor="specificScenario" className="flex items-center gap-2"><FileText className="w-4 h-4 text-muted-foreground" /> Specific Scenario / Description</Label>
+                             <Textarea
+                                id="specificScenario"
+                                value={assignmentDetails.specificScenario}
+                                onChange={(e) => setAssignmentDetails(prev => ({...prev, specificScenario: e.target.value}))}
+                                disabled={isAssigning}
+                             />
+                        </div>
+                        <div className="space-y-2">
+                            <Label htmlFor="shopper-search">Select Shopper(s)</Label>
+                            <Command className="rounded-lg border shadow-sm">
+                              <CommandInput
+                                id="shopper-search"
+                                placeholder="Search by name or email..."
+                                value={shopperSearchTerm}
+                                onValueChange={setShopperSearchTerm}
+                              />
+                              <CommandList>
+                                <CommandEmpty>No active shoppers found.</CommandEmpty>
+                                 <ScrollArea className="h-[200px]">
+                                    <CommandGroup>
+                                    {filteredShoppersForDialog.length > 0 ? filteredShoppersForDialog.map((shopper) => (
+                                        <CommandItem
+                                            key={shopper.value}
+                                            value={`${shopper.label} ${shopper.email}`} 
+                                            onSelect={() => handleUserSelectionChange(shopper.value)}
+                                            className="flex items-center gap-2 cursor-pointer aria-selected:bg-accent/50"
+                                        >
+                                            <Checkbox
+                                                id={`user-${shopper.value}`}
+                                                checked={selectedUsersForAssignment.includes(shopper.value)}
+                                                onCheckedChange={() => handleUserSelectionChange(shopper.value)}
+                                                aria-label={`Select ${shopper.label}`}
+                                                disabled={isAssigning}
+                                                className="shrink-0"
+                                             />
+                                            <Label htmlFor={`user-${shopper.value}`} className="flex flex-col text-sm flex-grow cursor-pointer pl-2">
+                                                <div className="flex items-center gap-2">
+                                                    <Avatar className="h-6 w-6 border">
+                                                      <AvatarImage src={shopper.profilePicUrl} alt={shopper.label} />
+                                                      <AvatarFallback>{shopper.label?.charAt(0)?.toUpperCase() || 'U'}</AvatarFallback>
+                                                    </Avatar>
+                                                    <span>{shopper.label}</span>
+                                                </div>
+                                                <span className="text-xs text-muted-foreground ml-8">{shopper.email}</span>
+                                                <div className="flex items-center gap-2 text-xs text-muted-foreground mt-1 ml-8">
+                                                     <span className="flex items-center gap-1"><MapPinIcon className="w-3 h-3"/> {shopper.city}</span>
+                                                     <span className="flex items-center gap-1"><Award className="w-3 h-3"/> {shopper.completedMissions} done</span>
+                                                 </div>
+                                            </Label>
+                                        </CommandItem>
+                                    )) : (
+                                        <div className="p-4 text-center text-sm text-muted-foreground">No matching active shoppers found.</div>
+                                    )}
+                                    </CommandGroup>
+                                 </ScrollArea>
+                              </CommandList>
+                            </Command>
+                            {selectedUsersForAssignment.length > 0 && (
+                                 <div className="pt-2 text-xs text-muted-foreground">
+                                     Selected: {selectedUsersForAssignment.map(id => activeShoppers.find(s => s.value === id)?.label).filter(Boolean).join(', ')}
+                                 </div>
+                             )}
+                        </div>
                     </div>
                     <AlertDialogFooter>
                         <AlertDialogCancel onClick={() => { setAssignDialogOpen(false); setSelectedMissionForAssignment(null); setSelectedUsersForAssignment([]); }} disabled={isAssigning}>Cancel</AlertDialogCancel>
@@ -561,7 +596,7 @@ export default function AdminMissionsPage() {
                             disabled={isAssigning || selectedUsersForAssignment.length === 0}
                         >
                             {isAssigning ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
-                            Assign Mission{selectedUsersForAssignment.length !== 1 ? 's' : ''}
+                            Assign/Update ({selectedUsersForAssignment.length})
                         </AlertDialogAction>
                     </AlertDialogFooter>
                 </AlertDialogContent>

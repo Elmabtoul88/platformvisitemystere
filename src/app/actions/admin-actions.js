@@ -402,15 +402,17 @@ export async function updateUserAction(userId, userData) {
 }
 
 /**
- * Server Action to assign a mission to specific users.
- * Handles multiple assignees by ensuring `assignedTo` is an array.
+ * Server Action to assign a mission to specific users with custom details.
  *
  * @param {string} missionId - The ID of the mission to assign.
  * @param {string[]} userIds - An array of user IDs to assign the mission to.
+ * @param {object} assignmentDetails - The specific details for this assignment.
+ * @param {string} assignmentDetails.specificStoreAddress - The specific store address.
+ * @param {string} assignmentDetails.specificScenario - The specific scenario/description.
  * @returns {Promise<{success: boolean, message: string}>} - Result of the assignment operation.
  */
-export async function assignMissionAction(missionId, userIds) {
-  console.log(`Server Action: Assigning mission ${missionId} to users: ${userIds.join(', ')}`);
+export async function assignMissionAction(missionId, userIds, assignmentDetails) {
+  console.log(`Server Action: Assigning mission ${missionId} to users: ${userIds.join(', ')} with details:`, assignmentDetails);
 
   // Simulate network delay
   await new Promise(resolve => setTimeout(resolve, 500));
@@ -460,28 +462,35 @@ export async function assignMissionAction(missionId, userIds) {
 
    let newAssignmentsCount = 0;
    validUserIds.forEach(userId => {
+        // Remove any existing assignment for this user on this mission to prevent duplicates
+        const existingAssignmentIndex = mockAssignments.findIndex(a => a.mission_id === missionId && a.user_id === userId);
+        if (existingAssignmentIndex > -1) {
+            mockAssignments.splice(existingAssignmentIndex, 1);
+        }
+
        if (!mission.assignedTo.includes(userId)) {
            mission.assignedTo.push(userId);
            newAssignmentsCount++;
-
-            // Create a default assignment if assigning directly without an application
-            const newAssignment = {
-                id: `asg-${Date.now()}-${userId}`,
-                mission_id: missionId,
-                user_id: userId,
-                assigned_at: new Date(),
-                specificStoreAddress: mission.location, // Default to mission location
-                specificScenario: mission.description, // Default to mission description
-            };
-            mockAssignments.push(newAssignment);
-
-            // If user was in appliedBy and their application was pending, mark it as approved
-            const appIndex = mockApplications.findIndex(app => app.mission_id === missionId && app.user_id === userId && app.status === 'pending');
-            if (appIndex > -1) {
-                mockApplications[appIndex].status = 'approved';
-            }
        }
-        // If user was in appliedBy (even if not pending, e.g., admin directly assigning over a refused app), remove them
+
+        // Create a new assignment with the specific details
+        const newAssignment = {
+            id: `asg-${Date.now()}-${userId}`,
+            mission_id: missionId,
+            user_id: userId,
+            assigned_at: new Date(),
+            specificStoreAddress: assignmentDetails.specificStoreAddress,
+            specificScenario: assignmentDetails.specificScenario,
+        };
+        mockAssignments.push(newAssignment);
+
+        // If user was in appliedBy and their application was pending, mark it as approved
+        const appIndex = mockApplications.findIndex(app => app.mission_id === missionId && app.user_id === userId && app.status === 'pending');
+        if (appIndex > -1) {
+            mockApplications[appIndex].status = 'approved';
+        }
+       
+        // If user was in appliedBy, remove them
         if (mission.appliedBy && mission.appliedBy.includes(userId)) {
             mission.appliedBy = mission.appliedBy.filter(id => id !== userId);
         }
@@ -499,7 +508,7 @@ export async function assignMissionAction(missionId, userIds) {
   }
 
 
-  console.log(`Server Action: Mission ${missionId} assigned to ${newAssignmentsCount} new users. Current assignees: ${mission.assignedTo.join(', ')}. Status: ${mission.status} (simulated).`);
+  console.log(`Server Action: Mission ${missionId} assigned to users. Total assignees: ${mission.assignedTo.length}. Status: ${mission.status} (simulated).`);
 
   // Revalidate paths
   revalidatePath('/admin/missions');
@@ -507,7 +516,7 @@ export async function assignMissionAction(missionId, userIds) {
   revalidatePath('/');
   revalidatePath('/missions/assigned');
 
-  return { success: true, message: `Mission assigned to ${newAssignmentsCount} users successfully. ${invalidUserIds.length > 0 ? `Could not assign to: ${invalidUserIds.join(', ')}.` : ''}`.trim() };
+  return { success: true, message: `Mission assigned/updated for ${validUserIds.length} users successfully. ${invalidUserIds.length > 0 ? `Could not assign to: ${invalidUserIds.join(', ')}.` : ''}`.trim() };
 }
 
 /**
