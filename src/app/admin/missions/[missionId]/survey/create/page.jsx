@@ -1,3 +1,4 @@
+
 'use client';
 
 import React, { useState, useEffect } from 'react';
@@ -444,7 +445,7 @@ export default function CreateSurveyPage() {
                             {getIconForType(ITEM_TYPES.TEXT)} Text
                         </Button>
                         <Button type="button" variant="outline" onClick={() => addItem(ITEM_TYPES.MULTIPLE_CHOICE)}>
-                             {getIconForType(ITEM_TYPES.MULTIPLE_CHOICE)} Multiple Choice
+                             {getIconForType(ITEM_TYPES.MULTIPLE_CHOICE)} Multiple Choice (Radio)
                          </Button>
                         <Button type="button" variant="outline" onClick={() => addItem(ITEM_TYPES.CHECKBOXES)}>
                            {getIconForType(ITEM_TYPES.CHECKBOXES)} Checkboxes
