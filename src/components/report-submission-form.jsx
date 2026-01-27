@@ -14,7 +14,7 @@ import {
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
-import { Star, Upload, Send, Loader2, MapPin, Mic, Image as ImageIcon, Trash2, AlertCircle, RadioGroupIndicator, TextCursorInput, ListOrdered, CheckSquare, Columns } from "lucide-react";
+import { Star, Upload, Send, Loader2, MapPin, Mic, Image as ImageIcon, Trash2, AlertCircle, RadioGroupIndicator, TextCursorInput, ListOrdered, CheckSquare, Columns, Info } from "lucide-react";
 import { useState, useEffect, useRef } from "react";
 import Image from 'next/image';
 import { useRouter } from 'next/navigation';
@@ -26,6 +26,7 @@ import { Alert, AlertTitle } from "@/components/ui/alert";
 
 const getIconForType = (type) => {
     switch(type) {
+        case 'info_text': return <Info className="w-4 h-4 mr-1" />;
         case 'text': return <TextCursorInput className="w-4 h-4 mr-1" />;
         case 'multiple_choice': return <ListOrdered className="w-4 h-4 mr-1" />;
         case 'checkboxes': return <CheckSquare className="w-4 h-4 mr-1" />;
@@ -203,11 +204,11 @@ export function ReportSubmissionForm({ mission, surveyQuestions = [], onSubmitAc
     setIsSubmitting(true);
     const submittedData = { answers: {} };
 
-    // Structure data and filter out section headers
+    // Structure data and filter out section headers and info texts
     Object.keys(data).forEach(key => {
         const questionId = key.split('_')[1];
         const question = surveyQuestions.find(q => String(q.id) === questionId);
-        if (question && question.type !== 'section_header') {
+        if (question && question.type !== 'section_header' && question.type !== 'info_text') {
             submittedData.answers[key] = {
                 type: question.type,
                 value: data[key]
@@ -219,7 +220,7 @@ export function ReportSubmissionForm({ mission, surveyQuestions = [], onSubmitAc
 
      let isValid = true;
      surveyQuestions.forEach(q => {
-         if (q.type === 'section_header') return;
+         if (q.type === 'section_header' || q.type === 'info_text') return;
          const fieldName = getFieldName(q);
          const value = data[fieldName];
          if (q.isRequired) {
@@ -274,9 +275,18 @@ export function ReportSubmissionForm({ mission, surveyQuestions = [], onSubmitAc
                             </div>
                         );
                     }
+                    
+                    if (q.type === 'info_text') {
+                        return (
+                            <Alert key={q.id} className="my-4 bg-sky-50/80 border-sky-200 dark:bg-sky-900/20 dark:border-sky-800">
+                                <Info className="h-5 w-5 text-sky-600 dark:text-sky-400" />
+                                <div className="text-sky-800 dark:text-sky-200 whitespace-pre-wrap ml-7">{q.text}</div>
+                            </Alert>
+                        );
+                    }
 
                     const fieldName = getFieldName(q);
-                    const questionNumber = surveyQuestions.filter(item => item.type !== 'section_header').findIndex(item => item.id === q.id) + 1;
+                    const questionNumber = surveyQuestions.filter(item => item.type !== 'section_header' && item.type !== 'info_text').findIndex(item => item.id === q.id) + 1;
 
                      return (
                         <FormField

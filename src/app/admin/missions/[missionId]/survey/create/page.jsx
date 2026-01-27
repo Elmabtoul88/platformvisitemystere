@@ -12,8 +12,8 @@ import { Badge } from '@/components/ui/badge';
 import { useToast } from "@/hooks/use-toast";
 import {
     ArrowLeft, Save, PlusCircle, Trash2, GripVertical, Loader2,
-    ListOrdered, TextCursorInput, CheckSquare, Star, Circle,
-    Image as ImageIcon, MapPin, Mic, Columns // Added Columns for section header
+    ListOrdered, TextCursorInput, CheckSquare, Star, Circle, Info,
+    Image as ImageIcon, MapPin, Mic, Columns
 } from 'lucide-react';
 import { useRouter, useParams } from 'next/navigation';
 import Link from 'next/link';
@@ -21,6 +21,7 @@ import { saveSurvey } from '../../../../../actions/survey-actions.js';
 
 // Item type definitions including new section header
 const ITEM_TYPES = {
+    INFO_TEXT: 'info_text',
     SECTION_HEADER: 'section_header',
     TEXT: 'text',
     MULTIPLE_CHOICE: 'multiple_choice',
@@ -34,6 +35,7 @@ const ITEM_TYPES = {
 // Function to get icon based on type
 const getIconForType = (type) => {
     switch(type) {
+        case ITEM_TYPES.INFO_TEXT: return <Info className="w-4 h-4 mr-1" />;
         case ITEM_TYPES.TEXT: return <TextCursorInput className="w-4 h-4 mr-1" />;
         case ITEM_TYPES.MULTIPLE_CHOICE: return <ListOrdered className="w-4 h-4 mr-1" />;
         case ITEM_TYPES.CHECKBOXES: return <CheckSquare className="w-4 h-4 mr-1" />;
@@ -49,6 +51,9 @@ const getIconForType = (type) => {
 
 // Initial empty item structure based on type
 const createNewItem = (type, id) => {
+    if (type === ITEM_TYPES.INFO_TEXT) {
+        return { id, type, text: '' };
+    }
     if (type === ITEM_TYPES.SECTION_HEADER) {
         return { id, type, title: '' };
     }
@@ -151,7 +156,8 @@ export default function CreateSurveyPage() {
 
      const handleSaveSurvey = async () => {
         setIsSaving(true);
-        const questions = items.filter(i => i.type !== ITEM_TYPES.SECTION_HEADER);
+        // Filter out non-question items before validation
+        const questions = items.filter(i => i.type !== ITEM_TYPES.SECTION_HEADER && i.type !== ITEM_TYPES.INFO_TEXT);
 
         const hasEmptyQuestions = questions.some(q => !q.text.trim());
         const hasEmptyOptions = questions.some(q =>
@@ -232,6 +238,33 @@ export default function CreateSurveyPage() {
                         <p className="text-center text-muted-foreground py-6">No items added yet. Add sections or questions using the buttons below.</p>
                     )}
                     {items.map((item, index) => {
+                        if (item.type === ITEM_TYPES.INFO_TEXT) {
+                            return (
+                                <Card
+                                    key={item.id}
+                                    className="p-4 border-2 border-dashed border-sky-500/50 bg-sky-50/30 relative"
+                                    draggable onDragStart={(e) => handleDragStart(e, index)} onDrop={(e) => handleDrop(e, index)} onDragOver={handleDragOver}
+                                >
+                                    <GripVertical className="absolute left-1 top-1/2 transform -translate-y-1/2 text-muted-foreground cursor-move h-5 w-5" />
+                                    <Button variant="ghost" size="icon" className="absolute right-2 top-2 h-7 w-7 text-destructive hover:bg-destructive/10" onClick={() => removeItem(item.id)}>
+                                        <Trash2 className="h-4 w-4" />
+                                    </Button>
+                                    <div className="pl-6 space-y-2">
+                                        <Label htmlFor={`item-text-${item.id}`} className="font-semibold text-sky-700 flex items-center gap-1">
+                                            <Info className="w-4 h-4" /> Informational Text
+                                        </Label>
+                                        <Textarea
+                                            id={`item-text-${item.id}`}
+                                            placeholder="Enter the informational text to display to the shopper. This is not a question."
+                                            value={item.text}
+                                            onChange={(e) => updateItem(item.id, 'text', e.target.value)}
+                                            className="text-base min-h-[80px]"
+                                        />
+                                    </div>
+                                </Card>
+                            );
+                        }
+
                         if (item.type === ITEM_TYPES.SECTION_HEADER) {
                              return (
                                 <Card
@@ -259,7 +292,7 @@ export default function CreateSurveyPage() {
 
                         // It's a question
                         const question = item;
-                        const questionNumber = items.filter(i => i.type !== ITEM_TYPES.SECTION_HEADER).findIndex(i => i.id === question.id) + 1;
+                        const questionNumber = items.filter(i => i.type !== ITEM_TYPES.SECTION_HEADER && i.type !== ITEM_TYPES.INFO_TEXT).findIndex(i => i.id === question.id) + 1;
 
                         return (
                             <Card
@@ -403,6 +436,9 @@ export default function CreateSurveyPage() {
                     <div className="flex flex-wrap justify-center gap-2">
                          <Button type="button" variant="outline" onClick={() => addItem(ITEM_TYPES.SECTION_HEADER)}>
                              {getIconForType(ITEM_TYPES.SECTION_HEADER)} Section Header
+                         </Button>
+                         <Button type="button" variant="outline" onClick={() => addItem(ITEM_TYPES.INFO_TEXT)}>
+                             {getIconForType(ITEM_TYPES.INFO_TEXT)} Info Text
                          </Button>
                         <Button type="button" variant="outline" onClick={() => addItem(ITEM_TYPES.TEXT)}>
                             {getIconForType(ITEM_TYPES.TEXT)} Text
