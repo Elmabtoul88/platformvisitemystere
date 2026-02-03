@@ -40,7 +40,6 @@ import { useState, useEffect, useRef } from "react";
 import Image from "next/image";
 import { useRouter } from "next/navigation";
 import { useToast } from "@/hooks/use-toast";
-import { mockUser } from "@/lib/mock-data";
 import { Checkbox } from "@/components/ui/checkbox";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group"; // Assuming RadioGroup exists
 import { Alert, AlertTitle } from "@/components/ui/alert"; // For GPS/Audio messages
@@ -102,7 +101,7 @@ export function ReportSubmissionForm({
     event,
     questionId,
     maxImages,
-    allowMultiple
+    allowMultiple,
   ) => {
     const files = Array.from(event.target.files);
     if (!files.length) return;
@@ -174,7 +173,7 @@ export function ReportSubmissionForm({
       }
       const existingUrls =
         form.getValues(
-          getFieldName({ id: questionId, type: "image_upload" })
+          getFieldName({ id: questionId, type: "image_upload" }),
         ) || [];
       const finalUrls = allowMultiple
         ? [...existingUrls, ...uploadedUrls]
@@ -182,7 +181,7 @@ export function ReportSubmissionForm({
 
       form.setValue(
         getFieldName({ id: questionId, type: "image_upload" }),
-        finalUrls
+        finalUrls,
       );
 
       toast({
@@ -203,17 +202,17 @@ export function ReportSubmissionForm({
       form.getValues(getFieldName({ id: questionId, type: "image_upload" })) ||
       [];
     const updatedUrls = currentUrls.filter(
-      (_, index) => index !== indexToRemove
+      (_, index) => index !== indexToRemove,
     );
     form.setValue(
       getFieldName({ id: questionId, type: "image_upload" }),
-      updatedUrls
+      updatedUrls,
     );
 
     setImagePreviews((prev) => ({
       ...prev,
       [questionId]: (prev[questionId] || []).filter(
-        (_, index) => index !== indexToRemove
+        (_, index) => index !== indexToRemove,
       ),
     }));
   };
@@ -230,12 +229,12 @@ export function ReportSubmissionForm({
           setGpsCoords((prev) => ({ ...prev, [questionId]: coords }));
           form.setValue(
             getFieldName({ id: questionId, type: "gps_capture" }),
-            coords
+            coords,
           );
           toast({
             title: "Location Captured",
             description: `Lat: ${coords.lat.toFixed(
-              4
+              4,
             )}, Lng: ${coords.lng.toFixed(4)}`,
           });
           console.log("GPS Captured:", coords);
@@ -275,15 +274,15 @@ export function ReportSubmissionForm({
 
           form.setValue(
             getFieldName({ id: questionId, type: "gps_capture" }),
-            null
+            null,
           );
 
           form.setValue(
             getFieldName({ id: questionId, type: "gps_capture" }),
-            null
+            null,
           ); // Clear RHF value on error
         },
-        { enableHighAccuracy: true, timeout: 10000, maximumAge: 0 } // Options
+        { enableHighAccuracy: true, timeout: 10000, maximumAge: 0 }, // Options
       );
     } else {
       setGpsCoords((prev) => ({ ...prev, [questionId]: "error" }));
@@ -294,7 +293,7 @@ export function ReportSubmissionForm({
       });
       form.setValue(
         getFieldName({ id: questionId, type: "gps_capture" }),
-        null
+        null,
       );
     }
   };
@@ -322,7 +321,7 @@ export function ReportSubmissionForm({
           formData.append(
             "audio",
             audioBlob,
-            `audio_${questionId}_${Date.now()}.webm`
+            `audio_${questionId}_${Date.now()}.webm`,
           );
 
           const response = await fetch(API_BASE_URL + "upload/audio", {
@@ -342,7 +341,7 @@ export function ReportSubmissionForm({
 
           form.setValue(
             getFieldName({ id: questionId, type: "audio_recording" }),
-            audioUrl
+            audioUrl,
           );
 
           toast({ title: "Audio Recorded & Uploaded!" });
@@ -407,7 +406,7 @@ export function ReportSubmissionForm({
     }));
     form.setValue(
       getFieldName({ id: questionId, type: "audio_recording" }),
-      null
+      null,
     );
     if (
       audioRecorderRef.current &&
@@ -421,92 +420,8 @@ export function ReportSubmissionForm({
     toast({ title: "Audio Removed" });
   };
 
-  /*const processSubmit = async (data) => {
-    setIsSubmitting(true);
-    const submittedData = {
-      answers: data,
-    };
-
-    // --- Validation (Client-side, basic) ---
-    let isValid = true;
-    surveyQuestions.forEach((q) => {
-      const fieldName = getFieldName(q);
-      const value = data[fieldName];
-      console.log("valueee", value, data);
-      if (q.is_required) {
-        if (q.type === "checkboxes") {
-          // Check if the value object exists and if at least one checkbox is true
-          if (!value || !Object.values(value).some((v) => v === true)) {
-            form.setError(fieldName, {
-              type: "required",
-              message: "Please select at least one option.",
-            });
-            isValid = false;
-          }
-        } else if (value === undefined || value === null || value === "") {
-          // Check for empty/null/undefined values
-          form.setError(fieldName, {
-            type: "required",
-            message: "This field is required.",
-          });
-          isValid = false;
-        }
-      }
-      // Add more specific validation if needed (e.g., text length for 'text' type)
-    });
-
-    if (!isValid) {
-      toast({
-        variant: "destructive",
-        title: "Validation Error",
-        description: "Please fill in all required fields.",
-      });
-      setIsSubmitting(false);
-      return;
-    }
-    // --- End Validation ---
-
-    try {
-      // Call the server action passed as a prop
-      console.log(
-        "Submitting report with data:",
-        submittedData,
-        mission.id,
-        mockUser.id
-      );
-      console.log("Soumission avec:", {
-        submittedData,
-        missionId: mission.id,
-        userId,
-        token: token ? "présent" : "absent",
-      });
-
-      const result = await onSubmitAction(
-        submittedData,
-        mission.id,
-        userId,
-        token
-      );
-
-      toast({
-        title: "Report Submitted Successfully!",
-        description: `Your report for "${mission.title}" has been submitted.`,
-        variant: "default", // Use default style for success
-      });
-    } catch (error) {
-      console.error("Submission failed:", error);
-      toast({
-        title: "Submission Failed",
-        description:
-          error.message || "Could not submit the report. Please try again.",
-        variant: "destructive",
-      });
-    } finally {
-      setIsSubmitting(false);
-    }
-  };*/
   console.log("questions", surveyQuestions);
-  const processSubmit = async (data) => {
+  /*const processSubmit = async (data) => {
     setIsSubmitting(true);
     try {
       // Transform flat react-hook-form data into structured array
@@ -573,7 +488,7 @@ export function ReportSubmissionForm({
         submittedData,
         mission.id,
         userId,
-        token
+        token,
       );
       if (!result.success && result.status === 409) {
         toast({
@@ -602,7 +517,98 @@ export function ReportSubmissionForm({
     } finally {
       setIsSubmitting(false);
     }
-  };
+  };*/
+  const processSubmit = async (data) => {
+  setIsSubmitting(true);
+
+  try {
+    const groupedAnswers = [];
+    let currentSection = null;
+
+    surveyQuestions.forEach((q) => {
+      // 1️⃣ SECTION HEADER
+      if (q.type === "section_header") {
+        currentSection = {
+          section_id: q.id,
+          section_header: q.text,
+          responses: [],
+        };
+        groupedAnswers.push(currentSection);
+        return;
+      }
+
+      // 2️⃣ Ignore questions before first section (optional safety)
+      if (!currentSection) return;
+
+      const fieldName = `q${q.id}_${q.type}`;
+      const rawValue = data[fieldName];
+
+      // Skip empty answers
+      if (
+        rawValue === undefined ||
+        rawValue === null ||
+        rawValue === "" ||
+        (Array.isArray(rawValue) && rawValue.length === 0)
+      ) {
+        return;
+      }
+
+      // Normalize GPS
+      let value = rawValue;
+      if (q.type === "gps_capture" && rawValue) {
+        value = {
+          lat: rawValue.lat ?? null,
+          lng: rawValue.lng ?? null,
+        };
+      }
+
+      currentSection.responses.push({
+        question_id: q.id,
+        question: q.text,
+        type: q.type,
+        value,
+      });
+    });
+
+    console.log("✅ GROUPED ANSWERS:", groupedAnswers);
+
+    const submittedData = {
+      mission_id: mission.id,
+      user_id: userId,
+      nomMagazin: mission.nomMagazin,
+      specificStoreAddress: mission.specificStoreAddress,
+      scenario: mission.scenario,
+      dateTimeMission: mission.dateTimeMission,
+      answers: groupedAnswers,
+      status: "submitted",
+    };
+
+    const result = await onSubmitAction(
+      submittedData,
+      mission.id,
+      userId,
+      token
+    );
+
+    if (result.success) {
+      toast({
+        title: "Report Submitted Successfully!",
+        description: `Your report for "${mission.title}" has been submitted.`,
+      });
+      router.push("/missions/assigned");
+    }
+  } catch (error) {
+    console.error("Submission failed:", error);
+    toast({
+      variant: "destructive",
+      title: "Submission Failed",
+      description: error.message || "Could not submit the report.",
+    });
+  } finally {
+    setIsSubmitting(false);
+  }
+};
+
 
   return (
     <Card className="w-full max-w-3xl mx-auto shadow-lg">
@@ -727,36 +733,41 @@ export function ReportSubmissionForm({
                           )}
 
                           {q.type === "checkboxes" && (
-                            <div className="space-y-2">
-                              {(q.options || [])?.map((opt) => (
-                                <FormField
-                                  key={opt.id}
-                                  control={form.control}
-                                  name={`opt_${opt.text}`} //  Nommage correct
-                                  render={({ field: checkboxField }) => (
-                                    <FormItem className="flex items-center space-x-3 space-y-0">
-                                      {console.log(
-                                        "chhhheeekk",
-                                        checkboxField.value,
-                                        opt.text,
-                                        opt
-                                      )}
-                                      <FormControl>
-                                        <Checkbox
-                                          checked={checkboxField.value || false}
-                                          onCheckedChange={
-                                            checkboxField.onChange
-                                          }
-                                        />
-                                      </FormControl>
-                                      <FormLabel className="font-normal">
-                                        {opt.text}
-                                      </FormLabel>
-                                    </FormItem>
-                                  )}
-                                />
-                              ))}
-                            </div>
+                            <FormField
+                              control={form.control}
+                              name={fieldName}
+                              defaultValue={{}}
+                              render={({ field }) => (
+                                <div className="space-y-2">
+                                  {(q.options || []).map((opt) => {
+                                    const checked =
+                                      field.value?.[opt.text] || false;
+
+                                    return (
+                                      <FormItem
+                                        key={opt.id}
+                                        className="flex items-center space-x-3 space-y-0"
+                                      >
+                                        <FormControl>
+                                          <Checkbox
+                                            checked={checked}
+                                            onCheckedChange={(value) => {
+                                              field.onChange({
+                                                ...field.value,
+                                                [opt.text]: value,
+                                              });
+                                            }}
+                                          />
+                                        </FormControl>
+                                        <FormLabel className="font-normal">
+                                          {opt.text}
+                                        </FormLabel>
+                                      </FormItem>
+                                    );
+                                  })}
+                                </div>
+                              )}
+                            />
                           )}
 
                           {q.type === "image_upload" && (
@@ -771,7 +782,7 @@ export function ReportSubmissionForm({
                                     e,
                                     q.id,
                                     q.maxImages ?? 5,
-                                    q.allowMultiple ?? true
+                                    q.allowMultiple ?? true,
                                   )
                                 }
                                 disabled={
@@ -807,7 +818,7 @@ export function ReportSubmissionForm({
                                           <Trash2 className="h-3 w-3" />
                                         </Button>
                                       </div>
-                                    )
+                                    ),
                                   )}
                                 </div>
                               )}
@@ -864,7 +875,7 @@ export function ReportSubmissionForm({
                                   onClick={() =>
                                     startRecording(
                                       q.id,
-                                      q.maxDurationSeconds ?? 60
+                                      q.maxDurationSeconds ?? 60,
                                     )
                                   }
                                   disabled={
@@ -895,7 +906,7 @@ export function ReportSubmissionForm({
                                 <div className="flex items-center gap-2 p-2 border rounded bg-secondary">
                                   {/* Check if it's a simulated URL before rendering the player */}
                                   {audioData[q.id].url.startsWith(
-                                    "/audio/simulated_"
+                                    "/audio/simulated_",
                                   ) ? (
                                     <div className="flex items-center gap-2 text-muted-foreground text-sm italic flex-grow">
                                       <Mic className="w-4 h-4" />

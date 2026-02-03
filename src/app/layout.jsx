@@ -50,7 +50,7 @@ function AppLayout({ children }) {
     const applyTheme = () => {
       const storedTheme = localStorage.getItem("theme");
       const prefersDark = window.matchMedia(
-        "(prefers-color-scheme: dark)"
+        "(prefers-color-scheme: dark)",
       ).matches;
       const initialDarkMode =
         storedTheme === "dark" || (!storedTheme && prefersDark);
@@ -295,16 +295,19 @@ function AppLayout({ children }) {
                 </>
               )}
               {userRole === "client" && (
-                <Button
-                  variant={pathname === "/client" ? "secondary" : "ghost"}
-                  size="sm"
-                  asChild
-                  onClick={closeMobileMenu}
-                >
-                  <Link href="/client" className="flex items-center gap-1">
-                    <Briefcase className="w-4 h-4" /> My Missions
-                  </Link>
-                </Button>
+                <>
+                  <Button
+                    variant={pathname === "/client" ? "secondary" : "ghost"}
+                    size="sm"
+                    asChild
+                    onClick={closeMobileMenu}
+                  >
+                    <Link href="/client" className="flex items-center gap-1">
+                      <Briefcase className="w-4 h-4" /> My Missions
+                    </Link>
+                  </Button>
+                  <ProfileMenu />
+                </>
               )}
 
               {showLoginButton && (

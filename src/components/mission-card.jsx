@@ -6,7 +6,6 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
   MapPin,
@@ -16,7 +15,6 @@ import {
   Briefcase,
   UserCheck,
   Users,
-  Clock,
 } from "lucide-react";
 import { format } from "date-fns";
 
@@ -27,18 +25,8 @@ export function MissionCard({
   showApplyButton = true,
   detailsButtonText = "View Details",
   userId,
+  completed = false,
 }) {
-  // Vérifier si l'utilisateur a déjà postulé à cette mission
-  const hasApplied =
-    mission.assignedTo && Array.isArray(mission.assignedTo)
-      ? mission.assignedTo.includes(userId)
-      : false;
-
-  const applicationCount =
-    mission.assignedTo && Array.isArray(mission.assignedTo)
-      ? mission.assignedTo.length
-      : 0;
-
   const getStatusInfo = () => {
     // Toujours affichage de "Available" même si le statut est "pending_approval"
     return {
@@ -90,15 +78,15 @@ export function MissionCard({
         </div>
 
         {/* ///Afficher le nombre de candidatures */}
-        {applicationCount > 0 && (
+        {mission.count > 0 && (
           <div className="flex items-center gap-1 text-sm text-orange-600 font-medium pt-1">
             <Users className="w-4 h-4" />
-            <span>{applicationCount} people have applied</span>
+            <span>{mission.count} people have applied</span>
           </div>
         )}
 
         {/* ///Afficher un messagesi l'utilisateur a déjà postulé */}
-        {hasApplied && (
+        {mission?.Applied && (
           <div className="flex items-center gap-1 text-sm text-green-600 font-medium pt-1">
             <UserCheck className="w-4 h-4" />
             <span>You have applied to this mission</span>
@@ -117,14 +105,15 @@ export function MissionCard({
         )}
 
         {/* Bouton Apply disponible même pour les missions pending_approval */}
-        {showApplyButton && onApply && mission.status !== "assigned" && (
+
+        {!completed && (
           <Button
             size="sm"
             className="bg-accent text-accent-foreground hover:bg-accent/90"
             onClick={() => onApply(mission.id)}
-            disabled={hasApplied || mission.status === "assigned"}
+            disabled={Boolean(mission.applied)}
           >
-            {hasApplied ? "Already Applied" : "Apply Now"}
+            {Boolean(mission.applied) ? "Already Applied" : "Apply Now"}
           </Button>
         )}
       </CardFooter>

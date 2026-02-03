@@ -1,6 +1,5 @@
 "use client";
 import { ReportSubmissionForm } from "@/components/report-submission-form";
-import { mockMissions, mockUser, mockSurveyQuestions } from "@/lib/mock-data"; // Import mock survey questions
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { ArrowLeft, FileWarning, Ban } from "lucide-react"; // Added Ban icon
 import Link from "next/link";
@@ -19,27 +18,6 @@ import { use, useEffect, useState } from "react";
 import { fetchMissions } from "@/services/fetchData.js";
 import { useSearchParams } from "next/navigation";
 
-// Simulate fetching mission data based on ID
-// This remains a server-side function
-/*async function getMissionData(missionId) {
-  // In a real app, fetch from your backend API
-  console.log(`Fetching data for mission: ${missionId}`);
-  await new Promise((resolve) => setTimeout(resolve, 100)); // Simulate network delay
-  const mission = mockMissions.find((m) => m.id === missionId);
-  return mission || null;
-}
-
-// Simulate fetching survey questions for a mission ID
-// This remains a server-side function
-async function getSurveyQuestions(missionId) {
-  console.log(`Fetching survey questions for mission: ${missionId}`);
-  await new Promise((resolve) => setTimeout(resolve, 100)); // Simulate network delay
-  // In a real app, fetch from DB based on missionId. Use mock data for now.
-  // Assuming mockSurveyQuestions holds questions for 'mission-2' and 'mission-6'
-  const questions = mockSurveyQuestions[missionId] || [];
-  console.log("Fetched questions:", questions.length);
-  return questions;
-}*/
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL;
 
 export default function ReportSubmissionPage({ params }) {
@@ -54,14 +32,7 @@ export default function ReportSubmissionPage({ params }) {
   const specificStoreAddress = searchParams.get("specificStoreAddress");
   const scenario = searchParams.get("scenario");
   const dateTimeMission = searchParams.get("dateTimeMission");
-  console.log(
-    "missionId from searchParams:",
-    missionId,
-    nomMagazin,
-    specificStoreAddress,
-    scenario,
-    dateTimeMission,
-  );
+
   useEffect(() => {
     const currentUser = JSON.parse(localStorage.getItem("missionViewAuth"));
     if (!currentUser) {
@@ -86,12 +57,12 @@ export default function ReportSubmissionPage({ params }) {
         if (m) {
           const parsedMission = {
             ...m,
-            assignedTo: JSON.parse(m.assignedTo),
             nomMagazin: nomMagazin,
             specificStoreAddress: specificStoreAddress,
             scenario: scenario,
             dateTimeMission: dateTimeMission,
           };
+          console.log("fetched mission:", parsedMission);
           setMission(parsedMission);
         }
 
@@ -137,19 +108,10 @@ export default function ReportSubmissionPage({ params }) {
   // Corrected logic: canSubmit should be true if status is 'assigned' or 'submitted' AND assigned to the current user
   // Allow submission even if 'submitted' to enable potential re-submission/editing if allowed by logic later
   const canSubmit =
-    mission.status === "assigned" || mission.status === "submitted";
-  // Debug Logs (keep them temporarily for verification)
-  console.log("--- Report Page Debug ---");
-  console.log("Mission ID:", missionId);
-  console.log("Mission Status:", mission.status);
-  console.log("Assigned To (Mission Data):", mission.assignedTo);
-  console.log("Current Mock User ID:", userId);
-  console.log("Is Assigned To User:", isAssignedToUser);
-  console.log("Can Submit Report:", canSubmit);
-  console.log("-------------------------");
-
+    mission.status === "completed" || mission.status === "cancelled";
+  console.log("Can Submit:", canSubmit);
   // If the user *cannot* submit, show the error message.
-  if (!canSubmit) {
+  if (canSubmit) {
     return (
       <div className="container mx-auto py-16 px-4 flex flex-col items-center text-center">
         <Card className="max-w-md w-full shadow-lg bg-secondary border-border">

@@ -1,444 +1,439 @@
 "use client";
 
-import React, { useMemo, useState, useEffect } from "react";
-import { useParams, useRouter } from "next/navigation";
-import Link from "next/link";
-import { useAuth } from "@/context/auth-context";
-import {
-  mockMissions,
-  mockReports,
-  mockUsers,
-  mockSurveyQuestions,
-} from "@/lib/mock-data";
+import React, { useEffect, useMemo, useState } from "react";
 import {
   Card,
-  CardContent,
-  CardDescription,
-  CardFooter,
   CardHeader,
+  CardContent,
   CardTitle,
+  CardDescription,
 } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
 import {
   Table,
-  TableBody,
-  TableCell,
-  TableHead,
   TableHeader,
+  TableBody,
   TableRow,
+  TableHead,
+  TableCell,
 } from "@/components/ui/table";
-import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
-import { Badge } from "@/components/ui/badge";
-import { Progress } from "@/components/ui/progress";
 import {
-  ArrowLeft,
-  Loader2,
-  FileWarning,
-  BarChartHorizontal,
-  CheckCircle,
-  Users,
-  FileDown,
-  FileText,
-  Star,
-} from "lucide-react";
-import { format } from "date-fns";
+  BarChart,
+  Bar,
+  XAxis,
+  YAxis,
+  Tooltip,
+  ResponsiveContainer,
+  Cell,
+} from "recharts";
+import { Star, FileDown } from "lucide-react";
 import * as XLSX from "xlsx";
-import jsPDF from "jspdf";
-import "jspdf-autotable";
+import { jsPDF } from "jspdf";
+import autoTable from "jspdf-autotable";
 import { fetchMissions } from "@/services/fetchData";
-//import { format } from "date-fns";
-import { fr } from "date-fns/locale";
-import { toast } from "@/hooks/use-toast";
+import RadarChart from "@/components/radar-chart";
+const COLORS = ["#22c55e", "#ef4444"];
+const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL;
 
-const getShopperName = (userId) => {
-  const { user } = useAuth();
-
-  return user.name;
-};
-
-// Helper to find the survey question text
-const getQuestionText = (missionId, answerKey) => {
-  const questions = mockSurveyQuestions[missionId] || [];
-  // Handle potential malformed answerKey
-  if (
-    !answerKey ||
-    typeof answerKey.split !== "function" ||
-    answerKey.split("_").length < 2
-  ) {
-    return "Invalid Question Key";
-  }
-  const questionId = answerKey.split("_")[1];
-  const question = questions.find((q) => String(q.id) === questionId);
-  return question ? question.text : "Unknown Question";
-};
-
-// Helper to format answers for display
-const formatAnswerValue = (answer) => {
-  if (!answer || answer.value === null || answer.value === undefined)
-    return "N/A";
-  switch (answer.type) {
-    case "text":
-      return answer.value;
-    case "rating":
-      return `${answer.value} / 5 stars`;
-    case "multiple_choice":
-      return answer.value;
-    case "checkboxes":
-      return Object.entries(answer.value || {})
-        .filter(([, isSelected]) => isSelected)
-        .map(([optionId]) => optionId.replace("opt_", ""))
-        .join(", ");
-    case "image_upload":
-      return Array.isArray(answer.value)
-        ? `${answer.value.length} image(s)`
-        : "1 image";
-    case "gps_capture":
-      if (
-        answer.value &&
-        typeof answer.value.lat === "number" &&
-        typeof answer.value.lng === "number"
-      ) {
-        return `Lat: ${answer.value.lat.toFixed(
-          4
-        )}, Lng: ${answer.value.lng.toFixed(4)}`;
-      }
-      return "Invalid Coordinates";
-    case "audio_recording":
-      return "Audio submitted";
-    default:
-      return String(answer.value);
-  }
-};
-
-export default function ClientMissionDetailPage() {
-  const { user, isLoading: authLoading } = useAuth();
-  const params = useParams();
-  const router = useRouter();
-  const missionId = params.missionId;
-  const [isExporting, setIsExporting] = useState(false);
+export default function ClientMissionDashboard({ params }) {
+  const missionId = React.use(params).missionId;
   const [mission, setMission] = useState([]);
-  const [submittedReports, setSubmittedReports] = useState(0);
-  const [approvedReports, setApprovedReports] = useState(0);
-  const [approvalRate, setApprovalRate] = useState(0);
-  const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL;
 
   useEffect(() => {
-    const fetchReports = async () => {
+    fetchMissions(
+      "client-reports" + missionId,
+      `${API_BASE_URL}clients/reports/${missionId}`,
+    ).then(setMission);
+  }, [missionId]);
+
+  // =================== Normalisation des réponses ===================
+  const answers = useMemo(
+    () =>
+      mission.flatMap((m) => {
+        try {
+          const parsed = JSON.parse(m.answers);
+          return parsed.flatMap((section) =>
+            (section.responses || []).map((r) => ({
+              ...r,
+              section_header: section.section_header,
+            })),
+          );
+        } catch (e) {
+          console.error("Error parsing mission answers:", e);
+          return [];
+        }
+      }),
+    [mission],
+  );
+
+  // =================== KPI / RATINGS ===================
+  const ratingsByQuestion = useMemo(() => {
+    const map = {};
+    answers
+      .filter((a) => a.type === "rating")
+      .forEach((a) => {
+        if (!map[a.question]) map[a.question] = [];
+        map[a.question].push(Number(a.value));
+      });
+    return Object.entries(map).map(([q, v]) => ({
+      question: q,
+      avg: v.length
+        ? +(v.reduce((s, x) => s + x, 0) / v.length).toFixed(2)
+        : "-",
+    }));
+  }, [answers]);
+
+  const globalRating = ratingsByQuestion.length
+    ? (
+        ratingsByQuestion.reduce((s, r) => s + (r.avg !== "-" ? r.avg : 0), 0) /
+        ratingsByQuestion.filter((r) => r.avg !== "-").length
+      ).toFixed(2)
+    : "-";
+
+  const yesNoByQuestion = useMemo(() => {
+    const map = {};
+    answers
+      .filter((a) => a.type === "checkboxes" && (a.value?.oui || a.value?.non))
+      .forEach((a) => {
+        if (!map[a.question]) map[a.question] = { oui: 0, non: 0 };
+        if (a.value.oui) map[a.question].oui++;
+        if (a.value.non) map[a.question].non++;
+      });
+    return map;
+  }, [answers]);
+
+  const conformity = Object.values(yesNoByQuestion).length
+    ? (
+        (Object.values(yesNoByQuestion).reduce((s, v) => s + v.oui, 0) /
+          Object.values(yesNoByQuestion).reduce(
+            (s, v) => s + v.oui + v.non,
+            0,
+          )) *
+        100
+      ).toFixed(0)
+    : "-";
+
+  const scoreByCity = useMemo(() => {
+    const map = {};
+    mission.forEach((m) => {
       try {
-        const response = await fetchMissions(
-          "client-reports" + missionId,
-          API_BASE_URL + "clients/reports/" + missionId
+        const parsed = JSON.parse(m.answers);
+        const allResponses = parsed.flatMap(
+          (section) => section.responses || [],
         );
-
-        setMission(response);
-        setSubmittedReports(parseInt(response[0].submitted_count) || 0);
-        setApprovedReports(parseInt(response[0].approved_count) || 0);
-
-        const approved = parseInt(response[0].approved_count) || 0;
-        const submitted = parseInt(response[0].submitted_count) || 0;
-        const total = approved + submitted;
-
-        const rate = total > 0 ? (approved / total) * 100 : 0;
-
-        setApprovalRate(rate);
-      } catch (error) {
-        toast({ title: "Error fetching reports:", description: " error" });
+        const city =
+          allResponses.find(
+            (a) => a.question === "Ville" || a.question === "Ville du magasin",
+          )?.value || "N/A";
+        allResponses
+          .filter((a) => a.type === "rating")
+          .forEach((a) => {
+            if (!map[city]) map[city] = { total: 0, count: 0 };
+            map[city].total += Number(a.value);
+            map[city].count++;
+          });
+      } catch (e) {
+        console.error(e);
       }
+    });
+    return Object.entries(map).map(([c, v]) => ({
+      city: c,
+      score: v.count ? +(v.total / v.count).toFixed(2) : "-",
+    }));
+  }, [mission]);
+
+  // =================== Texte libre ===================
+  const pointsForts = answers.filter(
+    (a) => a.type === "text" && a.question.toUpperCase().includes("POINTS"),
+  );
+  const improvements = answers.filter(
+    (a) =>
+      a.type === "text" &&
+      (a.question.toUpperCase().includes("AMÉLIORATION") ||
+        a.question.toUpperCase().includes("FINAL")),
+  );
+
+  // =================== Summary ===================
+  const summaryGlobal = useMemo(() => {
+    const totalQuestions = Object.values(yesNoByQuestion).reduce(
+      (s, v) => s + v.oui + v.non,
+      0,
+    );
+    const totalOui = Object.values(yesNoByQuestion).reduce(
+      (s, v) => s + v.oui,
+      0,
+    );
+    return {
+      totalQuestions,
+      totalOui,
+      conformity: totalQuestions ? (totalOui / totalQuestions) * 100 : 0,
+      averageRating: ratingsByQuestion.length
+        ? (
+            ratingsByQuestion.reduce(
+              (s, r) => s + (r.avg !== "-" ? r.avg : 0),
+              0,
+            ) / ratingsByQuestion.filter((r) => r.avg !== "-").length
+          ).toFixed(2)
+        : "-",
     };
-    fetchReports();
-  }, []);
+  }, [yesNoByQuestion, ratingsByQuestion]);
 
-  /*const { mission, submittedReports, approvedReports, approvalRate } =
-    useMemo(() => {
-      const foundMission = [...reports];
-
-      const allReportsForMission = [...reports];
-      const submitted = parseInt(foundMission.submitted_count) || 0;
-      const approved = parseInt(foundMission.approved_count) || 0;
-
-      const rate =
-        foundMission?.length > 0 ? (approved / foundMission.length) * 100 : 0;
-      console.log(foundMission, submitted, approved, rate);
-
-      return {
-        mission: foundMission,
-        submittedReports: submitted,
-        approvedReports: approved,
-        approvalRate: rate,
-      };
-    }, [missionId, reports]);*/
-
-  // Data for export table
-  const exportData = useMemo(() => {
+  // =================== Moyenne par question ===================
+  const averageByQuestion = useMemo(() => {
     if (!mission || mission.length === 0) return [];
 
-    return mission.map((report) => {
-      const answers = JSON.parse(report.answers);
+    const questionStats = {};
+    const totalReports = mission.length;
 
-      const formattedAnswers = answers.reduce((acc, a) => {
-        let formattedValue = "";
+    mission.forEach((r) => {
+      try {
+        const parsed = JSON.parse(r.answers);
+        parsed
+          .flatMap((section) => section.responses || [])
+          .forEach((a) => {
+            if (a.type !== "checkboxes" && a.type !== "rating") return;
 
-        switch (a.type) {
-          case "text":
-          case "choice":
-          case "rating":
-            formattedValue = a.value;
-            break;
-          case "upload":
-            formattedValue = Array.isArray(a.value)
-              ? a.value.join(", ")
-              : a.value;
-            break;
-          case "recording":
-            formattedValue = a.value;
-            break;
-          case "capture":
-            formattedValue = a.value?.lat
-              ? `Lat: ${a.value.lat}, Lng: ${a.value.lng}`
-              : "";
-            break;
-          case "checkboxes":
-            formattedValue =
-              typeof a.value === "object"
-                ? Object.keys(a.value)
-                    .filter((k) => a.value[k])
-                    .join(", ")
-                : "";
-            break;
-          default:
-            formattedValue = "";
-        }
+            if (!questionStats[a.question]) {
+              questionStats[a.question] = {
+                type: a.type,
+                options: {},
+                ratings: [],
+              };
+            }
 
-        // Use the question text itself as the column name
-        acc[a.question?.trim() || "Question"] = formattedValue;
-        return acc;
-      }, {});
-
-      return {
-        ID: report.id,
-        "Business Name": report.businessName,
-        Status: report.status,
-        "Submitted At": format(
-          new Date(report.submitted_at),
-          "yyyy-MM-dd HH:mm"
-        ),
-        ...formattedAnswers,
-      };
+            if (a.type === "checkboxes") {
+              Object.entries(a.value).forEach(([option, selected]) => {
+                if (!questionStats[a.question].options[option]) {
+                  questionStats[a.question].options[option] = 0;
+                }
+                if (selected) questionStats[a.question].options[option] += 1;
+              });
+            } else if (a.type === "rating") {
+              questionStats[a.question].ratings.push(Number(a.value));
+            }
+          });
+      } catch (e) {
+        console.error(e);
+      }
     });
+
+    const result = [];
+    Object.entries(questionStats).forEach(([question, data]) => {
+      if (data.type === "rating" && data.ratings.length > 0) {
+        const sum = data.ratings.reduce((a, b) => a + b, 0);
+        result.push({
+          question,
+          option: "-",
+          average: (sum / data.ratings.length).toFixed(2),
+        });
+      } else if (data.type === "checkboxes") {
+        Object.entries(data.options).forEach(([option, count]) => {
+          result.push({
+            question,
+            option,
+            average: ((count / totalReports) * 100).toFixed(2) + "%",
+          });
+        });
+      }
+    });
+    return result;
   }, [mission]);
 
-  const handleExport = (format) => {
-    setIsExporting(true);
-    try {
-      if (format === "csv") {
-        const worksheet = XLSX.utils.json_to_sheet(exportData);
-        const workbook = XLSX.utils.book_new();
-        XLSX.utils.book_append_sheet(workbook, worksheet, "Approved Reports");
-        XLSX.writeFile(workbook, `${mission.title}_approved_reports.xlsx`);
-      } else if (format === "pdf") {
-        const doc = new jsPDF();
-        doc.text(`Approved Reports for: ${mission.title}`, 14, 15);
-        const tableColumn = Object.keys(exportData[0] || {});
-        const tableRows = exportData.map((data) => Object.values(data));
-        doc.autoTable({
-          head: [tableColumn],
-          body: tableRows,
-          startY: 20,
-          theme: "striped",
-          styles: { fontSize: 8 },
-        });
-        doc.save(`${mission.title}_approved_reports.pdf`);
+  // =================== Exports ===================
+  const exportExcel = () => {
+    const exportData = mission.map((r) => {
+      try {
+        const parsed = JSON.parse(r.answers);
+        const row = { "Report ID": r.id, "Business Name": r.businessName };
+        parsed
+          .flatMap((section) => section.responses || [])
+          .forEach((a) => {
+            row[a.question] =
+              a.type === "checkboxes"
+                ? Object.entries(a.value)
+                    .filter(([, val]) => val)
+                    .map(([k]) => k)
+                    .join(", ")
+                : a.value;
+          });
+        return row;
+      } catch (e) {
+        console.error(e);
+        return {};
       }
-    } catch (e) {
-      toast({ title: "Export failed:", description: "xport pdf" });
-    } finally {
-      setIsExporting(false);
-    }
+    });
+
+    const ws = XLSX.utils.json_to_sheet(exportData);
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, "Data");
+    XLSX.writeFile(wb, "reports.xlsx");
   };
 
-  const monthlyComparison = useMemo(() => {
-    if (!mission || mission.length === 0) {
-      return { questions: [], result: [] }; // 👈 structure vide par défaut
-    }
+  const exportPDF = () => {
+    const doc = new jsPDF();
+    doc.text("Rapport Visite Mystère", 14, 15);
 
-    // 1️⃣ Extraire toutes les questions de type rating/choice
-    const questions = Array.from(
-      new Set(
-        mission
-          .flatMap((m) => JSON.parse(m.answers))
-          .filter((a) => a.type === "rating" || a.type === "choice")
-          .map((a) => a.question)
-      )
-    );
-
-    // 2️⃣ Regrouper les données par mois
-    const monthlyData = {};
-
-    mission.forEach((m) => {
-      const month = format(new Date(m.submitted_at), "MMMM yyyy", {
-        locale: fr,
-      });
-      const answers = JSON.parse(m.answers);
-
-      answers
-        .filter((a) => a.type === "rating" || a.type === "choice")
-        .forEach((a) => {
-          if (!monthlyData[month]) monthlyData[month] = {};
-          if (!monthlyData[month][a.question])
-            monthlyData[month][a.question] = [];
-
-          let value = null;
-
-          if (a.type === "rating") value = Number(a.value);
-          else if (a.type === "choice") {
-            // 🔹 Exemple : échelle 1-4 selon choix (à personnaliser)
-            const choices = [
-              "Not Helpful",
-              "Somewhat Helpful",
-              "Helpful",
-              "Very Helpful",
-            ];
-            const index = choices.indexOf(a.value);
-            value = index >= 0 ? index + 1 : null;
-          }
-
-          if (value !== null) monthlyData[month][a.question].push(value);
-        });
+    autoTable(doc, {
+      startY: 20,
+      head: [["Question", "Valeur"]],
+      body: answers.map((a) => [
+        a.question,
+        typeof a.value === "object" ? JSON.stringify(a.value) : a.value,
+      ]),
+      styles: { fontSize: 8 },
     });
 
-    // 3️⃣ Calculer les moyennes
-    const result = Object.entries(monthlyData).map(([month, questionsData]) => {
-      const row = { month };
-      questions.forEach((q) => {
-        const values = questionsData[q] || [];
-        const avg =
-          values.length > 0
-            ? (values.reduce((sum, v) => sum + v, 0) / values.length).toFixed(2)
-            : "-";
-        row[q] = avg;
+    doc.save("reports.pdf");
+  };
+
+  // Normalize sections for calculation
+  const normalizedSections = mission.map((mission) => {
+    const answers = JSON.parse(mission.answers); // transforme la string en array
+    const sections = {};
+
+    answers.forEach((section) => {
+      const { section_header, responses } = section;
+
+      let scoreSum = 0; // somme des scores
+      let maxScoreSum = 0; // somme des scores max pour normalisation
+
+      responses.forEach((q) => {
+        if (q.type === "checkboxes") {
+          const yes = q.value?.oui === true ? 1 : 0; // uniquement compter "oui"
+          scoreSum += yes;
+          maxScoreSum += 1; // chaque question “checkbox” compte pour 1
+        } else if (q.type === "rating") {
+          scoreSum += q.value || 0;
+          maxScoreSum += 5; // max rating possible
+        }
       });
-      return row;
+
+      // Score en % pour cette section
+      sections[section_header] =
+        maxScoreSum > 0 ? +((scoreSum / maxScoreSum) * 100).toFixed(2) : 0;
     });
 
-    return { questions, result };
-  }, [mission]);
+    return {
+      nomMagazin: mission.nomMagazin,
+      sections,
+    };
+  });
 
-  if (authLoading) {
-    return (
-      <div className="flex justify-center items-center h-screen">
-        <Loader2 className="w-8 h-8 animate-spin" />
-      </div>
-    );
-  }
+  // Calcul des moyennes par section pour le tableau Total / Moyenne
+  const sectionTotals = useMemo(() => {
+    if (!normalizedSections.length) return {};
 
-  // Authorization Check: Ensure the logged-in client owns this mission
-  /*if (!mission || mission.clientId !== user?.id) {
-    return (
-      <div className="container mx-auto py-8 px-4 flex flex-col items-center">
-        <Alert variant="destructive" className="max-w-lg w-full">
-          <FileWarning className="h-4 w-4" />
-          <AlertTitle>Access Denied or Mission Not Found</AlertTitle>
-          <AlertDescription>
-            You do not have permission to view this mission, or it does not
-            exist.
-          </AlertDescription>
-        </Alert>
-        <Button asChild variant="link" className="mt-6">
-          <Link href="/client">
-            <ArrowLeft className="w-4 h-4 mr-1" /> Back to My Missions
-          </Link>
-        </Button>
-      </div>
-    );
-  }*/
+    const sectionHeaders = [
+      ...new Set(normalizedSections.flatMap((m) => Object.keys(m.sections))),
+    ];
 
+    const totals = {};
+
+    sectionHeaders.forEach((header) => {
+      const scores = normalizedSections.map((m) => m.sections[header] || 0);
+      totals[header] = +(
+        scores.reduce((a, b) => a + b, 0) / scores.length
+      ).toFixed(2);
+    });
+
+    return totals;
+  }, [normalizedSections]);
+
+  // =================== UI ===================
   return (
-    <div className="container mx-auto py-8 px-4">
-      <Button asChild variant="outline" size="sm" className="mb-6">
-        <Link href="/client">
-          <ArrowLeft className="w-4 h-4 mr-1" /> Back to My Missions
-        </Link>
-      </Button>
+    <div className="container mx-auto py-8 space-y-8">
+      {/* KPI */}
+      <div className="grid md:grid-cols-4 gap-4">
+        <KPI title="Visites" value={mission.length} />
+        <KPI
+          title="Note globale"
+          value={`${globalRating} /5`}
+          icon={<Star />}
+        />
+        <KPI title="Conformité" value={`${conformity}%`} />
+        <KPI title="Villes auditées" value={scoreByCity.length} />
+      </div>
 
-      {/* Mission Header */}
-      <Card className="mb-6 shadow-sm">
+      {/* RATINGS */}
+      <Card>
         <CardHeader>
-          <CardTitle className="text-xl font-bold text-primary">
-            {mission[0]?.title}
-          </CardTitle>
-          <CardDescription>{mission[0]?.businessName}</CardDescription>
+          <CardTitle>Notes moyennes par critère</CardTitle>
         </CardHeader>
-        <CardContent>
-          <p className="text-sm text-muted-foreground">
-            {mission[0]?.description}
-          </p>
+        <CardContent className="h-64">
+          <ResponsiveContainer>
+            <BarChart data={ratingsByQuestion}>
+              <XAxis dataKey="question" hide />
+              <YAxis domain={[0, 5]} />
+              <Tooltip />
+              <Bar dataKey="avg" fill="#3b82f6" />
+            </BarChart>
+          </ResponsiveContainer>
         </CardContent>
       </Card>
 
-      {/* Stats */}
-      <div className="grid md:grid-cols-3 gap-4 mb-6">
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">
-              Submitted Reports
-            </CardTitle>
-            <Users className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">{submittedReports}</div>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">
-              Approved Reports
-            </CardTitle>
-            <CheckCircle className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">{approvedReports}</div>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Approval Rate</CardTitle>
-            <BarChartHorizontal className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">{approvalRate.toFixed(0)}%</div>
-            <Progress value={approvalRate} className="w-full h-2 mt-1" />
-          </CardContent>
-        </Card>
+      {/* YES / NO DETAIL */}
+      <Card>
+        <CardHeader>
+          <CardTitle>Détail Oui / Non par question</CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-6">
+          {Object.entries(yesNoByQuestion).map(([q, v], i) => (
+            <div key={i}>
+              <p className="font-semibold mb-2">{q}</p>
+              <ResponsiveContainer width="100%" height={120}>
+                <BarChart
+                  data={[
+                    { name: "Oui", value: v.oui },
+                    { name: "Non", value: v.non },
+                  ]}
+                >
+                  <XAxis dataKey="name" />
+                  <YAxis />
+                  <Tooltip />
+                  <Bar dataKey="value">
+                    <Cell fill={COLORS[0]} />
+                    <Cell fill={COLORS[1]} />
+                  </Bar>
+                </BarChart>
+              </ResponsiveContainer>
+            </div>
+          ))}
+        </CardContent>
+      </Card>
+
+      {/* SCORE BY CITY */}
+      <Card>
+        <CardHeader>
+          <CardTitle>Score moyen par ville</CardTitle>
+        </CardHeader>
+        <CardContent className="h-64">
+          <ResponsiveContainer>
+            <BarChart data={scoreByCity}>
+              <XAxis dataKey="city" />
+              <YAxis domain={[0, 5]} />
+              <Tooltip />
+              <Bar dataKey="score" fill="#22c55e" />
+            </BarChart>
+          </ResponsiveContainer>
+        </CardContent>
+      </Card>
+
+      {/* TEXT */}
+      <div className="grid md:grid-cols-2 gap-4">
+        <TextCard title="Points forts" data={pointsForts} />
+        <TextCard title="Axes d’amélioration" data={improvements} />
       </div>
 
-      {/* Approved Reports Table */}
+      {/* TABLE BRUTE */}
       <Card>
-        <CardHeader className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
-          <div>
-            <CardTitle>Approved Reports</CardTitle>
-            <CardDescription>
-              Detailed view of all approved shopper submissions.
-            </CardDescription>
-          </div>
-          <div className="flex gap-2 w-full sm:w-auto">
-            <Button
-              className="flex-1 sm:flex-initial"
-              variant="outline"
-              size="sm"
-              onClick={() => handleExport("csv")}
-              disabled={isExporting || exportData.length === 0}
-            >
-              <FileDown className="w-4 h-4 mr-2" /> Export CSV
-            </Button>
-            <Button
-              className="flex-1 sm:flex-initial"
-              variant="outline"
-              size="sm"
-              onClick={() => handleExport("pdf")}
-              disabled={isExporting || exportData.length === 0}
-            >
-              <FileText className="w-4 h-4 mr-2" /> Export PDF
-            </Button>
+        <CardHeader className="flex justify-between items-center">
+          <CardTitle>Données brutes</CardTitle>
+          <div className="flex gap-2">
+            <button onClick={exportExcel}>
+              <FileDown /> Excel
+            </button>
+            <button onClick={exportPDF}>
+              <FileDown /> PDF
+            </button>
           </div>
         </CardHeader>
         <CardContent>
@@ -446,66 +441,54 @@ export default function ClientMissionDetailPage() {
             <TableHeader>
               <TableRow>
                 {mission.length > 0 &&
-                  JSON.parse(mission[0].answers).map((a, i) => (
-                    <TableHead key={i}>
-                      {a.question
-                        ? a.question.slice(0, 20)
-                        : `Question_${i + 1}`}
-                    </TableHead>
-                  ))}
+                  mission[0] &&
+                  JSON.parse(mission[0].answers)
+                    .flatMap((s) => s.responses || [])
+                    .map((a, i) => (
+                      <TableHead key={i}>{a.question.slice(0, 20)}</TableHead>
+                    ))}
               </TableRow>
             </TableHeader>
 
             <TableBody>
               {mission.map((r) => {
-                const answers = JSON.parse(r.answers);
+                let answers = [];
+                try {
+                  const parsed = JSON.parse(r.answers);
+                  answers = parsed.flatMap((s) => s.responses || []);
+                } catch (e) {
+                  console.error(e);
+                }
 
                 return (
                   <TableRow key={r.id}>
                     {answers.map((a, i) => (
                       <TableCell key={i}>
                         {a.type === "text" && a.value}
-
                         {a.type === "choice" && <span>{a.value}</span>}
-
                         {a.type === "rating" && <span>{a.value} ⭐</span>}
-
-                        {a.type === "upload" && Array.isArray(a.value) && (
-                          <div className="flex gap-2">
-                            {a.value.map((img, index) => (
-                              <img
-                                key={index}
-                                src={img}
-                                alt="Uploaded"
-                                style={{
-                                  width: "60px",
-                                  height: "60px",
-                                  borderRadius: "8px",
-                                }}
-                              />
-                            ))}
-                          </div>
-                        )}
-
+                        {a.type === "upload" &&
+                          Array.isArray(a.value) &&
+                          a.value.map((img, index) => (
+                            <img
+                              key={index}
+                              src={img}
+                              alt="Uploaded"
+                              style={{ width: "60px", height: "60px" }}
+                            />
+                          ))}
                         {a.type === "recording" && (
-                          <audio
-                            controls
-                            src={a.value}
-                            style={{ width: "150px" }}
-                          />
+                          <audio controls src={a.value} />
                         )}
-
                         {a.type === "capture" && a.value?.lat && (
                           <a
                             href={`https://www.google.com/maps?q=${a.value.lat},${a.value.lng}`}
                             target="_blank"
                             rel="noopener noreferrer"
-                            className="text-blue-600 underline"
                           >
                             View Location
                           </a>
                         )}
-
                         {a.type === "checkboxes" &&
                           typeof a.value === "object" &&
                           Object.keys(a.value)
@@ -518,29 +501,155 @@ export default function ClientMissionDetailPage() {
               })}
             </TableBody>
           </Table>
+        </CardContent>
+      </Card>
+
+      {/* TABLEAU RÉSUMÉ */}
+      <Card>
+        <CardHeader>
+          <CardTitle>Exemple final (Résumé)</CardTitle>
+        </CardHeader>
+        <CardContent>
           <Table>
             <TableHeader>
               <TableRow>
-                <TableHead>Mois</TableHead>
-                {monthlyComparison.questions?.map((q, i) => (
-                  <TableHead key={i}>{q}</TableHead>
-                ))}
+                <TableHead>Total Questions Oui/Non</TableHead>
+                <TableHead>Conformité (%)</TableHead>
+                <TableHead>Note Moyenne (Rating)</TableHead>
               </TableRow>
             </TableHeader>
-
             <TableBody>
-              {monthlyComparison.result?.map((row, i) => (
+              <TableRow>
+                <TableCell>{summaryGlobal.totalQuestions || 0}</TableCell>
+                <TableCell>
+                  {summaryGlobal.conformity !== undefined
+                    ? summaryGlobal.conformity.toFixed(2) + "%"
+                    : "-"}
+                </TableCell>
+                <TableCell>
+                  {summaryGlobal.averageRating !== undefined
+                    ? summaryGlobal.averageRating
+                    : "-"}
+                </TableCell>
+              </TableRow>
+            </TableBody>
+          </Table>
+        </CardContent>
+      </Card>
+
+      {/* MOYENNE PAR QUESTION */}
+      <Card className="mb-6">
+        <CardHeader>
+          <CardTitle>Moyenne par question</CardTitle>
+          <CardDescription>
+            Moyenne des réponses pour type checkboxes et rating
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead>Question</TableHead>
+                <TableHead>Option</TableHead>
+                <TableHead>% / Moyenne</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {averageByQuestion.map((q, i) => (
                 <TableRow key={i}>
-                  <TableCell>{row.month}</TableCell>
-                  {monthlyComparison.questions?.map((q, j) => (
-                    <TableCell key={j}>{row[q]}</TableCell>
-                  ))}
+                  <TableCell>{q.question}</TableCell>
+                  <TableCell>{q.option}</TableCell>
+                  <TableCell>{q.average}</TableCell>
                 </TableRow>
               ))}
             </TableBody>
           </Table>
         </CardContent>
       </Card>
+      <Card>
+        <CardHeader>
+          <CardTitle>Résultat par magasin et section</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead>Nom du magasin</TableHead>
+                {normalizedSections.length > 0 &&
+                  Object.keys(normalizedSections[0].sections).map((s, i) => (
+                    <TableHead key={i}>{s}</TableHead>
+                  ))}
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {normalizedSections.map((m, i) => (
+                <TableRow
+                  key={i}
+                  className={i % 2 === 0 ? "bg-gray-50" : "bg-white"}
+                >
+                  <TableCell className="font-semibold">
+                    {m.nomMagazin}
+                  </TableCell>
+                  {Object.values(m.sections).map((score, j) => (
+                    <TableCell
+                      key={j}
+                      className={`
+                  font-bold
+                  ${score >= 80 ? "bg-green-100 text-green-800" : ""}
+                  ${score >= 50 && score < 80 ? "bg-yellow-100 text-yellow-800" : ""}
+                  ${score < 50 ? "bg-red-100 text-red-800" : ""}
+                  text-center
+                `}
+                    >
+                      {score}%
+                    </TableCell>
+                  ))}
+                </TableRow>
+              ))}
+
+              {/* Ligne Totaux / Moyennes */}
+              <TableRow className="font-bold bg-blue-100">
+                <TableCell>Total / Moyenne</TableCell>
+                {Object.values(sectionTotals).map((avg, i) => (
+                  <TableCell
+                    key={i}
+                    className="text-center text-blue-800 font-semibold"
+                  >
+                    {avg}%
+                  </TableCell>
+                ))}
+              </TableRow>
+            </TableBody>
+          </Table>
+        </CardContent>
+      </Card>
+      <RadarChart normalizedSections={normalizedSections} />
     </div>
   );
 }
+
+// =================== Petits composants ===================
+const KPI = ({ title, value, icon }) => (
+  <Card>
+    <CardHeader>
+      <CardTitle>{title}</CardTitle>
+    </CardHeader>
+    <CardContent className="text-3xl font-bold flex gap-2 items-center">
+      {value}
+      {icon}
+    </CardContent>
+  </Card>
+);
+
+const TextCard = ({ title, data }) => (
+  <Card>
+    <CardHeader>
+      <CardTitle>{title}</CardTitle>
+    </CardHeader>
+    <CardContent className="space-y-2">
+      {data.map((d, i) => (
+        <p key={i}>• {d.value}</p>
+      ))}
+    </CardContent>
+  </Card>
+);

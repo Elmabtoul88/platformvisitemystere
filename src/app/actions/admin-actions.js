@@ -59,7 +59,7 @@ async function fetchWithAuth(url, options = {}, token) {
     if (!response.ok) {
       // Throw an error object that includes the status and parsed message
       const error = new Error(
-        data?.message || `HTTP error! status: ${response.status}`
+        data?.message || `HTTP error! status: ${response.status}`,
       );
       error.status = response.status;
       error.data = data; // Attach parsed data if available
@@ -73,7 +73,7 @@ async function fetchWithAuth(url, options = {}, token) {
   } catch (error) {
     console.error(
       `API Request Error (${options.method || "GET"} ${url}):`,
-      error
+      error,
     );
     // Rethrow a consistent error structure
     throw {
@@ -104,7 +104,7 @@ export async function approveReportAction(reportId, token) {
         method: "PATCH", // Use PATCH for status updates
         // No body needed for simple approval
       },
-      token
+      token,
     ); // Pass token
 
     console.log("API Response (Approve Report):", data);
@@ -145,7 +145,7 @@ export async function approveReportAction(reportId, token) {
 export async function refuseReportAction(reportId, reason, token) {
   // Add token parameter
   console.log(
-    `Server Action: Refusing report ${reportId} via API. Reason: ${reason}`
+    `Server Action: Refusing report ${reportId} via API. Reason: ${reason}`,
   );
   if (!reason || reason.trim().length === 0) {
     return {
@@ -161,7 +161,7 @@ export async function refuseReportAction(reportId, reason, token) {
         method: "PATCH", // Use PATCH for status updates
         body: JSON.stringify({ reason }),
       },
-      token
+      token,
     ); // Pass token
 
     console.log("API Response (Refuse Report):", data);
@@ -209,7 +209,7 @@ export async function deleteMissionAction(missionId, token) {
       {
         method: "DELETE",
       },
-      token
+      token,
     ); // Pass token
 
     console.log("API Response (Delete Mission):", data);
@@ -250,7 +250,7 @@ export async function deleteMissionAction(missionId, token) {
 export async function assignMissionAction(missionId, userIds) {
   console.log(
     `Server Action: Assigning mission ${missionId} to users:`,
-    userIds
+    userIds,
   );
 
   try {
@@ -259,7 +259,7 @@ export async function assignMissionAction(missionId, userIds) {
       assignmentUrl,
       { user_id: userIds, mission_id: missionId },
       "assignements",
-      API_BASE_URL + "assignements"
+      API_BASE_URL + "assignements",
     );
     const missionUrl = API_BASE_URL + `missions/${missionId}`;
     const missionResponse = await fetch(missionUrl, {
@@ -314,7 +314,7 @@ export async function assignMissionAction(missionId, userIds) {
 export async function toggleUserStatusAction(userId, currentStatus) {
   // Add token parameter
   console.log(
-    `Server Action: Toggling status for user ${userId} from ${currentStatus} via API`
+    `Server Action: Toggling status for user ${userId} from ${currentStatus} via API`,
   );
   try {
     // Send the *current* status, backend will determine the new status
@@ -323,7 +323,7 @@ export async function toggleUserStatusAction(userId, currentStatus) {
       baseUrl + "/" + userId,
       { status: currentStatus === "active" ? "inactive" : "active" },
       "user" + userId,
-      baseUrl + "/" + userId
+      baseUrl + "/" + userId,
     );
     if (data.success === true) {
       console.log("API Response (Toggle User Status):", data);
@@ -363,7 +363,7 @@ export async function updateUserAction(userId, userData, token) {
   // Add token parameter
   console.log(
     `Server Action: Updating user ${userId} via API with data:`,
-    userData
+    userData,
   );
   try {
     // The API expects snake_case for birth_year
@@ -382,7 +382,7 @@ export async function updateUserAction(userId, userData, token) {
         method: "PUT",
         body: JSON.stringify(apiData),
       },
-      token
+      token,
     ); // Pass token
 
     console.log("API Response (Update User):", data);
@@ -415,7 +415,7 @@ export async function approveApplicationAction(
   applicationId,
   missionId,
   userId,
-  assignmentInfo
+  assignmentInfo,
 ) {
   console.log(`Server Action: Approving application ${assignmentInfo}`);
 
@@ -425,19 +425,19 @@ export async function approveApplicationAction(
     const appUrl = API_BASE_URL + "applications/";
     const missionUrl = API_BASE_URL + "missions/";
     const assUrl = API_BASE_URL + "assignements";
-    const [app, missions, ass] = await Promise.all([
+    const [app, ass] = await Promise.all([
       await patchMissions(
         appUrl + "patch/" + applicationId,
         { status: "approved" },
         "applications",
-        appUrl
+        appUrl,
       ),
-      await patchMissions(
+      /*await patchMissions(
         missionUrl + "patch/" + missionId,
         { status: "assigned" },
         "missions",
-        missionUrl
-      ),
+        missionUrl,
+      ),*/
       await postMissions(
         assUrl,
         {
@@ -449,16 +449,10 @@ export async function approveApplicationAction(
           scenario: assignmentInfo.scenario,
         },
         "assignements",
-        assUrl
+        assUrl,
       ),
     ]);
-    if (
-      app.status === "success" &&
-      missions.status === "success" &&
-      ///
-      //ass.status === "success"
-      ass.message === "success"
-    ) {
+    if (app.status === "success" && ass.message === "success") {
       // Revalidate paths
       revalidatePath("/admin/applications");
       revalidatePath("/admin/missions");
@@ -482,7 +476,7 @@ export async function approveApplicationAction(
 
 export async function refuseApplicationAction(applicationId, reason) {
   console.log(
-    `Server Action: Refusing application ${applicationId}. Reason: ${reason}`
+    `Server Action: Refusing application ${applicationId}. Reason: ${reason}`,
   );
 
   if (!reason || reason.trim().length === 0) {
@@ -498,7 +492,7 @@ export async function refuseApplicationAction(applicationId, reason) {
       appUrl + "patch/" + applicationId,
       { status: "refused", refusal_reason: reason },
       "applications",
-      appUrl
+      appUrl,
     );
 
     if (result.status === "success") {
@@ -539,7 +533,7 @@ export async function createMissionAction(missionData, token) {
   // Add token parameter
   console.log(
     `Server Action: Creating new mission via API with data:`,
-    missionData
+    missionData,
   );
   try {
     const data = await fetchWithAuth(
@@ -548,7 +542,7 @@ export async function createMissionAction(missionData, token) {
         method: "POST",
         body: JSON.stringify(missionData),
       },
-      token
+      token,
     ); // Pass token
 
     console.log("API Response (Create Mission):", data);
@@ -586,7 +580,7 @@ export async function updateMissionAction(missionId, missionData, token) {
   // Add token parameter
   console.log(
     `Server Action: Updating mission ${missionId} via API with data:`,
-    missionData
+    missionData,
   );
   try {
     const data = await fetchWithAuth(
@@ -595,7 +589,7 @@ export async function updateMissionAction(missionId, missionData, token) {
         method: "PUT",
         body: JSON.stringify(missionData),
       },
-      token
+      token,
     ); // Pass token
 
     console.log("API Response (Update Mission):", data);

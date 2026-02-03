@@ -92,11 +92,12 @@ import {
 import { deleteMissions, fetchMissions } from "@/services/fetchData.js";
 const API_BASE_URL =
   process.env.NEXT_PUBLIC_API_URL || "https://api.embertongroup.com/api/";
+
 export default function AdminMissionsPage() {
   const router = useRouter();
   const { toast } = useToast();
   const [searchTerm, setSearchTerm] = useState("");
-  const [missions, setMissions] = useState([]);
+
   const [activeShoppers, setActiveShoppers] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isRefreshing, setIsRefreshing] = useState(false);
@@ -106,32 +107,16 @@ export default function AdminMissionsPage() {
   const [selectedMissionForAssignment, setSelectedMissionForAssignment] =
     useState(null);
   const [selectedUsersForAssignment, setSelectedUsersForAssignment] = useState(
-    []
+    [],
   );
   const [shopperSearchTerm, setShopperSearchTerm] = useState("");
   const [isTransitioning, startTransition] = useTransition();
 
-  const [mockMissions, setMockMissions] = useState([]);
-  const [mockReports, setMockReports] = useState([]);
-  const [mockUsers, setMockUsers] = useState([]);
-  const [mockAssignments, setMockAssignments] = useState([]);
-  const [mockApplications, setMockApplications] = useState([]);
-
-  /*
-  const parseAssignedTo = useCallback((assignedTo) => {
-    if (!assignedTo) return [];
-    if (Array.isArray(assignedTo)) return assignedTo;
-    if (typeof assignedTo === "string") {
-      try {
-        const parsed = JSON.parse(assignedTo);
-        return Array.isArray(parsed) ? parsed : [];
-      } catch (e) {
-        console.error("Error parsing assignedTo:", e);
-        return [];
-      }
-    }
-    return [];
-  }, []);*/
+  const [missions, setMissions] = useState([]);
+  const [reports, setReports] = useState([]);
+  const [users, setUsers] = useState([]);
+  const [assignments, setAssignments] = useState([]);
+  const [applications, setApplications] = useState([]);
 
   const fetchAllData = useCallback(
     async (showRefreshLoader = false) => {
@@ -144,12 +129,11 @@ export default function AdminMissionsPage() {
       try {
         const missionsData = await fetchMissions(
           "admin-missions",
-          API_BASE_URL + "missions/admin/all"
+          API_BASE_URL + "missions/admin/all",
         );
 
         if (missionsData && Array.isArray(missionsData)) {
           setMissions(missionsData);
-          setMockMissions(missionsData);
         }
 
         const [reportsData, usersData, assignmentsData, applicationsData] =
@@ -164,15 +148,15 @@ export default function AdminMissionsPage() {
           return result.status === "fulfilled" ? result.value || [] : [];
         };
 
-        const reports = getDataFromResult(reportsData);
-        const users = getDataFromResult(usersData);
-        const assignments = getDataFromResult(assignmentsData);
-        const applications = getDataFromResult(applicationsData);
+        const validReports = getDataFromResult(reportsData);
+        const validUsers = getDataFromResult(usersData);
+        const validAssignments = getDataFromResult(assignmentsData);
+        const validApplications = getDataFromResult(applicationsData);
 
-        setMockReports(reports);
-        setMockUsers(users);
-        setMockAssignments(assignments);
-        setMockApplications(applications);
+        setReports(validReports);
+        setUsers(validUsers);
+        setAssignments(validAssignments);
+        setApplications(validApplications);
 
         const shoppers = users
           .filter((user) => user.role === "shopper" && user.status === "active")
@@ -207,23 +191,12 @@ export default function AdminMissionsPage() {
         setIsRefreshing(false);
       }
     },
-    [toast]
+    [toast],
   );
 
   useEffect(() => {
     fetchAllData();
   }, [fetchAllData]);
-
-  /*useEffect(() => {
-    console.log("État missions mis à jour:", {
-      total: missions.length,
-      missions: missions.map((m) => ({
-        id: m.id,
-        title: m.title,
-        status: m.status,
-      })),
-    });
-  }, [missions]);*/
 
   const handleRefresh = useCallback(() => {
     fetchAllData(true);
@@ -295,14 +268,18 @@ export default function AdminMissionsPage() {
     }
   };
 
+  const missionReports = (mission) => {
+    return reports.filter((r) => r.mission_id === mission.id);
+  };
+
   const countSubmittedReports = (missionId) => {
-    return mockReports.filter(
-      (r) => r.mission_id === missionId && r.status === "submitted"
+    return reports.filter(
+      (r) => r.mission_id === missionId && r.status === "submitted",
     ).length;
   };
 
   const getUserById = (userId) => {
-    return mockUsers.find((u) => u.id === userId);
+    return users.find((u) => u.id === userId);
   };
 
   const filteredMissions = useMemo(() => {
@@ -317,7 +294,7 @@ export default function AdminMissionsPage() {
     if (!searchTerm.trim()) {
       console.log(
         "Pas de terme de recherche - retour de toutes les missions:",
-        missions.length
+        missions.length,
       );
       return missions;
     }
@@ -357,7 +334,7 @@ export default function AdminMissionsPage() {
     return activeShoppers.filter(
       (shopper) =>
         shopper.label.toLowerCase().includes(shopperSearchTerm.toLowerCase()) ||
-        shopper.email.toLowerCase().includes(shopperSearchTerm.toLowerCase())
+        shopper.email.toLowerCase().includes(shopperSearchTerm.toLowerCase()),
     );
   }, [activeShoppers, shopperSearchTerm]);
 
@@ -390,15 +367,15 @@ export default function AdminMissionsPage() {
       }
 
       setMissions((prev) => prev.filter((m) => m.id !== missionId));
-      setMockMissions((prev) => prev.filter((m) => m.id !== missionId));
-      setMockApplications((prev) =>
-        prev.filter((app) => app.mission_id !== missionId)
+      
+      setApplications((prev) =>
+        prev.filter((app) => app.mission_id !== missionId),
       );
-      setMockAssignments((prev) =>
-        prev.filter((assign) => assign.mission_id !== missionId)
+      setAssignments((prev) =>
+        prev.filter((assign) => assign.mission_id !== missionId),
       );
-      setMockReports((prev) =>
-        prev.filter((report) => report.mission_id !== missionId)
+      setReports((prev) =>
+        prev.filter((report) => report.mission_id !== missionId),
       );
 
       toast({
@@ -428,7 +405,7 @@ export default function AdminMissionsPage() {
       return;
     }
     setSelectedMissionForAssignment(mission);
-    const currentAssignees = mockAssignments
+    const currentAssignees = assignments
       .filter((a) => a.mission_id === mission.id)
       .map((a) => a.user_id);
     setSelectedUsersForAssignment(currentAssignees);
@@ -462,7 +439,7 @@ export default function AdminMissionsPage() {
     try {
       const result = await assignMissionAction(
         selectedMissionForAssignment.id,
-        selectedUsersForAssignment
+        selectedUsersForAssignment,
       );
       if (result.success) {
         startTransition(() => {
@@ -474,12 +451,12 @@ export default function AdminMissionsPage() {
                     status: "assigned",
                     assignedTo: selectedUsersForAssignment,
                   }
-                : m
-            )
+                : m,
+            ),
           );
-          setMockAssignments((prev) => {
+          setAssignments((prev) => {
             const filtered = prev.filter(
-              (a) => a.mission_id !== selectedMissionForAssignment.id
+              (a) => a.mission_id !== selectedMissionForAssignment.id,
             );
             const newAssignments = selectedUsersForAssignment.map((userId) => ({
               id: `asg-${Date.now()}-${userId}`,
@@ -587,7 +564,7 @@ export default function AdminMissionsPage() {
                 {filteredMissions.length > 0 ? (
                   filteredMissions.map((mission) => {
                     const submittedCount = countSubmittedReports(mission.id);
-                    const assignedUserIds = mockAssignments
+                    const assignedUserIds = assignments
                       .filter((a) => a.mission_id === mission.id)
                       .map((a) => a.user_id);
                     const assignedShoppersDetails = assignedUserIds
@@ -595,10 +572,10 @@ export default function AdminMissionsPage() {
                       .filter(Boolean);
                     const isCurrentProcessing = isProcessing === mission.id;
                     const statusInfo = getStatusInfo(mission.status);
-                    const pendingApplicationsCount = mockApplications.filter(
+                    const pendingApplicationsCount = applications.filter(
                       (app) =>
                         app.mission_id === mission.id &&
-                        app.status === "pending"
+                        app.status === "pending",
                     ).length;
 
                     return (
@@ -627,22 +604,23 @@ export default function AdminMissionsPage() {
                             >
                               {statusInfo.text}
                             </Badge>
-                            {mission.status === "submitted" &&
+                            {mission.status === "available" &&
                               submittedCount > 0 && (
                                 <Badge
                                   variant="destructive"
                                   className="text-xs px-1.5 py-0.5 h-fit leading-tight"
                                 >
-                                  {submittedCount}
+                                  {`${submittedCount} Rapports soumis`}
                                 </Badge>
                               )}
-                            {mission.status === "pending_approval" &&
+                            {mission.status === "available" &&
                               pendingApplicationsCount > 0 && (
                                 <Badge
                                   variant="outline"
                                   className="text-xs px-1.5 py-1 h-fit leading-tight bg-orange-100 text-orange-800 border-orange-300"
                                 >
                                   {pendingApplicationsCount} Nouveaux
+                                  Applications
                                 </Badge>
                               )}
                           </div>
@@ -699,7 +677,7 @@ export default function AdminMissionsPage() {
                             </span>
                           )}
                         </TableCell>
-
+                        {/* Actions Admin Column */}
                         <TableCell className="text-right">
                           <DropdownMenu>
                             <DropdownMenuTrigger asChild>
@@ -719,12 +697,12 @@ export default function AdminMissionsPage() {
                             <DropdownMenuContent align="end">
                               <DropdownMenuLabel>Actions</DropdownMenuLabel>
 
-                              {mission.status === "pending_approval" &&
+                              {mission.status === "available" &&
                                 pendingApplicationsCount > 0 && (
                                   <DropdownMenuItem
                                     onClick={() =>
                                       router.push(
-                                        `/admin/applications?missionId=${mission.id}`
+                                        `/admin/applications?missionId=${mission.id}`,
                                       )
                                     }
                                     disabled={isCurrentProcessing}
@@ -735,11 +713,7 @@ export default function AdminMissionsPage() {
                                   </DropdownMenuItem>
                                 )}
 
-                              {[
-                                "available",
-                                "assigned",
-                                "pending_approval",
-                              ].includes(mission.status) && (
+                              {["available"].includes(mission.status) && (
                                 <DropdownMenuItem
                                   onClick={() => openAssignDialog(mission)}
                                   disabled={isCurrentProcessing}
@@ -749,22 +723,19 @@ export default function AdminMissionsPage() {
                                 </DropdownMenuItem>
                               )}
 
-                              {[
-                                "submitted",
-                                "approved",
-                                "refused",
-                                "completed",
-                              ].includes(mission.status) && (
-                                <DropdownMenuItem
-                                  onClick={() =>
-                                    handleReviewReports(mission.id)
-                                  }
-                                  disabled={isCurrentProcessing}
-                                >
-                                  <FileCheck className="mr-2 h-4 w-4" />{" "}
-                                  Examiner Rapports
-                                  {submittedCount > 0 &&
-                                    mission.status === "submitted" && (
+                              {["available", "completed", "cancelled"].includes(
+                                mission.status,
+                              ) &&
+                                missionReports(mission).length > 0 && (
+                                  <DropdownMenuItem
+                                    onClick={() =>
+                                      handleReviewReports(mission.id)
+                                    }
+                                    disabled={isCurrentProcessing}
+                                  >
+                                    <FileCheck className="mr-2 h-4 w-4" />
+                                    Examiner Rapports
+                                    {submittedCount > 0 && (
                                       <Badge
                                         variant="destructive"
                                         className="ml-auto text-[10px] px-1.5 py-0.5"
@@ -772,8 +743,8 @@ export default function AdminMissionsPage() {
                                         {submittedCount}
                                       </Badge>
                                     )}
-                                </DropdownMenuItem>
-                              )}
+                                  </DropdownMenuItem>
+                                )}
 
                               <DropdownMenuItem
                                 onClick={() => handleEditMission(mission.id)}
@@ -890,13 +861,13 @@ export default function AdminMissionsPage() {
                           onSelect={() => {}}
                           className={cn(
                             "flex items-center gap-2 cursor-pointer aria-selected:bg-accent/50",
-                            isAssigning && "pointer-events-auto opacity-100"
+                            isAssigning && "pointer-events-auto opacity-100",
                           )}
                         >
                           <Checkbox
                             id={`user-${shopper.value}`}
                             checked={selectedUsersForAssignment.includes(
-                              shopper.value
+                              shopper.value,
                             )}
                             onCheckedChange={() =>
                               handleUserSelectionChange(shopper.value)
@@ -952,7 +923,7 @@ export default function AdminMissionsPage() {
                 Sélectionnés:{" "}
                 {selectedUsersForAssignment
                   .map(
-                    (id) => activeShoppers.find((s) => s.value === id)?.label
+                    (id) => activeShoppers.find((s) => s.value === id)?.label,
                   )
                   .filter(Boolean)
                   .join(", ")}

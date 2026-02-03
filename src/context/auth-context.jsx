@@ -58,7 +58,6 @@ export function AuthProvider({ children }) {
           localStorage.removeItem(AUTH_STORAGE_KEY);
         }
       } else {
-        console.log("errrrrr");
         toast({
           variant: "destructive",
           title: "ERROR",
@@ -66,7 +65,6 @@ export function AuthProvider({ children }) {
         });
       }
     } catch (error) {
-      console.log("errrrrrooooorrrrr", error?.response?.data);
       toast({
         variant: "destructive",
         title: "ERROR",
@@ -147,7 +145,7 @@ export function AuthProvider({ children }) {
 
       localStorage.setItem(
         AUTH_STORAGE_KEY,
-        JSON.stringify({ user: userContextData, token })
+        JSON.stringify({ user: userContextData, token }),
       );
 
       // ✅ Redirect based on role
@@ -159,7 +157,7 @@ export function AuthProvider({ children }) {
 
       setTimeout(() => router.push(redirectPath), 50);
     },
-    [router]
+    [router],
   );
 
   // --- Logout Function ---
@@ -170,7 +168,8 @@ export function AuthProvider({ children }) {
       token: null,
       isLoading: false,
     });
-    localStorage.removeItem(AUTH_STORAGE_KEY);
+    //localStorage.removeItem(AUTH_STORAGE_KEY);
+    localStorage.clear();
 
     // Use setTimeout for redirect after logout as well, just in case
     setTimeout(() => {

@@ -18,13 +18,16 @@ import Link from "next/link";
 import { Badge } from "@/components/ui/badge";
 import { fetchMissions } from "@/services/fetchData";
 import { useToast } from "@/hooks/use-toast";
+import { useAuth } from "@/context/auth-context";
 const API_BASE_URL =
   process.env.NEXT_PUBLIC_API_URL || "https://api.embertongroup.com/api/";
+
 export default function CompletedMissionsPage() {
   const [reports, setReports] = useState([]);
-  const [userId, setUserId] = useState(null);
+  //const [userId, setUserId] = useState(null);
   const [missions, setMissions] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
+  const { user } = useAuth();
 
   const { toast } = useToast();
   useEffect(() => {
@@ -32,33 +35,27 @@ export default function CompletedMissionsPage() {
       try {
         setIsLoading(true);
 
-        const currentUser = localStorage.getItem("missionViewAuth");
+        const currentUser = user.id; //localStorage.getItem("missionViewAuth");
         if (!currentUser) {
           setIsLoading(false);
           return;
         }
 
-        const parsed = JSON.parse(currentUser);
-        const currentUserId = parsed?.user?.id;
-        setUserId(currentUserId);
+        //const parsed = JSON.parse(currentUser);
+        //const currentUser = parsed?.user?.id;
+        //setUserId(currentUser);
 
-        if (currentUserId) {
+        if (currentUser) {
           const [allReports, allMissions] = await Promise.all([
             fetchMissions("reports", API_BASE_URL + "reports"),
             fetchMissions("missions", API_BASE_URL + "missions/admin/all"),
-            /*fetch(API_BASE_URL + "reports", { cache: "no-cache" }).then((r) =>
-              r.json()
-            ),*/
-            /*fetch(API_BASE_URL + "missions/admin/all", {
-              cache: "no-cache",
-            }).then((r) => r.json()), // Utilisez la route admin*/
           ]);
 
           const userReports = allReports.filter(
-            (report) => report.user_id === currentUserId
+            (report) => report.user_id === currentUser,
           );
           const approvedReports = userReports.filter(
-            (report) => report.status === "approved"
+            (report) => report.status === "approved",
           );
 
           setReports(approvedReports);
@@ -67,7 +64,7 @@ export default function CompletedMissionsPage() {
       } catch (err) {
         console.error(
           "Erreur lors du chargement des missions complétées:",
-          err
+          err,
         );
         toast({
           variant: "destructive",
@@ -109,7 +106,7 @@ export default function CompletedMissionsPage() {
   const totalPayment = useMemo(() => {
     return completedMissions.reduce(
       (sum, mission) => sum + parseFloat(mission.reward || 0),
-      0
+      0,
     );
   }, [completedMissions]);
 
@@ -162,7 +159,11 @@ export default function CompletedMissionsPage() {
                 <div className="grid md:grid-cols-3">
                   {/* Mission Details Column */}
                   <div className="md:col-span-2 border-b md:border-b-0 md:border-r">
-                    <MissionCard mission={mission} showApplyButton={false} />
+                    <MissionCard
+                      completed={true}
+                      mission={mission}
+                      showApplyButton={false}
+                    />
                   </div>
 
                   <div className="md:col-span-1 p-4 bg-secondary/50">

@@ -37,13 +37,14 @@ import {
   Image as ImageIcon,
   MapPin,
   Mic,
-  CheckSquare as CheckSquareIcon, // Added correct CheckSquare icon
+  CheckSquare as CheckSquareIcon,
+  Columns,
+  Info, // Added correct CheckSquare icon
 } from "lucide-react";
 import { useRouter, useParams } from "next/navigation";
 import Link from "next/link";
 import { saveSurvey } from "@/app/actions/survey-actions"; // Import the correct server action using alias
 import { useAuth } from "@/context/auth-context"; // Import useAuth
-import { mockSurveyQuestions, mockMissions } from "@/lib/mock-data"; // Import mock data
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group"; // Import RadioGroup
 import { fetchMissions, postMissions } from "@/services/fetchData";
 
@@ -55,6 +56,8 @@ const QUESTION_TYPES = {
   IMAGE_UPLOAD: "image_upload",
   GPS_CAPTURE: "gps_capture",
   AUDIO_RECORDING: "audio_recording",
+  SECTION_HEADER: "section_header",
+  INFO_TEXT: "info_text",
 };
 
 // Function to get icon based on type
@@ -74,6 +77,10 @@ const getIconForType = (type) => {
       return <MapPin className="w-4 h-4 mr-1" />;
     case QUESTION_TYPES.AUDIO_RECORDING:
       return <Mic className="w-4 h-4 mr-1" />;
+    case QUESTION_TYPES.SECTION_HEADER:
+      return <Columns className="w-4 h-4 mr-1" />;
+    case QUESTION_TYPES.INFO_TEXT:
+      return <Info className="w-4 h-4 mr-1" />;
     default:
       return null;
   }
@@ -81,28 +88,49 @@ const getIconForType = (type) => {
 
 // Initial empty question structure based on type
 const createNewQuestion = (type, id) => {
+  // HEADER
+  if (type === QUESTION_TYPES.SECTION_HEADER) {
+    return {
+      id,
+      type,
+      title: "", // titre de section
+    };
+  }
+
+  // INFO TEXT
+  if (type === QUESTION_TYPES.INFO_TEXT) {
+    return {
+      id,
+      type,
+      content: "", // texte explicatif
+    };
+  }
+
+  // QUESTIONS NORMALES
   const base = { id, type, text: "", isRequired: false };
+
   if (
     type === QUESTION_TYPES.MULTIPLE_CHOICE ||
     type === QUESTION_TYPES.CHECKBOXES
   ) {
-    base.options = [{ id: Date.now(), text: "" }]; // Start with one empty option
+    base.options = [{ id: Date.now(), text: "" }];
   }
+
   if (type === QUESTION_TYPES.RATING) {
-    base.maxRating = 5; // Default max rating
+    base.maxRating = 5;
     base.minLabel = "Poor";
     base.maxLabel = "Excellent";
   }
+
   if (type === QUESTION_TYPES.IMAGE_UPLOAD) {
-    base.maxImages = 5; // Default max images
+    base.maxImages = 5;
     base.allowMultiple = true;
   }
-  if (type === QUESTION_TYPES.GPS_CAPTURE) {
-    // No specific config needed initially for GPS
-  }
+
   if (type === QUESTION_TYPES.AUDIO_RECORDING) {
-    base.maxDurationSeconds = 60; // Default max duration
+    base.maxDurationSeconds = 60;
   }
+
   return base;
 };
 
@@ -132,14 +160,14 @@ export default function CreateSurveyPage() {
         const [m, sq] = await Promise.all([
           fetchMissions(
             "admin-missions" + missionId,
-            API_BASE_URL + "missions/" + missionId
+            API_BASE_URL + "missions/" + missionId,
           ),
           fetchMissions(
             "surveyQuestions" + missionId,
-            API_BASE_URL + "surveyQuestions/surveyqBymission/" + missionId
+            API_BASE_URL + "surveyQuestions/surveyqBymission/" + missionId,
           ),
         ]);
-
+        console.log("fetch questions:", sq);
         if (m && sq) {
           sq.forEach((q) => {
             if (q.type === "multiple_choice" || q.type === "checkboxes") {
@@ -176,7 +204,7 @@ export default function CreateSurveyPage() {
 
   const updateQuestion = (id, field, value) => {
     setQuestions((prev) =>
-      prev.map((q) => (q.id === id ? { ...q, [field]: value } : q))
+      prev.map((q) => (q.id === id ? { ...q, [field]: value } : q)),
     );
   };
 
@@ -198,12 +226,12 @@ export default function CreateSurveyPage() {
           return {
             ...q,
             options: q.options.map((opt) =>
-              opt.id === optionId ? { ...opt, text: value } : opt
+              opt.id === optionId ? { ...opt, text: value } : opt,
             ),
           };
         }
         return q;
-      })
+      }),
     );
   };
 
@@ -221,7 +249,7 @@ export default function CreateSurveyPage() {
           };
         }
         return q;
-      })
+      }),
     );
   };
 
@@ -236,7 +264,7 @@ export default function CreateSurveyPage() {
           };
         }
         return q;
-      })
+      }),
     );
   };
 
@@ -253,28 +281,17 @@ export default function CreateSurveyPage() {
       return;
     }
 
+    // 1️⃣ Sanitize questions
     const sanitizedQuestions = questions.map((q) => {
       const sanitizedQ = { ...q };
 
-      //Traitement spécial pour multiple_choice et checkboxes
       if (q.type === "multiple_choice" || q.type === "checkboxes") {
         if (q.options && Array.isArray(q.options)) {
-          // Nettoyer les options vides
           sanitizedQ.options = q.options.filter(
-            (opt) => opt.text && opt.text.trim() !== ""
+            (opt) => opt.text && opt.text.trim() !== "",
           );
-          console.log(
-            `📤 Options envoyées pour question "${q.text}":`,
-            sanitizedQ.options
-          );
-
-          // Vérifier qu'il y a au moins une option
-          if (sanitizedQ.options.length === 0) {
-            console.warn(`⚠️ Question "${q.text}" n'a aucune option valide`);
-          }
         } else {
-          console.warn(`⚠️ Question "${q.text}" (${q.type}) n'a pas d'options`);
-          sanitizedQ.options = []; // Assurer qu'il y a au moins un array vide
+          sanitizedQ.options = [];
         }
       }
 
@@ -292,19 +309,43 @@ export default function CreateSurveyPage() {
       return sanitizedQ;
     });
 
+    // 2️⃣ Regrouper par section (utile côté frontend)
+    const groupedQuestions = groupQuestionsBySection(sanitizedQuestions);
+
+    // 3️⃣ Aplatir les questions pour le backend
+    const flattenedQuestions = groupedQuestions.flatMap((section) => {
+      // Create section header object
+      const sectionHeader = {
+        type: "section_header",
+        title: section.title,
+        text: section.title, // required for DB NOT NULL
+        isRequired: false,
+      };
+      // Then append actual questions in this section
+      const questionsWithSection = section.questions.map((q) => ({
+        ...q,
+        sectionTitle: section.title,
+      }));
+      return [sectionHeader, ...questionsWithSection];
+    });
+
+    // 4️⃣ Préparer les données à envoyer
     const data = {
       mission_id: parseInt(missionId),
       user_id: currentUser,
-      questions: sanitizedQuestions,
+      questions: flattenedQuestions,
     };
 
+    console.log("📤 Data sent to API (flattened):", data);
+
+    // 5️⃣ Envoi vers le backend
     try {
       const baseUrl = API_BASE_URL + "surveyQuestions";
       const result = await postMissions(
         baseUrl,
         data,
         "surveyQuestions" + missionId,
-        baseUrl + "/" + missionId
+        baseUrl + "/" + missionId,
       );
 
       if (result.status === 200) {
@@ -326,6 +367,7 @@ export default function CreateSurveyPage() {
       setIsSaving(false);
     }
   };
+
   const handleDragStart = (e, index) => {
     e.dataTransfer.setData("questionIndex", index);
   };
@@ -342,6 +384,33 @@ export default function CreateSurveyPage() {
 
   const handleDragOver = (e) => {
     e.preventDefault();
+  };
+  const groupQuestionsBySection = (questions) => {
+    const grouped = [];
+    let currentSection = null;
+
+    questions.forEach((q) => {
+      if (q.type === "section_header") {
+        currentSection = {
+          id: q.id,
+          title: q.title || "Untitled section",
+          questions: [],
+        };
+        grouped.push(currentSection);
+      } else {
+        if (!currentSection) {
+          currentSection = {
+            id: "default",
+            title: "General",
+            questions: [],
+          };
+          grouped.push(currentSection);
+        }
+        currentSection.questions.push(q);
+      }
+    });
+
+    return grouped;
   };
 
   if (isLoading) {
@@ -407,12 +476,46 @@ export default function CreateSurveyPage() {
                   <Input
                     id={`q-text-${q.id}`}
                     placeholder="Enter your question or instructions"
-                    value={q.text}
+                    value={q.text ?? ""}
                     onChange={(e) =>
                       updateQuestion(q.id, "text", e.target.value)
                     }
                   />
                 </div>
+                {/* ===== SECTION HEADER ===== */}
+                {q.type === QUESTION_TYPES.SECTION_HEADER && (
+                  <div className="space-y-2">
+                    <Label className="font-semibold text-primary flex items-center gap-1">
+                      <Columns className="w-4 h-4" />
+                      Section title
+                    </Label>
+                    <Input
+                      placeholder="Ex: Informations personnelles"
+                      value={q.title ?? ""}
+                      onChange={(e) =>
+                        updateQuestion(q.id, "title", e.target.value)
+                      }
+                      className="text-lg font-bold"
+                    />
+                  </div>
+                )}
+                {/* ===== INFO TEXT ===== */}
+                {q.type === QUESTION_TYPES.INFO_TEXT && (
+                  <div className="space-y-2">
+                    <Label className="font-medium text-sky-700 flex items-center gap-1">
+                      <Info className="w-4 h-4" />
+                      Information text
+                    </Label>
+                    <Textarea
+                      placeholder="Texte informatif pour l'utilisateur"
+                      value={q.content ?? ""}
+                      onChange={(e) =>
+                        updateQuestion(q.id, "content", e.target.value)
+                      }
+                      className="min-h-[80px]"
+                    />
+                  </div>
+                )}
                 {/* Question Type Indicator (Readonly) */}
                 <Badge variant="secondary" className="capitalize">
                   {getIconForType(q.type)}
@@ -426,7 +529,7 @@ export default function CreateSurveyPage() {
                     {q.options?.map(
                       (
                         opt,
-                        optIndex // Added optional chaining
+                        optIndex, // Added optional chaining
                       ) => (
                         <div key={opt.id} className="flex items-center gap-2">
                           {/* Visual indicator only, RadioGroup/Checkbox handles actual selection */}
@@ -460,7 +563,7 @@ export default function CreateSurveyPage() {
                             </Button>
                           )}
                         </div>
-                      )
+                      ),
                     )}
                     <Button
                       type="button"
@@ -598,7 +701,7 @@ export default function CreateSurveyPage() {
                           handleNumericInputChange(
                             q.id,
                             "maxImages",
-                            e.target.value
+                            e.target.value,
                           )
                         }
                         className="h-8 text-xs col-span-2"
@@ -642,7 +745,7 @@ export default function CreateSurveyPage() {
                           handleNumericInputChange(
                             q.id,
                             "maxDurationSeconds",
-                            e.target.value
+                            e.target.value,
                           )
                         }
                         className="h-8 text-xs col-span-2"
@@ -674,6 +777,24 @@ export default function CreateSurveyPage() {
         <CardFooter className="flex flex-col items-center gap-4 pt-6 border-t">
           <p className="text-sm font-medium text-primary">Add New Question</p>
           <div className="flex flex-wrap justify-center gap-2">
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => addQuestion(QUESTION_TYPES.SECTION_HEADER)}
+            >
+              <Columns className="w-4 h-4 mr-1" />
+              Section Header
+            </Button>
+
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => addQuestion(QUESTION_TYPES.INFO_TEXT)}
+            >
+              <Info className="w-4 h-4 mr-1" />
+              Info Text
+            </Button>
+
             <Button
               type="button"
               variant="outline"

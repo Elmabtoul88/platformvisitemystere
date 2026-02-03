@@ -1,5 +1,5 @@
 import axios from "axios";
-const CACHE_EXPIRATION_TIME = 5 * 60 * 1000; // 5 minutes
+const CACHE_EXPIRATION_TIME = 5 * 60 * 1000; // 5 minutes // Set to 0 for no expiration
 const api = axios.create();
 
 // Token interceptor
@@ -10,13 +10,12 @@ api.interceptors.request.use(
       const parsedCacheData = cachData ? JSON.parse(cachData) : null;
       const token = parsedCacheData?.token;
       if (token) {
-        console.log("tooooookkkennn", token);
         config.headers["x-auth-token"] = token;
       }
     }
     return config;
   },
-  (error) => Promise.reject(error)
+  (error) => Promise.reject(error),
 );
 
 // Helper: Store cache
@@ -29,7 +28,6 @@ const setCache = (cacheName, data) => {
     timestamp: Date.now(),
   };
   localStorage.setItem(cacheKey, JSON.stringify(newCache));
-  console.log(`Cache refreshed for [${cacheName}]`);
 };
 
 // Helper: Clear admin caches
@@ -40,7 +38,6 @@ const clearAdminCaches = () => {
   localStorage.removeItem("cache_admin-reports");
   localStorage.removeItem("cache_admin-users");
   localStorage.removeItem("cache_usersMonth");
-  console.log("Admin caches cleared");
 };
 
 // Helper: Fetch and refresh cache
@@ -51,7 +48,7 @@ const refreshCache = async (cacheName, url) => {
   } catch (err) {
     console.error(
       `Failed to refresh cache for [${cacheName}] from [${url}]`,
-      err
+      err,
     );
   }
 };
@@ -64,9 +61,9 @@ const fetchMissions = async (name, url) => {
   if (typeof window !== "undefined") {
     const cachedString = localStorage.getItem(cacheKey);
     if (cachedString) {
+      console.log("Using cached data for", name);
       const cached = JSON.parse(cachedString);
       if (now - cached.timestamp < CACHE_EXPIRATION_TIME) {
-        console.log(`Returning cached data for [${name}]`);
         return cached.data;
       } else {
         localStorage.removeItem(cacheKey);
@@ -77,7 +74,6 @@ const fetchMissions = async (name, url) => {
   try {
     const response = await api.get(url);
     if (Array.isArray(response.data) && response.data.length === 0) {
-      console.log(`Returning empty array for [${name}], not caching`);
       return response.data;
     }
 
@@ -86,7 +82,7 @@ const fetchMissions = async (name, url) => {
   } catch (error) {
     console.log(
       `Error fetching [${name}] from [${url}]`,
-      error?.response.data || "error fetching path : " + url
+      error?.response.data || "error fetching path : " + url,
     );
     //throw error;
   }

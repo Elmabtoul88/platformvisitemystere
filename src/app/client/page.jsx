@@ -39,8 +39,8 @@ export default function ClientDashboardPage() {
     const getMissions = async () => {
       try {
         const data = await fetchMissions(
-          "admin-missions",
-          API_BASE_URL + "missions/admin/all"
+          "client-missions",
+          API_BASE_URL + "missions/admin/all",
         );
 
         setMockMissions(data);

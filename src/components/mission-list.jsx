@@ -16,6 +16,7 @@ import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/context/auth-context";
 const API_BASE_URL =
   process.env.NEXT_PUBLIC_API_URL || "https://api.embertongroup.com/api/";
+
 export function MissionList() {
   const router = useRouter();
   const { toast } = useToast();
@@ -30,32 +31,31 @@ export function MissionList() {
   });
 
   useEffect(() => {
-    const currentUser = JSON.parse(localStorage.getItem("missionViewAuth"));
-    currentUser && setUserId(currentUser.user.id);
+    console.log("User in MissionList:", user.id);
+    const currentUser = user.id;
+    //const currentUser = JSON.parse(localStorage.getItem("missionViewAuth"));
+    currentUser && setUserId(currentUser);
     const getMissions = async () => {
       try {
-        const data = await fetchMissions("missions", API_BASE_URL + "missions");
+        const data = await fetchMissions(
+          "missions",
+          API_BASE_URL + "missions/missionsApp/" + currentUser,
+        );
+        if (!data) {
+          return;
+        }
 
-        // Convertir assignedTo de JSON string à array si nécessaire
-        const missionsWithParsedAssignedTo = data.map((mission) => {
-          if (mission.assignedTo && typeof mission.assignedTo === "string") {
-            try {
-              mission.assignedTo = JSON.parse(mission.assignedTo);
-            } catch (e) {
-              console.error("Error parsing assignedTo:", e);
-              mission.assignedTo = [];
-            }
-          }
-          return mission;
-        });
-
-        setMissions(missionsWithParsedAssignedTo);
+        const filterDataCompletedCancelled = data.filter(
+          (mission) =>
+            mission.status !== "completed" && mission.status !== "cancelled",
+        );
+        setMissions(filterDataCompletedCancelled);
         const categories = [
           ...new Set(data.map((m) => m.category).filter(Boolean)),
         ];
         setCategories(categories);
       } catch (err) {
-        console.error("Error fetching missions:", err);
+        console.error("Error fetching missions:");
       }
     };
 
@@ -66,32 +66,35 @@ export function MissionList() {
     return missions.filter((mission) => {
       const locationMatch =
         !filters.location ||
-        mission.location.toLowerCase().includes(filters.location.toLowerCase());
+        (mission.location &&
+          mission.location
+            .toLowerCase()
+            .includes(filters.location.toLowerCase()));
+
       const categoryMatch =
         !filters.category || mission.category === filters.category;
+
       const dateMatch =
-        !filters.date || new Date(mission.deadline) <= new Date(filters.date);
+        !filters.date ||
+        (mission.deadline &&
+          new Date(mission.deadline) <= new Date(filters.date));
+
       const statusMatch =
         mission.status === "available" || mission.status === "pending_approval";
+
       return locationMatch && categoryMatch && dateMatch && statusMatch;
     });
   }, [missions, filters]);
 
   const handleApply = async (missionId) => {
     try {
-      const mission = missions.find((m) => m.id === missionId);
-
-      // Si la mission est déjà en "pending_approval", on ne change pas son statut
-      // On ajoute seulement la nouvelle application
-      if (mission.status === "available") {
-        const baseUrlmission = API_BASE_URL + "missions";
-        await patchMissions(
-          baseUrlmission + "/patch/" + missionId,
-          { status: "pending_approval" },
-          "missions",
-          baseUrlmission
-        );
-      }
+      setMissions((prevMissions) =>
+        prevMissions.map((m) =>
+          m.id === missionId
+            ? { ...m, applied: true, count: m.count + 1 } // update applied & increment count
+            : m,
+        ),
+      );
 
       const baseUrlApplication = API_BASE_URL + "applications";
       await postMissions(
@@ -102,24 +105,7 @@ export function MissionList() {
           status: "pending",
         },
         "applications",
-        baseUrlApplication
-      );
-
-      setMissions((prev) =>
-        prev.map((m) => {
-          if (m.id === missionId) {
-            const updatedAssignedTo = Array.isArray(m.assignedTo)
-              ? [...m.assignedTo, userId]
-              : [userId];
-
-            return {
-              ...m,
-              assignedTo: updatedAssignedTo,
-              status: "pending_approval",
-            };
-          }
-          return m;
-        })
+        baseUrlApplication,
       );
 
       toast({
@@ -150,9 +136,9 @@ export function MissionList() {
 
       {filteredMissions.length > 0 ? (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-          {filteredMissions.map((mission) => (
+          {filteredMissions.map((mission, index) => (
             <MissionCard
-              key={mission.id}
+              key={`${mission.id}-${index}`}
               mission={mission}
               onApply={handleApply}
               onViewDetails={handleViewDetails}

@@ -32,6 +32,8 @@ import { format } from "date-fns";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/context/auth-context";
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL;
+
+import { fetchMissions } from "@/services/fetchData";
 export default function MissionDetailsPage() {
   const params = useParams();
   const router = useRouter();
@@ -43,12 +45,6 @@ export default function MissionDetailsPage() {
   const [isApplying, setIsApplying] = useState(false);
   const [error, setError] = useState(null);
 
-  // Vérifier si l'utilisateur a déjà postulé
-  const hasApplied =
-    mission?.assignedTo && Array.isArray(mission.assignedTo)
-      ? mission.assignedTo.includes(user?.id)
-      : false;
-
   // Fetch mission data from API
   useEffect(() => {
     const fetchMission = async () => {
@@ -56,27 +52,13 @@ export default function MissionDetailsPage() {
       setError(null);
       console.log(`Fetching details for mission ID: ${missionId}`);
       try {
-        const response = await fetch(`${API_BASE_URL}missions/${missionId}`);
-        if (!response.ok) {
-          if (response.status === 404) {
-            throw new Error("Mission not found or not accessible.");
-          }
-          throw new Error(`Failed to fetch mission: ${response.statusText}`);
-        }
-        const foundMission = await response.json();
-        if (
-          foundMission.assignedTo &&
-          typeof foundMission.assignedTo === "string"
-        ) {
-          try {
-            foundMission.assignedTo = JSON.parse(foundMission.assignedTo);
-          } catch (e) {
-            console.error("Error parsing assignedTo:", e);
-            foundMission.assignedTo = [];
-          }
-        }
+        const data = await fetchMissions(
+          "missions",
+          API_BASE_URL + "missions/missionsApp/" + user.id,
+        );
+        const getMission = data.find((m) => m.id.toString() == missionId);
 
-        setMission(foundMission);
+        setMission(getMission);
       } catch (err) {
         console.error("Error fetching mission:", err);
         setError(err.message);
@@ -123,32 +105,9 @@ export default function MissionDetailsPage() {
         throw new Error(`Failed to create application: ${errorData}`);
       }
 
-      const updatedAssignedTo = mission.assignedTo
-        ? [...mission.assignedTo, user.id]
-        : [user.id];
-
-      const updateMissionResponse = await fetch(
-        `${API_BASE_URL}missions/patch/${missionId}`,
-        {
-          method: "PATCH",
-          headers: {
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify({
-            status: "pending_approval",
-            assignedTo: updatedAssignedTo,
-          }),
-        }
-      );
-
-      if (!updateMissionResponse.ok) {
-        const errorData = await updateMissionResponse.text();
-        throw new Error(`Failed to update mission: ${errorData}`);
-      }
       setMission((prev) => ({
         ...prev,
-        status: "pending_approval",
-        assignedTo: updatedAssignedTo,
+        applied: 1,
       }));
 
       toast({
@@ -277,7 +236,7 @@ export default function MissionDetailsPage() {
               </AlertTitle>
               <AlertDescription className="text-orange-700">
                 This mission is currently under review.{" "}
-                {hasApplied
+                {mission.applied
                   ? "You have already applied to this mission."
                   : "Other users have applied and an admin will assign it soon."}
               </AlertDescription>
@@ -288,14 +247,14 @@ export default function MissionDetailsPage() {
           {isMissionAvailable ? (
             <Button
               onClick={handleApply}
-              disabled={isApplying || !isAuthenticated || hasApplied}
+              disabled={mission.applied || !isAuthenticated}
               className="w-full sm:w-auto bg-accent text-accent-foreground hover:bg-accent/90"
             >
               {isApplying ? (
                 <>
                   <Loader2 className="mr-2 h-4 w-4 animate-spin" /> Applying...
                 </>
-              ) : hasApplied ? (
+              ) : mission.applied ? (
                 <>
                   <CheckCircle className="w-4 h-4 mr-2" /> Already Applied
                 </>
@@ -311,7 +270,7 @@ export default function MissionDetailsPage() {
                 This mission is currently "{mission.status}" and awaiting admin
                 approval.
               </p>
-              {hasApplied ? (
+              {mission.applied ? (
                 <p className="text-sm text-green-600 font-medium">
                   ✓ You have applied to this mission
                 </p>

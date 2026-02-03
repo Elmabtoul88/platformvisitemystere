@@ -24,7 +24,6 @@ import { useToast } from "@/hooks/use-toast";
 import { ArrowLeft, Save, Loader2, MapPin as MapPinIcon } from "lucide-react";
 import { useRouter, useParams } from "next/navigation";
 import Link from "next/link";
-import { mockMissions } from "@/lib/mock-data"; // To get categories and mission data
 import { fetchMissions, updateMissions } from "@/services/fetchData";
 const API_BASE_URL =
   process.env.NEXT_PUBLIC_API_URL || "https://api.embertongroup.com/api/";
@@ -56,7 +55,7 @@ export default function EditMissionPage() {
       setIsLoading(true);
       const response = await fetchMissions(
         "admin-missions",
-        API_BASE_URL + "missions/admin/all"
+        API_BASE_URL + "missions/admin/all",
       );
       // Simulate fetching mission data
       const foundMission = response.find((m) => m.id === parseInt(missionId));
@@ -76,7 +75,6 @@ export default function EditMissionPage() {
           category: foundMission.category || "",
           businessName: foundMission.businessName || "",
           status: foundMission.status || "available", // Include status
-          assignedTo: foundMission.assignedTo,
         });
       } else {
         toast({
@@ -87,7 +85,7 @@ export default function EditMissionPage() {
         router.push("/admin/missions"); // Redirect if mission doesn't exist
       }
 
-      // Set available categories (can be static if using mock data)
+      // Set available categories 
       setAvailableCategories([...new Set(response.map((m) => m.category))]);
       setIsLoading(false);
     };
@@ -135,24 +133,14 @@ export default function EditMissionPage() {
     // Simulate API call to update the mission
     await new Promise((resolve) => setTimeout(resolve, 1000));
 
-    // Update the mock data (for simulation purposes)
-    /*const missionIndex = mockMissions.findIndex((m) => m.id === missionId);
-    if (missionIndex > -1) {
-      mockMissions[missionIndex] = {
-        ...mockMissions[missionIndex],
-        ...formData,
-        reward: parseInt(formData.reward, 10), // Convert reward back to number
-        deadline: new Date(formData.deadline), // Convert deadline back to Date
-      };
-    }*/
     console.log("Simulated mission update successful.");
     // ---
-    const baseUrl = API_BASE_URL + "missions";
+    const baseUrl = API_BASE_URL + "missions"; //missions/admin/all
     const result = await updateMissions(
       `${baseUrl}/${missionId}`,
       formData,
       "missions",
-      `${baseUrl}`
+      `${baseUrl}${`/admin/all`}`,
     );
 
     if (result && result.status === 200) {
@@ -202,7 +190,7 @@ export default function EditMissionPage() {
           });
           setIsFetchingLocation(false);
         },
-        { enableHighAccuracy: true, timeout: 10000, maximumAge: 0 }
+        { enableHighAccuracy: true, timeout: 10000, maximumAge: 0 },
       );
     } else {
       setLocationError("Geolocation is not supported by this browser.");
@@ -392,13 +380,8 @@ export default function EditMissionPage() {
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="available">Available</SelectItem>
-                  <SelectItem value="assigned">Assigned</SelectItem>
-                  <SelectItem value="submitted">
-                    Submitted (Reports Pending)
-                  </SelectItem>
-                  <SelectItem value="approved">Approved (Completed)</SelectItem>
-                  <SelectItem value="refused">Refused</SelectItem>
-                  {/* Consider adding cancelled/paused if needed */}
+                  <SelectItem value="completed">Completed</SelectItem>
+                  <SelectItem value="cancelled">Cancelled</SelectItem>
                 </SelectContent>
               </Select>
             </div>

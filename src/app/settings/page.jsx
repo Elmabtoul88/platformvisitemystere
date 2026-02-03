@@ -52,7 +52,8 @@ const TwitterIcon = (props) => (
     <path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z" />
   </svg>
 );
-API_BASE_URL = process.env.NEXT_PUBLIC_API_URL;
+const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL;
+
 export default function SettingsPage() {
   const { toast } = useToast();
 
@@ -107,7 +108,7 @@ export default function SettingsPage() {
 
     const storedTheme = localStorage.getItem("theme");
     const prefersDark = window.matchMedia(
-      "(prefers-color-scheme: dark)"
+      "(prefers-color-scheme: dark)",
     ).matches;
     const initialDarkMode =
       storedTheme === "dark" || (!storedTheme && prefersDark);
@@ -140,7 +141,7 @@ export default function SettingsPage() {
     }
     // Dispatch storage event manually to ensure layout updates immediately
     window.dispatchEvent(
-      new StorageEvent("storage", { key: "theme", newValue: newTheme })
+      new StorageEvent("storage", { key: "theme", newValue: newTheme }),
     );
     toast({
       title: `Theme Changed`,
@@ -212,7 +213,7 @@ export default function SettingsPage() {
             method: "PUT",
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify({ notifications }),
-          }
+          },
         );
 
         const result = await response.json();
@@ -239,17 +240,17 @@ export default function SettingsPage() {
     switch (platform) {
       case "twitter":
         shareUrl = `https://twitter.com/intent/tweet?url=${encodeURIComponent(
-          profileUrl
+          profileUrl,
         )}&text=${encodeURIComponent(text)}`;
         break;
       case "facebook":
         shareUrl = `https://www.facebook.com/sharer/sharer.php?u=${encodeURIComponent(
-          profileUrl
+          profileUrl,
         )}&quote=${encodeURIComponent(text)}`;
         break;
       case "linkedin":
         shareUrl = `https://www.linkedin.com/sharing/share-offsite/?url=${encodeURIComponent(
-          profileUrl
+          profileUrl,
         )}`;
         break;
       default:

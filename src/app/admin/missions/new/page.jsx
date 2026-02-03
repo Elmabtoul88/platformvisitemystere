@@ -33,6 +33,7 @@ const availableCategories = [
 ];
 const API_BASE_URL =
   process.env.NEXT_PUBLIC_API_URL || "https://api.embertongroup.com/api/";
+
 export default function CreateMissionPage() {
   const router = useRouter();
   const { toast } = useToast();
@@ -92,7 +93,7 @@ export default function CreateMissionPage() {
           });
           setIsFetchingLocation(false);
         },
-        { enableHighAccuracy: true, timeout: 10000, maximumAge: 0 }
+        { enableHighAccuracy: true, timeout: 10000, maximumAge: 0 },
       );
     } else {
       setLocationError("Geolocation is not supported by this browser.");
@@ -137,7 +138,7 @@ export default function CreateMissionPage() {
         baseUrl,
         { ...formData, status: "available" },
         "missions",
-        baseUrl
+        baseUrl + "/admin/all",
       );
 
       console.log("result", result);
@@ -152,7 +153,7 @@ export default function CreateMissionPage() {
         router.push(`/admin/missions/${result.data.id}/survey/create`);
       } else {
         throw new Error(
-          result.message || "Failed to create mission. No mission ID returned."
+          result.message || "Failed to create mission. No mission ID returned.",
         );
       }
     } catch (error) {

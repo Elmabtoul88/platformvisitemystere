@@ -82,7 +82,7 @@ export default function AdminApplicationsPage() {
       try {
         const response = await fetchMissions(
           "applications",
-          API_BASE_URL + "applications"
+          API_BASE_URL + "applications",
         );
         console.log(response);
         const apps = Array.isArray(response) ? response : [];
@@ -112,14 +112,14 @@ export default function AdminApplicationsPage() {
     applicationId,
     missionId,
     userId,
-    assignmentDetails
+    assignmentDetails,
   ) => {
     console.log(
       "Approve clicked",
       applicationId,
       missionId,
       userId,
-      assignmentDetails
+      assignmentDetails,
     );
     setIsProcessing(applicationId);
     try {
@@ -127,14 +127,14 @@ export default function AdminApplicationsPage() {
         applicationId,
         missionId,
         userId,
-        assignmentDetails
+        assignmentDetails,
       );
 
       if (result.success) {
         toast({ title: "Application Approved", description: result.message });
         startTransition(() => {
           setApplications((prev) =>
-            prev.filter((app) => app.id !== applicationId)
+            prev.filter((app) => app.id !== applicationId),
           );
         });
       } else {
@@ -168,14 +168,14 @@ export default function AdminApplicationsPage() {
     try {
       const result = await refuseApplicationAction(
         applicationId,
-        refusalReason
+        refusalReason,
       );
 
       if (result.success) {
         toast({ title: "Application Refused", description: result.message });
         startTransition(() => {
           setApplications((prev) =>
-            prev.filter((app) => app.id !== applicationId)
+            prev.filter((app) => app.id !== applicationId),
           );
         });
         setApplicationToRefuse(null);
@@ -494,7 +494,7 @@ export default function AdminApplicationsPage() {
                                       app.id,
                                       app.mission_id,
                                       app.user_id,
-                                      assignmentDetails
+                                      assignmentDetails,
                                     )
                                   }
                                   /*disabled={

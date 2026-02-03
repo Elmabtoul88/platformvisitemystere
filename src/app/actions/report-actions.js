@@ -42,7 +42,7 @@ async function fetchWithAuth(url, options = {}) {
       }
 
       const error = new Error(
-        errorData?.message || `HTTP error! status: ${response.status}`
+        errorData?.message || `HTTP error! status: ${response.status}`,
       );
       error.status = response.status;
       error.data = errorData;
@@ -70,7 +70,7 @@ async function fetchWithAuth(url, options = {}) {
   } catch (error) {
     console.error(
       `API Request Error (${options.method || "GET"} ${url}):`,
-      error
+      error,
     );
     throw {
       success: false,
@@ -94,42 +94,29 @@ export async function submitReport(submittedData, missionId, userId, token) {
 
   // ✅ Transform answers correctly based on structure (array or object)
   const transformAnswers = (data) => {
-    const answers = data.answers;
+    const sections = data.answers;
 
-    if (Array.isArray(answers)) {
-      // Already formatted correctly (just ensure no empty values)
-      return answers.filter((a) => {
-        if (Array.isArray(a.value)) return a.value.length > 0;
-        if (typeof a.value === "object" && a.value !== null)
-          return Object.keys(a.value).length > 0;
-        return a.value !== null && a.value !== undefined && a.value !== "";
-      });
+    if (!Array.isArray(sections)) {
+      console.warn("⚠️ answers is not an array");
+      return [];
     }
 
-    // 🧩 If answers is an object, fallback to your previous logic
-    if (typeof answers === "object" && answers !== null) {
-      return Object.entries(answers)
-        .filter(([_, value]) => {
-          if (Array.isArray(value))
-            return value.some((v) => v !== null && v !== undefined);
-          if (typeof value === "object" && value !== null)
-            return Object.keys(value).length > 0;
-          return value !== null && value !== undefined && value !== "";
-        })
-        .map(([key, value]) => ({
-          type: key.includes("_") ? key.split("_").pop() : key,
-          value,
-        }));
-    }
-
-    console.warn("⚠️ Unexpected answers structure:", answers);
-    return [];
+    return sections
+      .map((section) => ({
+        section_id: section.section_id,
+        section_header: section.section_header,
+        responses: (section.responses || []).filter((r) => {
+          if (Array.isArray(r.value)) return r.value.length > 0;
+          if (typeof r.value === "object" && r.value !== null)
+            return Object.keys(r.value).length > 0;
+          return r.value !== null && r.value !== undefined && r.value !== "";
+        }),
+      }))
+      .filter((section) => section.responses.length > 0);
   };
 
   // ✅ Transform data safely
   const output = transformAnswers(submittedData);
-  console.log(`✅ ${output.length} réponses à soumettre`);
-  console.log(output);
 
   if (!submittedData || typeof submittedData !== "object") {
     console.error("Server Action: Invalid submittedData structure.");
@@ -154,13 +141,6 @@ export async function submitReport(submittedData, missionId, userId, token) {
         status: "submitted",
       }),
     });
-
-    await updateMissions(
-      base_url + "missions/patch/" + missionId,
-      { status: "submitted" },
-      "missions",
-      base_url + "missions"
-    );
 
     console.log("✅ Rapport soumis avec succès");
 

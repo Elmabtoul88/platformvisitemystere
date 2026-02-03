@@ -20,7 +20,6 @@ import {
 import { Badge } from "@/components/ui/badge";
 import { Search, MessageSquare, Loader2, Users } from "lucide-react";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { mockUsers, clearUserUnreadMessages } from "../users/users-mock.js";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { fetchMissions } from "@/services/fetchData.js";

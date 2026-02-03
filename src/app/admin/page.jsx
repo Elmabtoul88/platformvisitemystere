@@ -34,12 +34,10 @@ import {
   LineChart as LineChartComponent,
 } from "recharts";
 import Link from "next/link";
-import { mockMissions, mockReports } from "@/lib/mock-data";
-import { mockUsers } from "./users/users-mock";
 import { fetchMissions } from "@/services/fetchData";
-import { useMessage } from "@/context/message-context";
 const API_BASE_URL =
   process.env.NEXT_PUBLIC_API_URL || "https://api.embertongroup.com/api/";
+
 export default function AdminDashboardPage() {
   const [missions, setMisions] = useState([]);
   const [reports, setReports] = useState([]);
@@ -55,7 +53,7 @@ export default function AdminDashboardPage() {
           fetchMissions("admin-users", API_BASE_URL + "users"),
           fetchMissions(
             "usersMonth",
-            API_BASE_URL + "dashboardadmin/usersMonth"
+            API_BASE_URL + "dashboardadmin/usersMonth",
           ),
         ]);
         if (m && r && u && uBym) {
@@ -71,24 +69,13 @@ export default function AdminDashboardPage() {
     fetchData();
   }, []);
 
-  // Debug: Log mission data for completion rate debugging
-  useEffect(() => {
-    if (missions.length > 0) {
-      const statusCounts = missions.reduce((acc, mission) => {
-        const status = mission.status;
-        acc[status] = (acc[status] || 0) + 1;
-        return acc;
-      }, {});
-    }
-  }, [missions]);
-
   // 1. Mission Status Distribution
   const missionStatusCounts = missions.reduce((acc, mission) => {
     acc[mission.status] = (acc[mission.status] || 0) + 1;
     return acc;
   }, {});
   const missionStatusData = Object.entries(missionStatusCounts).map(
-    ([name, value]) => ({ name, value })
+    ([name, value]) => ({ name, value }),
   );
 
   // 2. Report Status Distribution
@@ -99,7 +86,7 @@ export default function AdminDashboardPage() {
     return acc;
   }, {});
   const reportStatusData = Object.entries(reportStatusCounts).map(
-    ([name, value]) => ({ name, value })
+    ([name, value]) => ({ name, value }),
   );
 
   // 3. Missions per Category
@@ -108,7 +95,7 @@ export default function AdminDashboardPage() {
     return acc;
   }, {});
   const missionsByCategoryData = Object.entries(missionsByCategoryCounts).map(
-    ([name, count]) => ({ name, count })
+    ([name, count]) => ({ name, count }),
   );
 
   // 4. Average Reward per Category
@@ -127,7 +114,7 @@ export default function AdminDashboardPage() {
       name,
       averageReward:
         data.count > 0 ? Math.round(data.totalReward / data.count) : 0,
-    })
+    }),
   );
 
   // 5. CORRECTED Mission Completion Rate Calculation
@@ -144,21 +131,18 @@ export default function AdminDashboardPage() {
     }
 
     // Count missions by status
-    const approvedCount = missions.filter(
-      (m) => m.status === "approved"
+    const approvedCount = reports.filter((m) => m.status === "approved").length;
+    const submittedCount = reports.filter(
+      (m) => m.status === "submitted",
     ).length;
-    const submittedCount = missions.filter(
-      (m) => m.status === "submitted"
-    ).length;
-    const pendingApprovalCount = missions.filter(
-      (m) => m.status === "pending_approval"
-    ).length;
-    const refusedCount = missions.filter((m) => m.status === "refused").length;
+    /*const pendingApprovalCount = missions.filter(
+      (m) => m.status === "pending_approval",
+    ).length;*/
+    const refusedCount = reports.filter((m) => m.status === "refused").length;
 
     // Total submitted missions (includes submitted, approved, refused, pending_approval)
-    const totalSubmittedCount =
-      submittedCount + approvedCount + refusedCount + pendingApprovalCount;
-    const pendingCount = submittedCount + pendingApprovalCount;
+    const totalSubmittedCount = submittedCount + approvedCount + refusedCount;
+    const pendingCount = submittedCount;
 
     // Calculate completion rate (approved out of all submitted)
     const completionRate =
@@ -220,11 +204,10 @@ export default function AdminDashboardPage() {
   const totalPendingReports =
     reportStatusData.find((d) => d.name === "submitted")?.value || 0;
   const totalActiveMissions =
-    (missionStatusData.find((d) => d.name === "assigned")?.value || 0) +
-    (missionStatusData.find((d) => d.name === "available")?.value || 0) +
-    (missionStatusData.find((d) => d.name === "submitted")?.value || 0);
+    missionStatusData.find((d) => d.name === "available")?.value || 0;
+
   const totalRegisteredShoppers = users.filter(
-    (u) => u.role === "shopper"
+    (u) => u.role === "shopper",
   ).length;
 
   return (
@@ -557,8 +540,8 @@ export default function AdminDashboardPage() {
                               entry.name === "Approved"
                                 ? "hsl(var(--chart-1))"
                                 : entry.name === "Refused"
-                                ? "hsl(var(--destructive))"
-                                : "hsl(var(--chart-3))"
+                                  ? "hsl(var(--destructive))"
+                                  : "hsl(var(--chart-3))"
                             }
                           />
                         ))}
@@ -625,7 +608,7 @@ export default function AdminDashboardPage() {
                       Available/Assigned:{" "}
                       {
                         missions.filter((m) =>
-                          ["available", "assigned"].includes(m.status)
+                          ["available", "assigned"].includes(m.status),
                         ).length
                       }
                     </div>

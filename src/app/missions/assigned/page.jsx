@@ -2,56 +2,47 @@
 
 import React, { useState, useMemo, useEffect } from "react";
 import { MissionCard } from "@/components/mission-card-assigned";
-import { mockMissions, mockUser } from "@/lib/mock-data";
 import { fetchMissions } from "@/services/fetchData";
 import { useRouter } from "next/navigation";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { ClipboardList, SearchX, ArrowLeft } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { useAuth } from "@/context/auth-context";
 import Link from "next/link";
 const API_BASE_URL =
   process.env.NEXT_PUBLIC_API_URL || "https://api.embertongroup.com/api/";
+
 export default function AssignedMissionsPage() {
   const [missions, setMissions] = useState([]);
   const [userId, setUserId] = useState(null);
   const [isLoading, setIsLoading] = useState(true);
   const router = useRouter();
+  const { user } = useAuth();
 
   useEffect(() => {
     const getMissions = async () => {
       try {
         setIsLoading(true);
-        const currentUser = localStorage.getItem("missionViewAuth");
-        const parsedUser = JSON.parse(currentUser);
-        parsedUser ? setUserId(parsedUser.user.id) : null;
+        //const currentUser = localStorage.getItem("missionViewAuth");
+        //const parsedUser = JSON.parse(currentUser);
+        const currentUser = user.id;
+        //currentUser ? setUserId(currentUser) : null;
 
-        if (parsedUser?.user?.id) {
-          const currentUserId = parsedUser.user.id;
-
-          const [assignedMissions, reports] = await Promise.all([
+        if (currentUser) {
+          const [assignedMissions] = await Promise.all([
             fetchMissions(
-              "assigned_user" + currentUserId,
-              API_BASE_URL + "assignements/ass/" + currentUserId
+              "assigned_user" + currentUser,
+              API_BASE_URL + "assignements/ass/" + currentUser,
             ),
-            fetch(API_BASE_URL + "reports", {
-              cache: "no-cache",
-            }).then((r) => r.json()),
           ]);
 
-          const approvedReports = reports.filter(
+          const assigned = assignedMissions.filter(
             (report) =>
-              report.user_id === currentUserId && report.status === "approved"
+              report.user_id === currentUser &&
+              !["submitted", "approved", "refused"].includes(report.status),
           );
-
-          const approvedMissionIds = approvedReports.map(
-            (report) => report.mission_id
-          );
-          // suprimmer les missions submitted
-          const activeMissions = assignedMissions.filter(
-            (mission) => !approvedMissionIds.includes(mission.id)
-          );
-          console.log("Active Missions:", activeMissions);
-          setMissions(activeMissions);
+          console.log("Active Missions:", assigned);
+          setMissions(assigned);
         }
       } catch (err) {
         console.log("Error fetching missions", err);
@@ -67,16 +58,16 @@ export default function AssignedMissionsPage() {
     nomMagazin,
     specificStoreAddress,
     scenario,
-    dateTimeMission
+    dateTimeMission,
   ) => {
     router.push(
       `/report/${missionId}?nomMagazin=${encodeURIComponent(
-        nomMagazin
+        nomMagazin,
       )}&specificStoreAddress=${encodeURIComponent(
-        specificStoreAddress
+        specificStoreAddress,
       )}&scenario=${encodeURIComponent(
-        scenario
-      )}&dateTimeMission=${encodeURIComponent(dateTimeMission)}`
+        scenario,
+      )}&dateTimeMission=${encodeURIComponent(dateTimeMission)}`,
     );
   };
 
