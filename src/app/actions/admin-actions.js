@@ -3,7 +3,7 @@
 'use server';
 
 import { revalidatePath } from 'next/cache';
-import { mockMissions, mockReports, mockApplications, mockAssignments } from '@/lib/mock-data'; // Import all mock data
+import { mockMissions, mockReports, mockApplications, mockAssignments, mockStores } from '@/lib/mock-data'; // Import all mock data
 import { mockUsers } from '@/app/admin/users/users-mock.js'; // Use mockUsers from the consolidated file
 
 /**
@@ -559,4 +559,117 @@ export async function createMissionAction(missionData) {
     revalidatePath('/'); // Shopper available list
 
     return { success: true, message: "Mission created. Proceed to create survey.", missionId: newMissionId };
+}
+
+/**
+ * Server Action to add a new store.
+ * @param {object} storeData - The data for the new store.
+ * @returns {Promise<{success: boolean, message: string}>}
+ */
+export async function addStoreAction(storeData) {
+    console.log("Server Action: Adding new store", storeData);
+    await new Promise(resolve => setTimeout(resolve, 500));
+
+    if (!storeData.name || !storeData.city || !storeData.address || !storeData.mission_id) {
+        return { success: false, message: "Name, city, address, and mission are required." };
+    }
+
+    const newStore = {
+        id: `store-${Date.now()}-${Math.random().toString(16).slice(2)}`,
+        mission_id: storeData.mission_id,
+        name: storeData.name,
+        city: storeData.city,
+        address: storeData.address,
+        latitude: parseFloat(storeData.latitude) || 0,
+        longitude: parseFloat(storeData.longitude) || 0,
+        category: storeData.category || 'N/A',
+        active: storeData.active !== undefined ? storeData.active : true,
+    };
+
+    mockStores.push(newStore);
+    revalidatePath('/admin/stores');
+    return { success: true, message: "Store added successfully." };
+}
+
+/**
+ * Server Action to update an existing store.
+ * @param {string} storeId - The ID of the store to update.
+ * @param {object} storeData - The new data for the store.
+ * @returns {Promise<{success: boolean, message: string}>}
+ */
+export async function updateStoreAction(storeId, storeData) {
+    console.log(`Server Action: Updating store ${storeId}`, storeData);
+    await new Promise(resolve => setTimeout(resolve, 500));
+
+    const storeIndex = mockStores.findIndex(s => s.id === storeId);
+    if (storeIndex === -1) {
+        return { success: false, message: "Store not found." };
+    }
+
+    mockStores[storeIndex] = {
+        ...mockStores[storeIndex],
+        ...storeData,
+        latitude: parseFloat(storeData.latitude) || 0,
+        longitude: parseFloat(storeData.longitude) || 0,
+    };
+
+    revalidatePath('/admin/stores');
+    return { success: true, message: "Store updated successfully." };
+}
+
+/**
+ * Server Action to toggle the active status of a store.
+ * @param {string} storeId - The ID of the store to toggle.
+ * @returns {Promise<{success: boolean, message: string}>}
+ */
+export async function toggleStoreStatusAction(storeId) {
+    console.log(`Server Action: Toggling status for store ${storeId}`);
+    await new Promise(resolve => setTimeout(resolve, 500));
+
+    const storeIndex = mockStores.findIndex(s => s.id === storeId);
+    if (storeIndex === -1) {
+        return { success: false, message: "Store not found." };
+    }
+
+    mockStores[storeIndex].active = !mockStores[storeIndex].active;
+    revalidatePath('/admin/stores');
+    return { success: true, message: `Store status updated to ${mockStores[storeIndex].active ? 'active' : 'inactive'}.` };
+}
+
+/**
+ * Server Action to add multiple stores from an import.
+ * @param {Array<object>} newStores - An array of store objects to add.
+ * @returns {Promise<{success: boolean, message: string}>}
+ */
+export async function batchAddStoresAction(newStores) {
+    console.log(`Server Action: Importing ${newStores.length} stores.`);
+    await new Promise(resolve => setTimeout(resolve, 1000));
+
+    if (!Array.isArray(newStores) || newStores.length === 0) {
+        return { success: false, message: "No valid stores to import." };
+    }
+
+    // Basic validation on the server side as well
+    const storesToAdd = newStores
+      .filter(store => store.name && store.address && store.city && store.mission_id)
+      .map((store, index) => ({
+        ...store,
+        id: `store-${Date.now()}-${index}`,
+        latitude: parseFloat(store.latitude) || 0,
+        longitude: parseFloat(store.longitude) || 0,
+        active: store.active !== undefined ? store.active : true,
+        category: store.category || 'N/A',
+      }));
+
+    if (storesToAdd.length !== newStores.length) {
+      console.warn("Some stores were filtered out due to missing required fields.");
+    }
+    
+    if (storesToAdd.length > 0) {
+        mockStores.push(...storesToAdd);
+        revalidatePath('/admin/stores');
+        return { success: true, message: `${storesToAdd.length} stores imported successfully.` };
+    } else {
+        return { success: false, message: "No stores could be imported. Please check your file for required fields (name, address, city, mission_id)." };
+    }
 }

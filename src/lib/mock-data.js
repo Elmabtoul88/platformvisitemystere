@@ -560,6 +560,15 @@ export let mockAssignments = [
 ];
 
 
+export let mockStores = [
+  { id: 'store-1', mission_id: 'mission-1', name: 'Gourmet Place - Downtown', city: 'Los Angeles', address: '123 Fine Dining St', latitude: 34.0550, longitude: -118.2450, category: 'Restaurant', active: true },
+  { id: 'store-2', mission_id: 'mission-1', name: 'Gourmet Place - Beverly Hills', city: 'Beverly Hills', address: '456 Luxury Ave', latitude: 34.0736, longitude: -118.4004, category: 'Restaurant', active: true },
+  { id: 'store-3', mission_id: 'mission-2', name: 'Fashion Forward - The Grove', city: 'Los Angeles', address: '189 The Grove Dr', latitude: 34.0722, longitude: -118.3580, category: 'Retail', active: true },
+  { id: 'store-4', mission_id: 'mission-9', name: 'Community Bank - Main Branch', city: 'Los Angeles', address: '789 Financial Blvd', latitude: 34.0700, longitude: -118.2800, category: 'Banque', active: true },
+  { id: 'store-5', mission_id: 'mission-9', name: 'Community Bank - Westside', city: 'Santa Monica', address: '101 Ocean View', latitude: 34.0195, longitude: -118.4912, category: 'Banque', active: false },
+  { id: 'store-6', mission_id: 'mission-6', name: 'SuperMart Foods - East LA', city: 'East Los Angeles', address: '212 Market St', latitude: 34.0450, longitude: -118.2550, category: 'Supermarché', active: true },
+];
+
 
 // Helper function to generate mock users - NOT exported
 function generateMockUsers(count) {

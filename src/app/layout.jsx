@@ -7,7 +7,7 @@ import Link from 'next/link';
 import { Button } from '@/components/ui/button';
 import {
     Home, ListChecks, CheckSquare, LogIn, Shield, Users, Settings as SettingsIcon,
-    Map, Loader2, FileSignature, Menu, Bell, UserCheck as UserCheckIcon, Briefcase
+    Map, Loader2, FileSignature, Menu, Bell, UserCheck as UserCheckIcon, Briefcase, Building
 } from 'lucide-react';
 import { ProfileMenu } from '@/components/profile-menu';
 import React, { useEffect, useState, Suspense } from 'react';
@@ -128,6 +128,11 @@ function AppLayout({ children }) {
           <Button variant={pathname.startsWith('/admin/missions') ? "secondary" : "ghost"} size="sm" asChild onClick={closeMobileMenu}>
             <Link href="/admin/missions" className="flex items-center gap-1">
               <FileSignature className="w-4 h-4" /> Manage Missions
+            </Link>
+          </Button>
+           <Button variant={pathname.startsWith('/admin/stores') ? "secondary" : "ghost"} size="sm" asChild onClick={closeMobileMenu}>
+            <Link href="/admin/stores" className="flex items-center gap-1">
+              <Building className="w-4 h-4" /> Manage Stores
             </Link>
           </Button>
           <Button variant={pathname.startsWith('/admin/applications') ? "secondary" : "ghost"} size="sm" asChild onClick={closeMobileMenu}>
