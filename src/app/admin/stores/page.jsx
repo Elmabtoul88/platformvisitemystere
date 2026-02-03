@@ -1,4 +1,3 @@
-
 'use client';
 
 import React, { useState, useMemo, useTransition, useEffect, useRef } from 'react';
@@ -8,7 +7,7 @@ import { Input } from '@/components/ui/input';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
-import { MoreHorizontal, Search, Edit, Power, PowerOff, Loader2, Building, PlusCircle, Upload } from 'lucide-react';
+import { MoreHorizontal, Search, Edit, Power, PowerOff, Loader2, Building, PlusCircle, Upload, Info } from 'lucide-react';
 import { mockStores, mockMissions } from '@/lib/mock-data';
 import { useRouter } from 'next/navigation';
 import { useToast } from '@/hooks/use-toast';
@@ -21,6 +20,7 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import * as XLSX from 'xlsx';
 import { addStoreAction, updateStoreAction, toggleStoreStatusAction, batchAddStoresAction } from '../../actions/admin-actions';
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 
 const storeSchema = z.object({
   name: z.string().min(3, "Name must be at least 3 characters"),
@@ -204,6 +204,18 @@ export default function AdminStoresPage() {
                 </div>
             </div>
 
+            <Alert className="mb-6 bg-sky-50 border-sky-200 dark:bg-sky-900/50 dark:border-sky-700 text-sky-800 dark:text-sky-200 [&>svg]:text-sky-600 dark:[&>svg]:text-sky-400">
+                <Info className="h-4 w-4" />
+                <AlertTitle>Excel Import Guide</AlertTitle>
+                <AlertDescription>
+                    To import stores from an Excel file (.xlsx, .xls), ensure your file has a header row with the following columns. The importer will read the first sheet in the workbook.
+                    <ul className="list-disc list-inside mt-2 space-y-1 text-xs">
+                        <li><strong>Required:</strong> <code>name</code>, <code>city</code>, <code>address</code>, <code>mission_id</code></li>
+                        <li><strong>Optional:</strong> <code>latitude</code>, <code>longitude</code>, <code>category</code>, <code>active</code> (defaults to true if omitted)</li>
+                    </ul>
+                </AlertDescription>
+            </Alert>
+
             <Card className="shadow-sm">
                 <CardHeader>
                     <CardTitle>Store List</CardTitle>
@@ -330,5 +342,3 @@ export default function AdminStoresPage() {
         </div>
     );
 }
-
-    
