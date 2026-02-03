@@ -285,7 +285,7 @@ export default function AdminStoresPage() {
                             <div className="grid grid-cols-4 items-center gap-4">
                                 <Label htmlFor="mission_id" className="text-right">Mission</Label>
                                 <Controller name="mission_id" control={control} render={({ field }) => (
-                                    <Select onValueChange={field.onChange} defaultValue={field.value}>
+                                    <Select onValueChange={field.onChange} value={field.value || ''}>
                                         <SelectTrigger className="col-span-3"><SelectValue placeholder="Select a mission" /></SelectTrigger>
                                         <SelectContent><SelectGroup>
                                             {missions.map(m => <SelectItem key={m.id} value={m.id}>{m.title}</SelectItem>)}
@@ -311,7 +311,21 @@ export default function AdminStoresPage() {
                             </div>
                              <div className="grid grid-cols-4 items-center gap-4">
                                 <Label htmlFor="category" className="text-right">Category</Label>
-                                <Input id="category" {...register("category")} placeholder="e.g., Supermarché" className="col-span-3" />
+                                <Controller name="category" control={control} render={({ field }) => (
+                                    <Select onValueChange={field.onChange} value={field.value || ''}>
+                                        <SelectTrigger id="category" className="col-span-3">
+                                            <SelectValue placeholder="Select a category" />
+                                        </SelectTrigger>
+                                        <SelectContent>
+                                            <SelectGroup>
+                                                {['Supermarché', 'Retail', 'Banque', 'Restaurant', 'Service', 'Entertainment', 'Technology', 'Public Service'].map(cat => (
+                                                    <SelectItem key={cat} value={cat}>{cat}</SelectItem>
+                                                ))}
+                                            </SelectGroup>
+                                        </SelectContent>
+                                    </Select>
+                                )} />
+                                {errors.category && <p className="col-span-4 text-xs text-destructive text-right">{errors.category.message}</p>}
                             </div>
                             <div className="grid grid-cols-4 items-center gap-4">
                                 <Label htmlFor="latitude" className="text-right">Latitude</Label>
