@@ -567,6 +567,10 @@ export let mockStores = [
   { id: 'store-4', mission_id: 'mission-9', name: 'Community Bank - Main Branch', city: 'Los Angeles', address: '789 Financial Blvd', latitude: 34.0700, longitude: -118.2800, category: 'Banque', active: true },
   { id: 'store-5', mission_id: 'mission-9', name: 'Community Bank - Westside', city: 'Santa Monica', address: '101 Ocean View', latitude: 34.0195, longitude: -118.4912, category: 'Banque', active: false },
   { id: 'store-6', mission_id: 'mission-6', name: 'SuperMart Foods - East LA', city: 'East Los Angeles', address: '212 Market St', latitude: 34.0450, longitude: -118.2550, category: 'Supermarché', active: true },
+  { id: 'store-7', mission_id: 'mission-1', name: 'Gourmet Place - Anytown Mall', city: 'Anytown', address: '100 Main Street', latitude: 39.1000, longitude: -94.5785, category: 'Restaurant', active: true },
+  { id: 'store-8', mission_id: 'mission-1', name: 'Gourmet Place - Riverfront', city: 'Anytown', address: '25 River Walk', latitude: 39.1100, longitude: -94.5800, category: 'Restaurant', active: true },
+  { id: 'store-9', mission_id: 'mission-5', name: 'Burger Bonanza - Anytown South', city: 'Anytown', address: '75 South Street', latitude: 39.0950, longitude: -94.5760, category: 'Restaurant', active: true },
+  { id: 'store-10', mission_id: 'mission-6', name: 'SuperMart Foods - Anytown', city: 'Anytown', address: '500 Central Avenue', latitude: 39.1050, longitude: -94.5770, category: 'Supermarché', active: true },
 ];
 
 
