@@ -13,8 +13,8 @@ import {
   AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
   AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger
 } from "@/components/ui/alert-dialog";
-import { Loader2, CheckCircle, XCircle, UserCheck, Search, Info, MapPin, Building, FileText } from 'lucide-react';
-import { mockApplications, mockMissions } from '@/lib/mock-data'; // Import all necessary mock data
+import { Loader2, CheckCircle, XCircle, UserCheck, Search, Info, MapPin, Building, FileText, Tag } from 'lucide-react';
+import { mockApplications, mockMissions, mockStores } from '@/lib/mock-data'; // Import mockStores
 import { mockUsers } from '@/app/admin/users/users-mock.js';
 import { approveApplicationAction, refuseApplicationAction } from '../../actions/admin-actions.js';
 import { format } from 'date-fns';
@@ -22,6 +22,7 @@ import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useToast } from '@/hooks/use-toast';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 
 // Helper to get mission details by ID
 const getMissionDetails = (missionId) => {
@@ -59,6 +60,7 @@ export default function AdminApplicationsPage() {
         specificStoreAddress: '',
         specificScenario: ''
     });
+    const [selectedStoreId, setSelectedStoreId] = useState('');
 
     useEffect(() => {
         setIsLoading(true);
@@ -71,6 +73,9 @@ export default function AdminApplicationsPage() {
             setIsLoading(false);
         }, 300);
     }, []);
+
+    const storesForMission = applicationToApprove ? mockStores.filter(s => s.mission_id === applicationToApprove.mission_id && s.active) : [];
+    const selectedStoreDetails = selectedStoreId ? storesForMission.find(s => s.id === selectedStoreId) : null;
 
     const filteredApplications = useMemo(() => {
         return applications.filter(app => {
@@ -112,10 +117,29 @@ export default function AdminApplicationsPage() {
     const openApproveModal = (app) => {
         const mission = getMissionDetails(app.mission_id);
         setApplicationToApprove(app);
+        // Reset state when opening
         setAssignmentDetails({
-            specificStoreAddress: mission.location,
-            specificScenario: mission.description
+            specificStoreAddress: '',
+            specificScenario: mission.description // Pre-fill scenario from mission
         });
+        setSelectedStoreId('');
+    };
+    
+    const handleStoreSelection = (storeId) => {
+        const store = mockStores.find(s => s.id === storeId);
+        if (store) {
+            setSelectedStoreId(storeId);
+            setAssignmentDetails(prev => ({
+                ...prev,
+                specificStoreAddress: `${store.address}, ${store.city}`,
+            }));
+        } else {
+            setSelectedStoreId('');
+            setAssignmentDetails(prev => ({
+                ...prev,
+                specificStoreAddress: '',
+            }));
+        }
     };
 
     const handleRefuse = async () => {
@@ -276,11 +300,37 @@ export default function AdminApplicationsPage() {
                                                             <AlertDialogHeader>
                                                                 <AlertDialogTitle>Approve & Assign Mission</AlertDialogTitle>
                                                                 <AlertDialogDescription>
-                                                                    Review and edit the specific details for this assignment to <strong>{user.name}</strong>.
+                                                                    Select a store and confirm the assignment details for <strong>{user.name}</strong>.
                                                                 </AlertDialogDescription>
                                                             </AlertDialogHeader>
                                                             <div className="my-4 text-sm space-y-4 p-3 border rounded-md bg-secondary/50">
                                                                 <div className="font-semibold text-primary">{mission.title}</div>
+                                                                
+                                                                <div className="space-y-2">
+                                                                    <Label htmlFor="store-select">Select Store *</Label>
+                                                                    <Select onValueChange={handleStoreSelection} value={selectedStoreId}>
+                                                                        <SelectTrigger id="store-select">
+                                                                            <SelectValue placeholder="Select a store for assignment..." />
+                                                                        </SelectTrigger>
+                                                                        <SelectContent>
+                                                                            {storesForMission.length > 0 ? (
+                                                                                storesForMission.map(store => (
+                                                                                    <SelectItem key={store.id} value={store.id}>{store.name} - {store.city}</SelectItem>
+                                                                                ))
+                                                                            ) : (
+                                                                                <div className="p-2 text-xs text-muted-foreground">No active stores found for this mission.</div>
+                                                                            )}
+                                                                        </SelectContent>
+                                                                    </Select>
+                                                                </div>
+
+                                                                {selectedStoreDetails && (
+                                                                    <div className="space-y-2 p-3 border rounded-md bg-background text-xs">
+                                                                         <p className="flex items-center gap-2"><Building className="w-3 h-3 text-muted-foreground"/> <strong>Name:</strong> {selectedStoreDetails.name}</p>
+                                                                         <p className="flex items-center gap-2"><Tag className="w-3 h-3 text-muted-foreground"/> <strong>Category:</strong> {selectedStoreDetails.category}</p>
+                                                                    </div>
+                                                                )}
+
                                                                 <div className="space-y-1">
                                                                     <Label htmlFor="specificStoreAddress" className="flex items-center gap-2"><MapPin className="w-4 h-4 mt-0.5 text-muted-foreground" /> Specific Store Address</Label>
                                                                     <Input 
@@ -288,6 +338,7 @@ export default function AdminApplicationsPage() {
                                                                         value={assignmentDetails.specificStoreAddress}
                                                                         onChange={(e) => setAssignmentDetails(prev => ({...prev, specificStoreAddress: e.target.value}))}
                                                                         className="bg-background"
+                                                                        placeholder="Address auto-fills from store selection"
                                                                     />
                                                                 </div>
                                                                 <div className="space-y-1">
