@@ -48,6 +48,11 @@ export default function AdminStoresPage() {
     const [editingStore, setEditingStore] = useState(null);
     const fileInputRef = useRef(null);
 
+    // Pagination state
+    const [currentPage, setCurrentPage] = useState(1);
+    const [itemsPerPage, setItemsPerPage] = useState(10);
+
+
     const { register, handleSubmit, control, reset, formState: { errors } } = useForm({
         resolver: zodResolver(storeSchema),
         defaultValues: {
@@ -65,6 +70,12 @@ export default function AdminStoresPage() {
             setIsLoading(false);
         }, 300);
     }, []);
+
+    // Reset to first page whenever filters change
+    useEffect(() => {
+        setCurrentPage(1);
+    }, [searchTerm, missionFilter, categoryFilter]);
+
 
     const uniqueCategories = useMemo(() => [...new Set(stores.map(s => s.category).filter(Boolean))], [stores]);
 
@@ -87,6 +98,13 @@ export default function AdminStoresPage() {
             return missionMatch && categoryMatch && searchMatch;
         });
     }, [stores, searchTerm, missionFilter, categoryFilter, missions]);
+    
+    const pageCount = Math.ceil(filteredStores.length / itemsPerPage);
+
+    const paginatedStores = useMemo(() => {
+        const startIndex = (currentPage - 1) * itemsPerPage;
+        return filteredStores.slice(startIndex, startIndex + itemsPerPage);
+    }, [filteredStores, currentPage, itemsPerPage]);
 
     const handleAddNew = () => {
         setEditingStore(null);
@@ -266,8 +284,8 @@ export default function AdminStoresPage() {
                             </TableRow>
                         </TableHeader>
                         <TableBody>
-                            {filteredStores.length > 0 ? (
-                                filteredStores.map((store) => (
+                            {paginatedStores.length > 0 ? (
+                                paginatedStores.map((store) => (
                                     <TableRow key={store.id} className={isProcessing ? 'opacity-50' : ''}>
                                         <TableCell className="font-medium">{store.name}</TableCell>
                                         <TableCell>{store.address}, {store.city}</TableCell>
@@ -300,6 +318,32 @@ export default function AdminStoresPage() {
                         </TableBody>
                     </Table>
                 </CardContent>
+                 <CardFooter className="flex items-center justify-between pt-4 border-t">
+                    <div className="text-sm text-muted-foreground">
+                        Showing <strong>{paginatedStores.length}</strong> of <strong>{filteredStores.length}</strong> stores.
+                    </div>
+                    <div className="flex items-center gap-2">
+                        <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => setCurrentPage(prev => Math.max(prev - 1, 1))}
+                            disabled={currentPage === 1 || pageCount === 0}
+                        >
+                            Previous
+                        </Button>
+                        <span className="text-sm text-muted-foreground">
+                            Page {pageCount === 0 ? 0 : currentPage} of {pageCount}
+                        </span>
+                        <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => setCurrentPage(prev => Math.min(prev + 1, pageCount))}
+                            disabled={currentPage === pageCount || pageCount === 0}
+                        >
+                            Next
+                        </Button>
+                    </div>
+                </CardFooter>
             </Card>
             
             <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
