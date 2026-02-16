@@ -14,12 +14,14 @@ import { format } from 'date-fns'; // To format dates if needed
 import { useRouter } from 'next/navigation'; // Import useRouter
 import { useToast } from '@/hooks/use-toast'; // Import useToast
 import { toggleUserStatusAction } from '../../actions/admin-actions.js'; // Import the server action
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 
 
 export default function AdminUsersPage() {
     const router = useRouter(); // Initialize useRouter
     const { toast } = useToast(); // Initialize useToast
     const [searchTerm, setSearchTerm] = useState('');
+    const [cityFilter, setCityFilter] = useState('all');
     const [users, setUsers] = useState(mockUsers); // Replace with API call
     const [isToggling, setIsToggling] = useState(null); // Track which user status is being toggled
     const [isTransitioning, startTransition] = useTransition(); // For optimistic updates
@@ -28,23 +30,32 @@ export default function AdminUsersPage() {
     const [currentPage, setCurrentPage] = useState(1);
     const [itemsPerPage, setItemsPerPage] = useState(10);
 
+    const uniqueCities = useMemo(() => {
+        const usersArray = Array.isArray(users) ? users : [];
+        return [...new Set(usersArray.map(user => user.city).filter(Boolean))];
+    }, [users]);
+
 
     const filteredUsers = useMemo(() => {
         // Ensure users is an array before filtering
         const usersArray = Array.isArray(users) ? users : [];
-        return usersArray.filter(user =>
-            user.name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-            user.email?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-            user.id?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-            user.role?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-            user.status?.toLowerCase().includes(searchTerm.toLowerCase())
-        );
-    }, [users, searchTerm]);
+        return usersArray.filter(user => {
+            const cityMatch = cityFilter === 'all' || user.city === cityFilter;
+            const searchMatch = !searchTerm || (
+                user.name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+                user.email?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+                user.id?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+                user.role?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+                user.status?.toLowerCase().includes(searchTerm.toLowerCase())
+            );
+            return cityMatch && searchMatch;
+        });
+    }, [users, searchTerm, cityFilter]);
 
      // Reset to first page whenever filters change
     useEffect(() => {
         setCurrentPage(1);
-    }, [searchTerm]);
+    }, [searchTerm, cityFilter]);
 
     const pageCount = Math.ceil(filteredUsers.length / itemsPerPage);
 
@@ -111,14 +122,25 @@ export default function AdminUsersPage() {
                 <CardHeader>
                     <CardTitle>User List</CardTitle>
                     <CardDescription>View, edit, and manage all user accounts.</CardDescription>
-                    <div className="relative pt-2">
-                        <Search className="absolute left-2.5 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                        <Input
-                            placeholder="Search users (name, email, ID, role, status)..."
-                            value={searchTerm}
-                            onChange={(e) => setSearchTerm(e.target.value)}
-                            className="pl-8 w-full md:w-1/2 lg:w-1/3"
-                        />
+                    <div className="flex flex-col sm:flex-row items-center gap-2 pt-4">
+                        <div className="relative w-full sm:flex-grow">
+                            <Search className="absolute left-2.5 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                            <Input
+                                placeholder="Search users..."
+                                value={searchTerm}
+                                onChange={(e) => setSearchTerm(e.target.value)}
+                                className="pl-8 w-full h-9"
+                            />
+                        </div>
+                        <Select value={cityFilter} onValueChange={setCityFilter}>
+                            <SelectTrigger className="w-full sm:w-[180px] h-9">
+                                <SelectValue placeholder="Filter by city" />
+                            </SelectTrigger>
+                            <SelectContent>
+                                <SelectItem value="all">All Cities</SelectItem>
+                                {uniqueCities.map(city => <SelectItem key={city} value={city}>{city}</SelectItem>)}
+                            </SelectContent>
+                        </Select>
                     </div>
                 </CardHeader>
                 <CardContent>
@@ -213,7 +235,7 @@ export default function AdminUsersPage() {
                             ) : (
                                 <TableRow>
                                     <TableCell colSpan={7} className="h-24 text-center">
-                                        No users found matching your search criteria.
+                                        No users found matching your current filters.
                                     </TableCell>
                                 </TableRow>
                             )}
