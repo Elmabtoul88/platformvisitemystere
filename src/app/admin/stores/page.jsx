@@ -39,6 +39,8 @@ export default function AdminStoresPage() {
     const [stores, setStores] = useState([]);
     const [missions, setMissions] = useState([]);
     const [searchTerm, setSearchTerm] = useState('');
+    const [missionFilter, setMissionFilter] = useState('all');
+    const [categoryFilter, setCategoryFilter] = useState('all');
     const [isLoading, setIsLoading] = useState(true);
     const [isProcessing, setIsProcessing] = useState(false);
     const [isTransitioning, startTransition] = useTransition();
@@ -64,17 +66,27 @@ export default function AdminStoresPage() {
         }, 300);
     }, []);
 
-    const filteredStores = useMemo(() => {
-        return stores.filter(store =>
-            store.name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-            store.city?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-            store.address?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-            store.category?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-            store.mission_id?.toLowerCase().includes(searchTerm.toLowerCase())
-        );
-    }, [stores, searchTerm]);
+    const uniqueCategories = useMemo(() => [...new Set(stores.map(s => s.category).filter(Boolean))], [stores]);
 
     const getMissionTitle = (missionId) => missions.find(m => m.id === missionId)?.title || missionId;
+
+    const filteredStores = useMemo(() => {
+        return stores.filter(store => {
+            const missionMatch = missionFilter === 'all' || store.mission_id === missionFilter;
+            const categoryMatch = categoryFilter === 'all' || store.category === categoryFilter;
+
+            const searchTermLower = searchTerm.toLowerCase();
+            const searchMatch = !searchTermLower || (
+                store.name?.toLowerCase().includes(searchTermLower) ||
+                store.city?.toLowerCase().includes(searchTermLower) ||
+                store.address?.toLowerCase().includes(searchTermLower) ||
+                store.category?.toLowerCase().includes(searchTermLower) ||
+                getMissionTitle(store.mission_id).toLowerCase().includes(searchTermLower)
+            );
+
+            return missionMatch && categoryMatch && searchMatch;
+        });
+    }, [stores, searchTerm, missionFilter, categoryFilter, missions]);
 
     const handleAddNew = () => {
         setEditingStore(null);
@@ -103,6 +115,8 @@ export default function AdminStoresPage() {
         if (result.success) {
             startTransition(() => {
                 setStores(prev => prev.map(s => s.id === storeId ? { ...s, active: !s.active } : s));
+                 const storeIndex = mockStores.findIndex(s => s.id === storeId);
+                 if (storeIndex !== -1) mockStores[storeIndex].active = !mockStores[storeIndex].active;
             });
             toast({ title: "Status Updated", description: result.message });
         } else {
@@ -119,12 +133,9 @@ export default function AdminStoresPage() {
             const result = await action;
             if (result.success) {
                 startTransition(() => {
-                    if (editingStore) {
-                        setStores(prev => prev.map(s => s.id === editingStore.id ? { ...s, ...data } : s));
-                    } else {
-                        // For simulation, we add a placeholder. A real app would refetch or get the new object back.
-                        setStores(prev => [...prev, { id: `new-${Date.now()}`, ...data }]);
-                    }
+                    // This simulation is imperfect. A real app would refetch or get the new object back.
+                    // For now, we'll just refetch from the (mutated) mock data source.
+                     setStores([...mockStores]);
                 });
                 toast({ title: editingStore ? "Store Updated" : "Store Added", description: result.message });
                 setDialogOpen(false);
@@ -156,18 +167,16 @@ export default function AdminStoresPage() {
                     throw new Error("Excel file is empty or in an invalid format.");
                 }
 
-                // Basic validation of headers
-                const requiredHeaders = ['name', 'city', 'address', 'latitude', 'longitude', 'category', 'mission_id', 'active'];
+                const requiredHeaders = ['name', 'city', 'address', 'mission_id'];
                 const fileHeaders = Object.keys(json[0]);
                 const missingHeaders = requiredHeaders.filter(h => !fileHeaders.includes(h));
-                if (missingHeaders.length > 3) { // Allow some optional fields
+                if (missingHeaders.length > 0) {
                      throw new Error(`Missing required Excel columns: ${missingHeaders.join(', ')}`);
                 }
 
                 const result = await batchAddStoresAction(json);
                 if (result.success) {
-                    // Refetch or update state. For simulation, just assume it worked and refetch from mock.
-                    startTransition(() => setStores(mockStores));
+                    startTransition(() => setStores([...mockStores]));
                     toast({ title: "Import Successful", description: result.message });
                 } else {
                     throw new Error(result.message);
@@ -178,7 +187,6 @@ export default function AdminStoresPage() {
                 toast({ variant: "destructive", title: "Import Failed", description: error.message });
             } finally {
                 setIsProcessing(false);
-                // Reset file input
                 if(fileInputRef.current) fileInputRef.current.value = "";
             }
         };
@@ -217,12 +225,32 @@ export default function AdminStoresPage() {
             </Alert>
 
             <Card className="shadow-sm">
-                <CardHeader>
+                 <CardHeader>
                     <CardTitle>Store List</CardTitle>
                     <CardDescription>View, add, and manage all stores associated with missions.</CardDescription>
-                    <div className="relative pt-2">
-                        <Search className="absolute left-2.5 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                        <Input placeholder="Search stores..." value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} className="pl-8 w-full md:w-1/2 lg:w-1/3" />
+                    <div className="flex flex-col sm:flex-row items-center gap-2 pt-4">
+                        <div className="relative w-full sm:flex-grow">
+                            <Search className="absolute left-2.5 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                            <Input placeholder="Search all fields..." value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} className="pl-8 w-full h-9" />
+                        </div>
+                        <Select value={missionFilter} onValueChange={setMissionFilter}>
+                            <SelectTrigger className="w-full sm:w-[220px] h-9">
+                                <SelectValue placeholder="Filter by mission" />
+                            </SelectTrigger>
+                            <SelectContent>
+                                <SelectItem value="all">All Missions</SelectItem>
+                                {missions.map(m => <SelectItem key={m.id} value={m.id}>{m.title}</SelectItem>)}
+                            </SelectContent>
+                        </Select>
+                        <Select value={categoryFilter} onValueChange={setCategoryFilter}>
+                            <SelectTrigger className="w-full sm:w-[180px] h-9">
+                                <SelectValue placeholder="Filter by category" />
+                            </SelectTrigger>
+                            <SelectContent>
+                                <SelectItem value="all">All Categories</SelectItem>
+                                {uniqueCategories.map(c => <SelectItem key={c} value={c}>{c}</SelectItem>)}
+                            </SelectContent>
+                        </Select>
                     </div>
                 </CardHeader>
                 <CardContent>
