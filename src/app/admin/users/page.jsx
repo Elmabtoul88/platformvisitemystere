@@ -1,7 +1,7 @@
 'use client';
 
-import React, { useState, useMemo, useTransition } from 'react';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import React, { useState, useMemo, useTransition, useEffect } from 'react';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
@@ -24,6 +24,11 @@ export default function AdminUsersPage() {
     const [isToggling, setIsToggling] = useState(null); // Track which user status is being toggled
     const [isTransitioning, startTransition] = useTransition(); // For optimistic updates
 
+    // Pagination state
+    const [currentPage, setCurrentPage] = useState(1);
+    const [itemsPerPage, setItemsPerPage] = useState(10);
+
+
     const filteredUsers = useMemo(() => {
         // Ensure users is an array before filtering
         const usersArray = Array.isArray(users) ? users : [];
@@ -35,6 +40,18 @@ export default function AdminUsersPage() {
             user.status?.toLowerCase().includes(searchTerm.toLowerCase())
         );
     }, [users, searchTerm]);
+
+     // Reset to first page whenever filters change
+    useEffect(() => {
+        setCurrentPage(1);
+    }, [searchTerm]);
+
+    const pageCount = Math.ceil(filteredUsers.length / itemsPerPage);
+
+    const paginatedUsers = useMemo(() => {
+        const startIndex = (currentPage - 1) * itemsPerPage;
+        return filteredUsers.slice(startIndex, startIndex + itemsPerPage);
+    }, [filteredUsers, currentPage, itemsPerPage]);
 
     const handleViewUser = (userId) => {
         console.log(`Admin: Navigating to view user ${userId}`);
@@ -118,8 +135,8 @@ export default function AdminUsersPage() {
                             </TableRow>
                         </TableHeader>
                         <TableBody>
-                            {filteredUsers.length > 0 ? (
-                                filteredUsers.map((user) => (
+                            {paginatedUsers.length > 0 ? (
+                                paginatedUsers.map((user) => (
                                     <TableRow key={user.id} className={isToggling === user.id ? 'opacity-50' : ''}>
                                         <TableCell className="font-medium">
                                             <div className="flex items-center gap-2">
@@ -203,6 +220,32 @@ export default function AdminUsersPage() {
                         </TableBody>
                     </Table>
                 </CardContent>
+                <CardFooter className="flex items-center justify-between pt-4 border-t">
+                    <div className="text-sm text-muted-foreground">
+                        Showing <strong>{paginatedUsers.length}</strong> of <strong>{filteredUsers.length}</strong> users.
+                    </div>
+                    <div className="flex items-center gap-2">
+                        <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => setCurrentPage(prev => Math.max(prev - 1, 1))}
+                            disabled={currentPage === 1 || pageCount === 0}
+                        >
+                            Previous
+                        </Button>
+                        <span className="text-sm text-muted-foreground">
+                            Page {pageCount === 0 ? 0 : currentPage} of {pageCount}
+                        </span>
+                        <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => setCurrentPage(prev => Math.min(prev + 1, pageCount))}
+                            disabled={currentPage === pageCount || pageCount === 0}
+                        >
+                            Next
+                        </Button>
+                    </div>
+                </CardFooter>
             </Card>
         </div>
     );
