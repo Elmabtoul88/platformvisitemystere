@@ -6,7 +6,7 @@ import { mockMissions, mockReports, mockApplications, mockAssignments, mockStore
 import { mockUsers } from '@/app/admin/users/users-mock.js';
 
 /**
- * Step 1: Create Mission with process fields
+ * Create Mission with process fields
  */
 export async function createMissionAction(missionData) {
     console.log("Server Action: Creating new process-based mission", missionData);
@@ -80,7 +80,7 @@ export async function assignMissionAction(missionId, userIds, details) {
 }
 
 /**
- * Step 4: Approve positioning based on quiz answers
+ * Approve positioning application
  */
 export async function approveApplicationAction(applicationId, assignmentData) {
     const appIndex = mockApplications.findIndex(app => app.id === applicationId);
@@ -135,6 +135,32 @@ export async function submitApplicationAction(applicationData) {
 }
 
 /**
+ * User Management Actions
+ */
+export async function toggleUserStatusAction(userId, currentStatus) {
+    console.log(`Server Action: Toggling user status for ${userId}`);
+    const user = mockUsers.find(u => u.id === userId);
+    if (!user) return { success: false, message: "Utilisateur non trouvé." };
+    
+    const newStatus = currentStatus === 'active' ? 'inactive' : 'active';
+    user.status = newStatus;
+    
+    revalidatePath('/admin/users');
+    return { success: true, newStatus, message: `Statut utilisateur mis à jour: ${newStatus}` };
+}
+
+export async function updateUserAction(userId, userData) {
+    const index = mockUsers.findIndex(u => u.id === userId);
+    if (index === -1) return { success: false, message: "Utilisateur non trouvé." };
+    
+    mockUsers[index] = { ...mockUsers[index], ...userData };
+    
+    revalidatePath('/admin/users');
+    revalidatePath(`/admin/users/${userId}`);
+    return { success: true, message: "Profil utilisateur mis à jour avec succès." };
+}
+
+/**
  * Store Management Actions
  */
 export async function addStoreAction(storeData) {
@@ -145,6 +171,21 @@ export async function addStoreAction(storeData) {
     mockStores.push(newStore);
     revalidatePath('/admin/stores');
     return { success: true, message: "Magasin ajouté avec succès." };
+}
+
+export async function batchAddStoresAction(storesData) {
+    const added = [];
+    storesData.forEach(data => {
+        const newStore = {
+            id: `store-${Date.now()}-${Math.random().toString(16).slice(2)}`,
+            active: true,
+            ...data
+        };
+        mockStores.push(newStore);
+        added.push(newStore);
+    });
+    revalidatePath('/admin/stores');
+    return { success: true, message: `${added.length} magasins importés avec succès.` };
 }
 
 export async function updateStoreAction(storeId, storeData) {
@@ -164,7 +205,38 @@ export async function toggleStoreStatusAction(storeId) {
 }
 
 /**
- * Step 11: Final closure
+ * Report Review Actions
+ */
+export async function approveReportAction(reportId, missionId) {
+    const report = mockReports.find(r => r.id === reportId);
+    if (!report) return { success: false, message: "Rapport non trouvé." };
+    
+    report.status = 'approved';
+    
+    // Update mission status if needed
+    const mission = mockMissions.find(m => m.id === missionId);
+    if (mission) {
+        mission.status = 'approved';
+    }
+    
+    revalidatePath(`/admin/missions/${missionId}/reports`);
+    revalidatePath('/missions/completed');
+    return { success: true, message: "Rapport approuvé et paiement validé." };
+}
+
+export async function refuseReportAction(reportId, missionId, reason) {
+    const report = mockReports.find(r => r.id === reportId);
+    if (!report) return { success: false, message: "Rapport non trouvé." };
+    
+    report.status = 'refused';
+    report.refusalReason = reason;
+    
+    revalidatePath(`/admin/missions/${missionId}/reports`);
+    return { success: true, message: "Rapport refusé avec motif." };
+}
+
+/**
+ * Final closure
  */
 export async function finalizeMissionAction(missionId) {
     const mission = mockMissions.find(m => m.id === missionId);

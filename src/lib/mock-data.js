@@ -54,6 +54,28 @@ export let mockMissions = [
     briefingUrl: '/files/briefing_mission_5.pdf',
     scenarioUrl: '/files/scenario_mission_5.pdf',
     questionnairePdfUrl: '/files/questionnaire_mission_5.pdf',
+  },
+  {
+    id: 'mission-anytown',
+    title: 'Local Store Audit - Anytown',
+    description: 'Evaluate the local store performance and inventory availability.',
+    deadline: new Date(Date.now() + 20 * 24 * 60 * 60 * 1000),
+    reward: 50,
+    location: 'Anytown, Downtown',
+    country: 'USA',
+    city: 'Anytown',
+    category: 'Retail',
+    businessName: 'Anytown Mart',
+    clientId: 'client-2',
+    soughtProfile: 'Any active shopper',
+    status: 'assigned',
+    assignedTo: ['user-shopper-1'],
+    docsConsulted: { briefing: true, scenario: true, questionnaire: true },
+    knowledgeQuizPassed: true,
+    plannedDate: new Date(Date.now() + 1000 * 60 * 60 * 2), // Scheduled in 2 hours
+    briefingUrl: '#',
+    scenarioUrl: '#',
+    questionnairePdfUrl: '#',
   }
 ];
 
@@ -63,8 +85,8 @@ export const mockUser = {
   email: 'alex@example.com',
   role: 'shopper',
   profilePicUrl: `https://picsum.photos/seed/user-shopper-1/100/100`,
-  city: 'Paris',
-  country: 'France',
+  city: 'Anytown',
+  country: 'USA',
   status: 'active',
   completedMissions: 1,
 };
@@ -91,12 +113,18 @@ export let mockSurveyQuestions = {
    'mission-5': [
        { id: 'q1', type: 'rating', text: 'Accueil du conseiller.', isRequired: true },
        { id: 'q2', type: 'image_upload', text: 'Photo du ticket de caisse.', isRequired: true, maxImages: 1 },
+   ],
+   'mission-anytown': [
+       { id: 'q1', type: 'text', text: 'Audit observations.', isRequired: true }
    ]
 };
 
 export let mockStores = [
-  { id: 'store-1', mission_id: 'mission-1', name: 'Gourmet Maarif', city: 'Casablanca', address: 'Rue Maarif', latitude: 33.5892, longitude: -7.6018, active: true },
-  { id: 'store-2', mission_id: 'mission-5', name: 'Beauty Paris Etoile', city: 'Paris', address: 'Place de l\'Etoile', latitude: 48.8738, longitude: 2.2950, active: true },
+  { id: 'store-1', mission_id: 'mission-1', name: 'Gourmet Maarif', city: 'Casablanca', address: 'Rue Maarif', latitude: 33.5892, longitude: -7.6018, active: true, category: 'Restaurant' },
+  { id: 'store-2', mission_id: 'mission-5', name: 'Beauty Paris Etoile', city: 'Paris', address: 'Place de l\'Etoile', latitude: 48.8738, longitude: 2.2950, active: true, category: 'Beauté' },
+  { id: 'store-3', mission_id: 'mission-anytown', name: 'Downtown Mart', city: 'Anytown', address: '123 Main St', latitude: 34.0522, longitude: -118.2437, active: true, category: 'Retail' },
+  { id: 'store-4', mission_id: 'mission-anytown', name: 'Eastside Mart', city: 'Anytown', address: '456 East Ave', latitude: 34.0622, longitude: -118.2337, active: true, category: 'Retail' },
+  { id: 'store-5', mission_id: 'mission-anytown', name: 'Westside Mart', city: 'Anytown', address: '789 West Blvd', latitude: 34.0422, longitude: -118.2537, active: true, category: 'Retail' },
 ];
 
 export let mockAssignments = [];
