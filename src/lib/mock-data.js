@@ -1,6 +1,5 @@
-
 // IMPORTANT: This file maintains the mock data for the application.
-// Following the 11-step process defined in the requirements.
+// Restructured to use flexible quiz definitions.
 
 export let mockMissions = [
   {
@@ -9,22 +8,35 @@ export let mockMissions = [
     description: 'Evaluate the dinner service quality, food presentation, and overall ambiance.',
     deadline: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000),
     reward: 200,
-    location: 'Casablanca, Maarif',
+    location: 'Casablanca, Maroc',
     country: 'Maroc',
     city: 'Casablanca',
-    storeNeighborhood: 'Maarif',
     category: 'Restaurant',
     businessName: 'Gourmet Place Inc.',
     clientId: 'client-1',
     soughtProfile: 'Femme de 30 à 60 ans',
     status: 'available',
     profileQuiz: [
-      { id: 'p1', question: 'Ma peau est:', options: ['Normale', 'Grasse', 'Mixte'] },
-      { id: 'p2', question: 'Pour me démaquiller j’utilise:', options: ['Un lait', 'Une lotion', 'Un démaquillant'] }
-    ],
-    knowledgeQuiz: [
-      { id: 'k1', question: 'La visite porte sur le conseil pour les peaux mixtes?', type: 'boolean', answer: true },
-      { id: 'k2', question: 'Le passage en caisse est obligatoire?', type: 'boolean', answer: true }
+      { 
+        id: 'p1', 
+        type: 'multiple_choice', 
+        text: 'Quel est votre type de peau ?', 
+        isRequired: true, 
+        options: [{ id: 1, text: 'Normale' }, { id: 2, text: 'Grasse' }, { id: 3, text: 'Mixte' }] 
+      },
+      { 
+        id: 'p2', 
+        type: 'checkboxes', 
+        text: 'Quels produits utilisez-vous habituellement ?', 
+        isRequired: true, 
+        options: [{ id: 4, text: 'Lait' }, { id: 5, text: 'Lotion' }, { id: 6, text: 'Gommage' }] 
+      },
+      { 
+        id: 'p3', 
+        type: 'text', 
+        text: 'À quelle fréquence visitez-vous des enseignes de beauté ?', 
+        isRequired: true 
+      }
     ],
     briefingUrl: '/files/briefing_mission_1.pdf',
     scenarioUrl: '/files/scenario_mission_1.pdf',
@@ -38,10 +50,9 @@ export let mockMissions = [
     description: 'La visite consiste à vous rendre dans un magasin de beauté et demander conseil sur un produits pour les peaux ternes.',
     deadline: new Date(Date.now() + 15 * 24 * 60 * 60 * 1000),
     reward: 20,
-    location: 'Paris, Etoile',
+    location: 'Paris, France',
     country: 'France',
     city: 'Paris',
-    storeNeighborhood: 'Etoile',
     category: 'Beauté',
     businessName: 'Beauty Co.',
     clientId: 'client-1',
@@ -50,10 +61,13 @@ export let mockMissions = [
     assignedTo: ['user-shopper-1'],
     docsConsulted: { briefing: false, scenario: false, questionnaire: false },
     knowledgeQuizPassed: false,
-    plannedDate: new Date(Date.now() + 1000 * 60 * 15), // Scheduled for 15 mins from now
+    plannedDate: new Date(Date.now() + 1000 * 60 * 15), 
     briefingUrl: '/files/briefing_mission_5.pdf',
     scenarioUrl: '/files/scenario_mission_5.pdf',
     questionnairePdfUrl: '/files/questionnaire_mission_5.pdf',
+    profileQuiz: [
+      { id: 'p5-1', type: 'text', text: 'Ville de résidence', isRequired: true }
+    ]
   },
   {
     id: 'mission-anytown',
@@ -61,7 +75,7 @@ export let mockMissions = [
     description: 'Evaluate the local store performance and inventory availability.',
     deadline: new Date(Date.now() + 20 * 24 * 60 * 60 * 1000),
     reward: 50,
-    location: 'Anytown, Downtown',
+    location: 'Anytown, USA',
     country: 'USA',
     city: 'Anytown',
     category: 'Retail',
@@ -72,10 +86,11 @@ export let mockMissions = [
     assignedTo: ['user-shopper-1'],
     docsConsulted: { briefing: true, scenario: true, questionnaire: true },
     knowledgeQuizPassed: true,
-    plannedDate: new Date(Date.now() + 1000 * 60 * 60 * 2), // Scheduled in 2 hours
+    plannedDate: new Date(Date.now() + 1000 * 60 * 60 * 2), 
     briefingUrl: '#',
     scenarioUrl: '#',
     questionnairePdfUrl: '#',
+    profileQuiz: []
   }
 ];
 
@@ -99,7 +114,7 @@ export let mockApplications = [
         status: 'pending',
         applied_at: new Date().toISOString(),
         selectedStoreId: 'store-1',
-        quizAnswers: { p1: 'Grasse', p2: 'Une lotion' }
+        quizAnswers: { p1: 'Grasse', p2: ['Lait'] }
     }
 ];
 
@@ -122,9 +137,9 @@ export let mockSurveyQuestions = {
 export let mockStores = [
   { id: 'store-1', mission_id: 'mission-1', name: 'Gourmet Maarif', city: 'Casablanca', address: 'Rue Maarif', latitude: 33.5892, longitude: -7.6018, active: true, category: 'Restaurant' },
   { id: 'store-2', mission_id: 'mission-5', name: 'Beauty Paris Etoile', city: 'Paris', address: 'Place de l\'Etoile', latitude: 48.8738, longitude: 2.2950, active: true, category: 'Beauté' },
-  { id: 'store-3', mission_id: 'mission-anytown', name: 'Downtown Mart', city: 'Anytown', address: '123 Main St', latitude: 34.0522, longitude: -118.2437, active: true, category: 'Retail' },
-  { id: 'store-4', mission_id: 'mission-anytown', name: 'Eastside Mart', city: 'Anytown', address: '456 East Ave', latitude: 34.0622, longitude: -118.2337, active: true, category: 'Retail' },
-  { id: 'store-5', mission_id: 'mission-anytown', name: 'Westside Mart', city: 'Anytown', address: '789 West Blvd', latitude: 34.0422, longitude: -118.2537, active: true, category: 'Retail' },
+  { id: 'store-any-1', mission_id: 'mission-anytown', name: 'Downtown Market Anytown', city: 'Anytown', address: '123 Main St', latitude: 34.0522, longitude: -118.2437, active: true, category: 'Retail' },
+  { id: 'store-any-2', mission_id: 'mission-anytown', name: 'Westside Shop Anytown', city: 'Anytown', address: '789 West Blvd', latitude: 34.0422, longitude: -118.2537, active: true, category: 'Retail' },
+  { id: 'store-any-3', mission_id: 'mission-anytown', name: 'Eastside Mart Anytown', city: 'Anytown', address: '456 East Ave', latitude: 34.0622, longitude: -118.2337, active: true, category: 'Retail' },
 ];
 
 export let mockAssignments = [];
