@@ -82,7 +82,7 @@ export async function assignMissionAction(missionId, userIds, details) {
 /**
  * Step 4: Approve positioning based on quiz answers
  */
-export async function approveApplicationAction(applicationId, assignmentDetails) {
+export async function approveApplicationAction(applicationId, assignmentData) {
     const appIndex = mockApplications.findIndex(app => app.id === applicationId);
     if (appIndex === -1) return { success: false, message: "Candidature non trouvée." };
 
@@ -91,15 +91,18 @@ export async function approveApplicationAction(applicationId, assignmentDetails)
 
     const mission = mockMissions.find(m => m.id === application.mission_id);
     if (mission) {
-        mission.status = 'assigned'; // MISSION ATTRIBUÉE
+        mission.status = 'assigned';
         if (!mission.assignedTo.includes(application.user_id)) {
             mission.assignedTo.push(application.user_id);
         }
+        // Update mission with specific store and date for the shopper
+        mission.assignedStoreId = assignmentData.storeId;
+        mission.plannedDate = new Date(assignmentData.plannedDate);
     }
 
     revalidatePath('/admin/applications');
     revalidatePath('/missions/assigned');
-    return { success: true, message: "Mission attribuée. Le shopper a été notifié." };
+    return { success: true, message: "Mission validée et planifiée." };
 }
 
 /**
@@ -117,38 +120,18 @@ export async function refuseApplicationAction(applicationId, reason) {
 }
 
 /**
- * Approve a submitted report
+ * Submit Positioning Application
  */
-export async function approveReportAction(reportId, missionId) {
-    const report = mockReports.find(r => r.id === reportId);
-    if (!report) return { success: false, message: "Rapport non trouvé." };
-
-    report.status = 'approved';
-    
-    // If all reports for this mission are handled, update mission status? 
-    // Usually one approved report is enough to mark as completed in simple flows
-    const mission = mockMissions.find(m => m.id === missionId);
-    if (mission) {
-        mission.status = 'approved';
-    }
-
-    revalidatePath(`/admin/missions/${missionId}/reports`);
-    revalidatePath('/missions/completed');
-    return { success: true, message: "Rapport validé et dédommagement débloqué." };
-}
-
-/**
- * Refuse a submitted report
- */
-export async function refuseReportAction(reportId, missionId, reason) {
-    const report = mockReports.find(r => r.id === reportId);
-    if (!report) return { success: false, message: "Rapport non trouvé." };
-
-    report.status = 'refused';
-    report.refusalReason = reason;
-
-    revalidatePath(`/admin/missions/${missionId}/reports`);
-    return { success: true, message: "Rapport refusé. Le shopper en a été informé." };
+export async function submitApplicationAction(applicationData) {
+    const newId = `app-${Date.now()}`;
+    mockApplications.push({
+        id: newId,
+        ...applicationData,
+        status: 'pending',
+        applied_at: new Date().toISOString()
+    });
+    revalidatePath('/admin/applications');
+    return { success: true, id: newId };
 }
 
 /**
@@ -180,46 +163,13 @@ export async function toggleStoreStatusAction(storeId) {
     return { success: true, message: `Magasin ${store.active ? 'activé' : 'désactivé'}.` };
 }
 
-export async function batchAddStoresAction(stores) {
-    stores.forEach(s => {
-        mockStores.push({
-            id: `store-batch-${Date.now()}-${Math.random()}`,
-            ...s,
-            active: s.active ?? true
-        });
-    });
-    revalidatePath('/admin/stores');
-    return { success: true, message: `${stores.length} magasins importés.` };
-}
-
-/**
- * User Management Actions
- */
-export async function updateUserAction(userId, userData) {
-    const index = mockUsers.findIndex(u => u.id === userId);
-    if (index === -1) return { success: false, message: "Utilisateur non trouvé." };
-    mockUsers[index] = { ...mockUsers[index], ...userData };
-    revalidatePath('/admin/users');
-    revalidatePath(`/admin/users/${userId}`);
-    return { success: true, message: "Profil utilisateur mis à jour." };
-}
-
-export async function toggleUserStatusAction(userId, currentStatus) {
-    const user = mockUsers.find(u => u.id === userId);
-    if (!user) return { success: false, message: "Utilisateur non trouvé." };
-    const newStatus = currentStatus === 'active' ? 'inactive' : 'active';
-    user.status = newStatus;
-    revalidatePath('/admin/users');
-    return { success: true, newStatus, message: `Utilisateur ${newStatus === 'active' ? 'réactivé' : 'désactivé'}.` };
-}
-
 /**
  * Step 11: Final closure
  */
 export async function finalizeMissionAction(missionId) {
     const mission = mockMissions.find(m => m.id === missionId);
     if (mission) {
-        mission.status = 'completed'; // TERMINÉE
+        mission.status = 'completed';
     }
     revalidatePath('/admin/missions');
     return { success: true, message: "Mission terminée et archivée." };

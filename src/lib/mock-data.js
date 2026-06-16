@@ -17,8 +17,7 @@ export let mockMissions = [
     businessName: 'Gourmet Place Inc.',
     clientId: 'client-1',
     soughtProfile: 'Femme de 30 à 60 ans',
-    status: 'available', // MISSION DISPONIBLE
-    // Step 1: Quizzes and PDFs
+    status: 'available',
     profileQuiz: [
       { id: 'p1', question: 'Ma peau est:', options: ['Normale', 'Grasse', 'Mixte'] },
       { id: 'p2', question: 'Pour me démaquiller j’utilise:', options: ['Un lait', 'Une lotion', 'Un démaquillant'] }
@@ -27,8 +26,9 @@ export let mockMissions = [
       { id: 'k1', question: 'La visite porte sur le conseil pour les peaux mixtes?', type: 'boolean', answer: true },
       { id: 'k2', question: 'Le passage en caisse est obligatoire?', type: 'boolean', answer: true }
     ],
-    briefingUrl: '#placeholder-briefing',
-    scenarioUrl: '#placeholder-scenario',
+    briefingUrl: '/files/briefing_mission_1.pdf',
+    scenarioUrl: '/files/scenario_mission_1.pdf',
+    questionnairePdfUrl: '/files/questionnaire_mission_1.pdf',
     assignedTo: [],
     appliedBy: [],
   },
@@ -46,12 +46,14 @@ export let mockMissions = [
     businessName: 'Beauty Co.',
     clientId: 'client-1',
     soughtProfile: 'Femme de 25 à 45 ans',
-    status: 'assigned', // MISSION ATTRIBUÉE
+    status: 'assigned',
     assignedTo: ['user-shopper-1'],
-    // Tracking Step 5 & 6
     docsConsulted: { briefing: false, scenario: false, questionnaire: false },
     knowledgeQuizPassed: false,
-    currentStep: 5, 
+    plannedDate: new Date(Date.now() + 1000 * 60 * 15), // Scheduled for 15 mins from now
+    briefingUrl: '/files/briefing_mission_5.pdf',
+    scenarioUrl: '/files/scenario_mission_5.pdf',
+    questionnairePdfUrl: '/files/questionnaire_mission_5.pdf',
   }
 ];
 
@@ -63,11 +65,21 @@ export const mockUser = {
   profilePicUrl: `https://picsum.photos/seed/user-shopper-1/100/100`,
   city: 'Paris',
   country: 'France',
-  status: 'active', // Validated by admin
+  status: 'active',
   completedMissions: 1,
 };
 
-export let mockApplications = [];
+export let mockApplications = [
+    {
+        id: 'app-1',
+        mission_id: 'mission-1',
+        user_id: 'user-shopper-1',
+        status: 'pending',
+        applied_at: new Date().toISOString(),
+        selectedStoreId: 'store-1',
+        quizAnswers: { p1: 'Grasse', p2: 'Une lotion' }
+    }
+];
 
 export let mockReports = [];
 
