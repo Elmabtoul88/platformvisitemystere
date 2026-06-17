@@ -25,9 +25,12 @@ const generateMockUsers = (count) => {
     for (let i = 1; i <= count; i++) {
         const userId = `user-shopper-${i}`;
         if (usedIds.has(userId)) continue; // Skip if ID already used
+        
+        const shopperName = `Shopper ${i}`;
+        
         users.push({
             id: userId,
-            name: `Shopper ${i}`,
+            name: shopperName,
             email: `shopper${i}@example.com`,
             role: 'shopper',
             profilePicUrl: `https://picsum.photos/seed/${userId}/40/40`,
@@ -42,7 +45,16 @@ const generateMockUsers = (count) => {
              registrationDate: new Date(Date.now() - Math.floor(Math.random() * 365 + 1) * 24 * 60 * 60 * 1000),
             completedMissions: Math.floor(Math.random() * 35), // Wider mission count range
             unreadMessages: i % 5 === 0 ? Math.floor(Math.random() * 5) + 1 : 0, // Add simulated unread messages for some users
-            password: `$2b$10$shopperPasswordHash${i}`
+            password: `$2b$10$shopperPasswordHash${i}`,
+            // Add banking info for every generated shopper
+            bankingInfo: {
+                accountHolder: shopperName,
+                rib: `FR76 1234 5678 9012 3456 7890 ${String(i).padStart(3, '0')}`,
+                bankName: ['Attijariwafa Bank', 'CIH Bank', 'BMCE', 'Société Générale'][i % 4],
+                swift: 'BANKMAXX',
+                country: 'Maroc',
+                currency: 'MAD'
+            }
         });
         usedIds.add(userId);
     }
@@ -63,8 +75,6 @@ const generateMockUsers = (count) => {
             unreadMessages: Math.floor(Math.random() * 3), // Give Alex some random unread messages too
         });
         usedIds.add(alexUserId);
-    } else {
-        console.warn(`Mock user ID conflict for ${alexUserId}. Alex might not be included.`);
     }
 
 

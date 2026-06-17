@@ -47,7 +47,7 @@ export let mockMissions = [
   {
     id: 'mission-2',
     title: 'Retail Store Cleanliness Check',
-    description: 'Visit the downtown branch and assess store cleanliness, staff helpfulness, and product availability.',
+    description: 'Visit the downtown branch and assess store cleanliness, staff helpfulness, and product availability. Purchase a small item.',
     deadline: new Date(Date.now() + 60 * 24 * 60 * 60 * 1000),
     reward: 35,
     location: 'Anytown, USA',
