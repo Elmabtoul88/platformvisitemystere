@@ -1,4 +1,3 @@
-
 'use client';
 
 import React, { useState, useMemo, useEffect } from 'react';
@@ -18,6 +17,7 @@ import {
 import Link from 'next/link';
 import { useToast } from '@/hooks/use-toast';
 import { format, isWithinInterval, addMinutes, subMinutes, isAfter } from 'date-fns';
+import { cn } from "@/lib/utils";
 
 export default function AssignedMissionsPage() {
   const router = useRouter();
@@ -27,7 +27,7 @@ export default function AssignedMissionsPage() {
   
   const [viewingStoresFor, setViewingStoresFor] = useState(null);
 
-  // Update clock every minute
+  // Update clock every 30 seconds for accurate window checking
   useEffect(() => {
     const timer = setInterval(() => setCurrentTime(new Date()), 30000);
     return () => clearInterval(timer);
@@ -35,7 +35,7 @@ export default function AssignedMissionsPage() {
 
   const assignedMissions = useMemo(() => {
     return mockMissions.filter(mission =>
-      (mission.assignedTo.includes(mockUser.id) || mission.status === 'assigned') && mission.status !== 'completed'
+      (mission.assignedTo?.includes(mockUser.id) || mission.status === 'assigned') && mission.status !== 'completed'
     ).map(mission => {
         // Auto-cancellation logic
         if (mission.plannedDate && mission.status !== 'completed' && mission.status !== 'cancelled') {
@@ -91,18 +91,18 @@ export default function AssignedMissionsPage() {
                 <CardHeader>
                   <div className="flex justify-between items-start">
                     <div className="space-y-1">
-                        <CardTitle className="flex items-center gap-2">
+                        <CardTitle className="flex items-center gap-2 text-primary font-bold">
                             {mission.title}
                             {mission.status === 'cancelled' && <Badge variant="destructive">Annulée</Badge>}
                         </CardTitle>
                         <CardDescription className="flex flex-col">
-                            <span className="font-bold text-foreground">{mission.businessName}</span>
+                            <span className="font-bold text-foreground text-md">{mission.businessName}</span>
                             <span className="flex items-center gap-1 text-primary"><MapPin className="w-3 h-3"/> {assignedStore?.name || mission.location}</span>
                         </CardDescription>
                     </div>
                     {mission.plannedDate && (
                         <div className="text-right">
-                            <Badge variant="outline" className={cn("flex items-center gap-1 font-bold", isWithinWindow ? "bg-green-100 text-green-700" : "bg-primary/5")}>
+                            <Badge variant="outline" className={cn("flex items-center gap-1 font-bold", isWithinWindow ? "bg-green-100 text-green-700 border-green-200" : "bg-primary/5")}>
                                 <Clock className="w-3 h-3"/> {format(new Date(mission.plannedDate), 'PPp')}
                             </Badge>
                             <p className="text-[10px] text-muted-foreground mt-1">Fenêtre: ±{windowMin} min</p>
@@ -119,7 +119,6 @@ export default function AssignedMissionsPage() {
                         </Alert>
                     ) : (
                         <>
-                        {/* Standard Workflow Steps */}
                         <div className="grid md:grid-cols-2 gap-4">
                             <div className="bg-secondary/20 p-4 rounded-lg space-y-3 border">
                                 <h3 className="font-semibold flex items-center gap-2 text-sm"><BookOpen className="w-4 h-4"/> 1. Documents</h3>
@@ -137,21 +136,21 @@ export default function AssignedMissionsPage() {
                             </div>
 
                             <div className={`p-4 rounded-lg border flex flex-col justify-center gap-3 transition-colors ${mission.knowledgeQuizPassed ? 'bg-green-50 border-green-200' : 'bg-accent/5 border-accent/20'}`}>
-                                <h3 className="font-bold text-sm flex items-center gap-2"><HelpCircle className="w-4 h-4"/> 2. Validation</h3>
+                                <h3 className="font-bold text-sm flex items-center gap-2 text-foreground"><HelpCircle className="w-4 h-4"/> 2. Validation</h3>
                                 {mission.knowledgeQuizPassed ? (
                                     <div className="flex flex-col items-center">
                                         <CheckCircle className="w-8 h-8 text-green-600 mb-2"/>
                                         <span className="text-xs font-bold text-green-700">Quiz de connaissance Validé</span>
                                     </div>
                                 ) : (
-                                    <Button className="w-full bg-accent text-accent-foreground hover:bg-accent/90" size="sm" disabled={!allDocsOpened} onClick={() => setActiveQuiz(mission.id)}>Lancer le quiz</Button>
+                                    <Button className="w-full bg-accent text-accent-foreground hover:bg-accent/90 font-bold" size="sm" disabled={!allDocsOpened} onClick={() => setActiveQuiz(mission.id)}>Lancer le quiz</Button>
                                 )}
                             </div>
                         </div>
 
                         {mission.knowledgeQuizPassed && (
                             <div className="space-y-4 animate-in fade-in zoom-in-95">
-                                <Alert className={isWithinWindow ? "bg-green-50 border-green-200" : "bg-yellow-50 border-yellow-200"}>
+                                <Alert className={cn(isWithinWindow ? "bg-green-50 border-green-200" : "bg-yellow-50 border-yellow-200")}>
                                     <UserCheck className="h-4 w-4" />
                                     <AlertTitle>{isWithinWindow ? "Créneau Ouvert" : "Attente Heure Visite"}</AlertTitle>
                                     <AlertDescription className="text-xs">
@@ -187,10 +186,10 @@ export default function AssignedMissionsPage() {
                   <CardHeader><CardTitle>Quiz de connaissances</CardTitle><CardDescription>Validez que vous avez bien lu le briefing et le scénario.</CardDescription></CardHeader>
                   <CardContent className="space-y-4">
                       <div className="space-y-3">
-                          <Label className="text-md">Le passage en caisse est-il obligatoire pour cette mission ?</Label>
+                          <Label className="text-md font-semibold">Le passage en caisse est-il obligatoire pour cette mission ?</Label>
                           <RadioGroup defaultValue="oui" onValueChange={() => {}}>
-                              <div className="flex items-center space-x-2 bg-secondary/30 p-3 rounded-lg border"><RadioGroupItem value="oui" id="r-oui" /><Label htmlFor="r-oui" className="flex-grow cursor-pointer">Vrai (Oui)</Label></div>
-                              <div className="flex items-center space-x-2 bg-secondary/30 p-3 rounded-lg border"><RadioGroupItem value="non" id="r-non" /><Label htmlFor="r-non" className="flex-grow cursor-pointer">Faux (Non)</Label></div>
+                              <div className="flex items-center space-x-2 bg-secondary/30 p-3 rounded-lg border"><RadioGroupItem value="oui" id="r-oui" /><Label htmlFor="r-oui" className="flex-grow cursor-pointer font-medium">Vrai (Oui)</Label></div>
+                              <div className="flex items-center space-x-2 bg-secondary/30 p-3 rounded-lg border"><RadioGroupItem value="non" id="r-non" /><Label htmlFor="r-non" className="flex-grow cursor-pointer font-medium">Faux (Non)</Label></div>
                           </RadioGroup>
                       </div>
                   </CardContent>
