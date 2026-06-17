@@ -1,0 +1,23 @@
+
+{
+  "hero-bg": {
+    "url": "https://picsum.photos/seed/sec-hero/1920/1080",
+    "hint": "luxury office"
+  },
+  "service-audit": {
+    "url": "https://picsum.photos/seed/audit/800/600",
+    "hint": "retail audit"
+  },
+  "service-mystery": {
+    "url": "https://picsum.photos/seed/mystery/800/600",
+    "hint": "mystery shopper"
+  },
+  "service-analysis": {
+    "url": "https://picsum.photos/seed/analysis/800/600",
+    "hint": "business analysis"
+  },
+  "about-team": {
+    "url": "https://picsum.photos/seed/team/1200/800",
+    "hint": "professional team"
+  }
+}
