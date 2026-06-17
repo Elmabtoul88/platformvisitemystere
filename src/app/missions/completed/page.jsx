@@ -7,20 +7,23 @@ import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { 
     CheckCircle, SearchX, ArrowLeft, DollarSign, Wallet, Clock, 
     XCircle, CreditCard, History, TrendingUp, Filter, ListFilter,
-    Calendar as CalendarIcon, Search
+    Calendar as CalendarIcon, Search, CalendarDays
 } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle, CardFooter } from '@/components/ui/card';
-import { format, startOfMonth, endOfMonth, isWithinInterval } from 'date-fns';
+import { format, isWithinInterval, startOfDay, endOfDay, parseISO } from 'date-fns';
 import { Button } from '@/components/ui/button';
-import Link from 'next/link';
+import Link from 'link';
 import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Label } from '@/components/ui/label';
 
 export default function CompletedMissionsPage() {
   const [statusFilter, setStatusFilter] = useState('all');
   const [searchTerm, setSearchTerm] = useState('');
+  const [startDate, setStartDate] = useState('');
+  const [endDate, setEndDate] = useState('');
   
   const myReports = useMemo(() => {
     return mockReports.filter(r => String(r.userId) === String(mockUser.id));
@@ -35,9 +38,21 @@ export default function CompletedMissionsPage() {
             mission?.title?.toLowerCase().includes(searchTerm.toLowerCase()) ||
             mission?.businessName?.toLowerCase().includes(searchTerm.toLowerCase());
         
-        return matchesStatus && matchesSearch;
+        // Date Range logic
+        let matchesDate = true;
+        if (startDate || endDate) {
+            const reportDate = new Date(report.submittedAt);
+            if (startDate && reportDate < startOfDay(new Date(startDate))) {
+                matchesDate = false;
+            }
+            if (endDate && reportDate > endOfDay(new Date(endDate))) {
+                matchesDate = false;
+            }
+        }
+        
+        return matchesStatus && matchesSearch && matchesDate;
     });
-  }, [myReports, statusFilter, searchTerm]);
+  }, [myReports, statusFilter, searchTerm, startDate, endDate]);
 
   const stats = useMemo(() => {
     return {
@@ -58,6 +73,13 @@ export default function CompletedMissionsPage() {
         case 'refused': return <Badge variant="destructive">Paiement Refusé</Badge>;
         default: return <Badge variant="secondary">Inconnu</Badge>;
     }
+  };
+
+  const clearFilters = () => {
+    setStatusFilter('all');
+    setSearchTerm('');
+    setStartDate('');
+    setEndDate('');
   };
 
   return (
@@ -112,39 +134,77 @@ export default function CompletedMissionsPage() {
       </div>
 
       <Tabs defaultValue="all" className="space-y-6">
-        <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
-            <TabsList>
-                <TabsTrigger value="all" className="flex items-center gap-2"><History className="w-4 h-4"/> Historique</TabsTrigger>
-                <TabsTrigger value="summary" className="flex items-center gap-2"><TrendingUp className="w-4 h-4"/> Analyse</TabsTrigger>
-            </TabsList>
+        <div className="space-y-4">
+            <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
+                <TabsList>
+                    <TabsTrigger value="all" className="flex items-center gap-2"><History className="w-4 h-4"/> Historique</TabsTrigger>
+                    <TabsTrigger value="summary" className="flex items-center gap-2"><TrendingUp className="w-4 h-4"/> Analyse</TabsTrigger>
+                </TabsList>
 
-            {/* Filters Bar */}
-            <div className="flex flex-wrap items-center gap-2 w-full md:w-auto">
-                <div className="relative flex-grow md:w-64">
-                    <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                    <Input 
-                        placeholder="Rechercher une mission..." 
-                        value={searchTerm}
-                        onChange={(e) => setSearchTerm(e.target.value)}
-                        className="pl-9 h-9"
-                    />
+                {/* Main Filters Bar */}
+                <div className="flex flex-wrap items-center gap-2 w-full md:w-auto">
+                    <div className="relative flex-grow md:w-64">
+                        <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                        <Input 
+                            placeholder="Rechercher une mission..." 
+                            value={searchTerm}
+                            onChange={(e) => setSearchTerm(e.target.value)}
+                            className="pl-9 h-9"
+                        />
+                    </div>
+                    <Select value={statusFilter} onValueChange={setStatusFilter}>
+                        <SelectTrigger className="w-[150px] h-9">
+                            <ListFilter className="w-4 h-4 mr-2" />
+                            <SelectValue placeholder="Statut" />
+                        </SelectTrigger>
+                        <SelectContent>
+                            <SelectItem value="all">Tous les statuts</SelectItem>
+                            <SelectItem value="paid">Payées</SelectItem>
+                            <SelectItem value="pending">En attente</SelectItem>
+                            <SelectItem value="refused">Refusées</SelectItem>
+                        </SelectContent>
+                    </Select>
                 </div>
-                <Select value={statusFilter} onValueChange={setStatusFilter}>
-                    <SelectTrigger className="w-[150px] h-9">
-                        <ListFilter className="w-4 h-4 mr-2" />
-                        <SelectValue placeholder="Statut" />
-                    </SelectTrigger>
-                    <SelectContent>
-                        <SelectItem value="all">Tous les statuts</SelectItem>
-                        <SelectItem value="paid">Payées</SelectItem>
-                        <SelectItem value="pending">En attente</SelectItem>
-                        <SelectItem value="refused">Refusées</SelectItem>
-                    </SelectContent>
-                </Select>
             </div>
+
+            {/* Date Range Filters Bar */}
+            <Card className="p-3 bg-secondary/10 border-dashed">
+                <div className="flex flex-wrap items-end gap-4">
+                    <div className="space-y-1.5 flex-1 min-w-[150px]">
+                        <Label className="text-[10px] uppercase font-bold text-muted-foreground flex items-center gap-1">
+                            <CalendarDays className="w-3 h-3"/> Du
+                        </Label>
+                        <Input 
+                            type="date" 
+                            className="h-8 text-xs" 
+                            value={startDate} 
+                            onChange={(e) => setStartDate(e.target.value)}
+                        />
+                    </div>
+                    <div className="space-y-1.5 flex-1 min-w-[150px]">
+                        <Label className="text-[10px] uppercase font-bold text-muted-foreground flex items-center gap-1">
+                            <CalendarDays className="w-3 h-3"/> Au
+                        </Label>
+                        <Input 
+                            type="date" 
+                            className="h-8 text-xs" 
+                            value={endDate} 
+                            onChange={(e) => setEndDate(e.target.value)}
+                        />
+                    </div>
+                    <Button variant="ghost" size="sm" className="h-8 text-xs text-muted-foreground hover:text-primary" onClick={clearFilters}>
+                        Réinitialiser
+                    </Button>
+                </div>
+            </Card>
         </div>
 
         <TabsContent value="all" className="space-y-4">
+            <div className="flex justify-between items-center mb-2 px-1">
+                <p className="text-xs text-muted-foreground">
+                    Résultats : <span className="font-bold text-primary">{filteredReports.length}</span> mission(s) trouvée(s)
+                </p>
+            </div>
             {filteredReports.length > 0 ? filteredReports.map(report => {
                 const mission = mockMissions.find(m => String(m.id) === String(report.missionId));
                 return (
@@ -192,7 +252,7 @@ export default function CompletedMissionsPage() {
                 <div className="text-center py-20 bg-secondary/10 rounded-xl border-2 border-dashed">
                     <SearchX className="w-12 h-12 mx-auto text-muted-foreground mb-4 opacity-50"/>
                     <p className="text-muted-foreground font-medium">Aucun résultat ne correspond à vos filtres.</p>
-                    <Button variant="link" onClick={() => { setStatusFilter('all'); setSearchTerm(''); }}>Réinitialiser les filtres</Button>
+                    <Button variant="link" onClick={clearFilters}>Réinitialiser tous les filtres</Button>
                 </div>
             )}
         </TabsContent>
@@ -244,3 +304,4 @@ export default function CompletedMissionsPage() {
     </div>
   );
 }
+
