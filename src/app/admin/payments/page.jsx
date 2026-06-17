@@ -9,7 +9,8 @@ import { Badge } from '@/components/ui/badge';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import { 
     MoreHorizontal, Search, Download, CreditCard, Banknote, 
-    CheckCircle, XCircle, Clock, Info, FileSpreadsheet, Loader2 
+    CheckCircle, XCircle, Clock, Info, FileSpreadsheet, Loader2,
+    AlertCircle
 } from 'lucide-react';
 import { mockReports, mockMissions, mockStores } from '@/lib/mock-data';
 import { mockUsers } from '@/app/admin/users/users-mock.js';
