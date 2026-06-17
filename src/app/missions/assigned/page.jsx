@@ -13,7 +13,7 @@ import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { 
     ClipboardList, FileText, CheckCircle, HelpCircle, 
     BookOpen, UserCheck, PlayCircle, Download, Clock, AlertTriangle, 
-    MapPin, Navigation, Info, Search, List, XCircle, Send
+    MapPin, Navigation, Info, Search, List, XCircle, Send, Building
 } from 'lucide-react';
 import Link from 'next/link';
 import { useToast } from '@/hooks/use-toast';
