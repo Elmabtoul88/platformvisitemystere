@@ -29,7 +29,7 @@ export default function AdminPaymentsPage() {
     const [selectedReport, setSelectedReport] = useState(null);
     const [transactionRef, setTransactionRef] = useState('');
     const [adminNotes, setAdminNotes] = useState('');
-    const [paymentAction, setPaymentAction] = useState(null); // 'paid' or 'refused'
+    const [paymentAction, setPaymentAction] = useState(null); // 'paid', 'refused', or 'view_info'
 
     const payments = useMemo(() => {
         return mockReports.filter(r => r.status === 'approved' || r.paymentStatus).map(report => {
@@ -50,7 +50,7 @@ export default function AdminPaymentsPage() {
     }, [payments, searchTerm, statusFilter]);
 
     const handleUpdatePayment = async () => {
-        if (!selectedReport || !paymentAction) return;
+        if (!selectedReport || paymentAction === 'view_info') return;
 
         setIsProcessing(selectedReport.id);
         try {
@@ -205,12 +205,8 @@ export default function AdminPaymentsPage() {
                                                     <XCircle className="mr-2 h-4 w-4 text-destructive"/> Refuser le paiement
                                                 </DropdownMenuItem>
                                                 <DropdownMenuSeparator />
-                                                <DropdownMenuItem onClick={() => {
-                                                    const info = payment.user?.bankingInfo;
-                                                    if (!info) toast({ title: "Pas d'infos", description: "Le shopper n'a pas renseigné son RIB." });
-                                                    else alert(`RIB: ${info.rib}\nBanque: ${info.bankName}\nTitulaire: ${info.accountHolder}`);
-                                                }}>
-                                                    <Info className="mr-2 h-4 w-4"/> Infos Bancaires
+                                                <DropdownMenuItem onClick={() => { setSelectedReport(payment); setPaymentAction('view_info'); }}>
+                                                    <Info className="mr-2 h-4 w-4 text-primary"/> Consulter RIB
                                                 </DropdownMenuItem>
                                             </DropdownMenuContent>
                                         </DropdownMenu>
@@ -224,47 +220,90 @@ export default function AdminPaymentsPage() {
                 </CardContent>
             </Card>
 
-            {/* Payment Processing Dialog */}
+            {/* Payment Processing & Info Dialog */}
             <Dialog open={!!selectedReport} onOpenChange={() => setSelectedReport(null)}>
-                <DialogContent>
+                <DialogContent className="max-w-md">
                     <DialogHeader>
-                        <DialogTitle className={paymentAction === 'paid' ? 'text-green-700' : 'text-destructive'}>
-                            {paymentAction === 'paid' ? 'Confirmer le virement' : 'Refuser le paiement'}
+                        <DialogTitle className={
+                            paymentAction === 'paid' ? 'text-green-700' : 
+                            paymentAction === 'refused' ? 'text-destructive' : 'text-primary'
+                        }>
+                            {paymentAction === 'paid' && 'Confirmer le virement'}
+                            {paymentAction === 'refused' && 'Refuser le paiement'}
+                            {paymentAction === 'view_info' && 'Coordonnées Bancaires'}
                         </DialogTitle>
                         <DialogDescription>
                             {selectedReport?.user?.name} - {selectedReport?.reward} $ pour {selectedReport?.mission?.title}
                         </DialogDescription>
                     </DialogHeader>
+
                     <div className="space-y-4 py-4">
+                        {/* Always show bank info in any payment interaction for better visibility */}
+                        {selectedReport?.user?.bankingInfo ? (
+                            <div className="p-4 bg-primary/5 rounded-xl border border-primary/10 space-y-2">
+                                <p className="text-[10px] font-bold uppercase text-primary tracking-widest mb-2 flex items-center gap-2">
+                                    <Info className="w-3 h-3"/> Détails Bancaires du Shopper
+                                </p>
+                                <div className="grid grid-cols-1 gap-1 text-sm">
+                                    <div className="flex justify-between border-b pb-1 border-primary/5">
+                                        <span className="text-muted-foreground text-xs">Titulaire</span>
+                                        <span className="font-semibold">{selectedReport.user.bankingInfo.accountHolder}</span>
+                                    </div>
+                                    <div className="flex justify-between border-b pb-1 border-primary/5">
+                                        <span className="text-muted-foreground text-xs">Banque</span>
+                                        <span className="font-semibold">{selectedReport.user.bankingInfo.bankName}</span>
+                                    </div>
+                                    <div className="pt-1">
+                                        <span className="text-muted-foreground text-xs block mb-1">RIB / IBAN</span>
+                                        <span className="font-mono bg-background px-2 py-1 rounded block text-xs border select-all">
+                                            {selectedReport.user.bankingInfo.rib}
+                                        </span>
+                                    </div>
+                                    {selectedReport.user.bankingInfo.swift && (
+                                        <div className="flex justify-between pt-1">
+                                            <span className="text-muted-foreground text-xs">SWIFT</span>
+                                            <span className="font-mono text-xs">{selectedReport.user.bankingInfo.swift}</span>
+                                        </div>
+                                    )}
+                                </div>
+                            </div>
+                        ) : (
+                            <div className="p-4 bg-destructive/5 rounded-xl border border-destructive/10 text-center">
+                                <AlertCircle className="w-8 h-8 text-destructive mx-auto mb-2" />
+                                <p className="text-sm font-bold text-destructive">Coordonnées manquantes</p>
+                                <p className="text-xs text-muted-foreground">Le shopper n'a pas encore renseigné ses informations de paiement.</p>
+                            </div>
+                        )}
+
                         {paymentAction === 'paid' && (
                             <div className="space-y-2">
                                 <Label>Référence du virement / Transaction ID</Label>
                                 <Input placeholder="Ex: VIR-2026-001" value={transactionRef} onChange={e => setTransactionRef(e.target.value)} />
                             </div>
                         )}
-                        <div className="space-y-2">
-                            <Label>Notes administratives (Interne)</Label>
-                            <Textarea placeholder="Précisions sur le traitement..." value={adminNotes} onChange={e => setAdminNotes(e.target.value)} />
-                        </div>
-                        {paymentAction === 'paid' && selectedReport?.user?.bankingInfo && (
-                            <div className="p-3 bg-secondary/50 rounded-lg text-xs space-y-1">
-                                <p className="font-bold border-b pb-1 mb-1">Coordonnées de destination :</p>
-                                <p>Titulaire: {selectedReport.user.bankingInfo.accountHolder}</p>
-                                <p>RIB: {selectedReport.user.bankingInfo.rib}</p>
-                                <p>Banque: {selectedReport.user.bankingInfo.bankName}</p>
+
+                        {(paymentAction === 'paid' || paymentAction === 'refused') && (
+                            <div className="space-y-2">
+                                <Label>Notes administratives (Interne)</Label>
+                                <Textarea placeholder="Précisions sur le traitement..." value={adminNotes} onChange={e => setAdminNotes(e.target.value)} />
                             </div>
                         )}
                     </div>
+
                     <DialogFooter>
-                        <Button variant="outline" onClick={() => setSelectedReport(null)}>Annuler</Button>
-                        <Button 
-                            className={paymentAction === 'paid' ? 'bg-green-600 hover:bg-green-700' : 'bg-destructive'}
-                            onClick={handleUpdatePayment}
-                            disabled={isProcessing === selectedReport?.id || (paymentAction === 'paid' && !transactionRef)}
-                        >
-                            {isProcessing ? <Loader2 className="animate-spin h-4 w-4 mr-2"/> : null}
-                            Confirmer
+                        <Button variant="outline" onClick={() => setSelectedReport(null)}>
+                            {paymentAction === 'view_info' ? 'Fermer' : 'Annuler'}
                         </Button>
+                        {paymentAction !== 'view_info' && (
+                            <Button 
+                                className={paymentAction === 'paid' ? 'bg-green-600 hover:bg-green-700' : 'bg-destructive'}
+                                onClick={handleUpdatePayment}
+                                disabled={isProcessing === selectedReport?.id || (paymentAction === 'paid' && !transactionRef) || !selectedReport?.user?.bankingInfo}
+                            >
+                                {isProcessing ? <Loader2 className="animate-spin h-4 w-4 mr-2"/> : null}
+                                Confirmer
+                            </Button>
+                        )}
                     </DialogFooter>
                 </DialogContent>
             </Dialog>
