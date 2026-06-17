@@ -1,5 +1,5 @@
 // IMPORTANT: This file maintains the mock data for the application.
-// Restructured to use flexible quiz definitions.
+// Restructured to use flexible quiz definitions and assignments.
 
 export let mockMissions = [
   {
@@ -59,9 +59,9 @@ export let mockMissions = [
     soughtProfile: 'Femme de 25 à 45 ans',
     status: 'assigned',
     assignedTo: ['user-shopper-1'],
-    docsConsulted: { briefing: false, scenario: false, questionnaire: false },
-    knowledgeQuizPassed: false,
-    plannedDate: new Date(Date.now() + 1000 * 60 * 15), 
+    docsConsulted: { briefing: true, scenario: true, questionnaire: true }, // Set to true for testing
+    knowledgeQuizPassed: true, // Set to true for testing
+    plannedDate: new Date(Date.now() - 1000 * 60 * 10), // 10 minutes ago
     briefingUrl: '/files/briefing_mission_5.pdf',
     scenarioUrl: '/files/scenario_mission_5.pdf',
     questionnairePdfUrl: '/files/questionnaire_mission_5.pdf',
@@ -84,9 +84,9 @@ export let mockMissions = [
     soughtProfile: 'Any active shopper',
     status: 'assigned',
     assignedTo: ['user-shopper-1'],
-    docsConsulted: { briefing: true, scenario: true, questionnaire: true },
-    knowledgeQuizPassed: true,
-    plannedDate: new Date(Date.now() + 1000 * 60 * 60 * 2), 
+    docsConsulted: { briefing: false, scenario: false, questionnaire: false },
+    knowledgeQuizPassed: false,
+    plannedDate: new Date(Date.now() + 1000 * 60 * 60 * 5), // 5 hours in future
     briefingUrl: '#',
     scenarioUrl: '#',
     questionnairePdfUrl: '#',
@@ -112,9 +112,9 @@ export let mockApplications = [
         mission_id: 'mission-1',
         user_id: 'user-shopper-1',
         status: 'pending',
-        applied_at: new Date().toISOString(),
-        selectedStoreId: 'store-1',
-        quizAnswers: { p1: 'Grasse', p2: ['Lait'] }
+        applied_at: new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString(),
+        selectedStoreIds: ['store-1'],
+        quizAnswers: { p1: 'Grasse', p2: ['Lait'], p3: '2 fois par mois' }
     }
 ];
 
@@ -142,4 +142,25 @@ export let mockStores = [
   { id: 'store-any-3', mission_id: 'mission-anytown', name: 'Eastside Mart Anytown', city: 'Anytown', address: '456 East Ave', latitude: 34.0622, longitude: -118.2337, active: true, category: 'Retail' },
 ];
 
-export let mockAssignments = [];
+export let mockAssignments = [
+  {
+    id: 'asg-1',
+    mission_id: 'mission-5',
+    user_id: 'user-shopper-1',
+    store_id: 'store-2',
+    assigned_at: new Date(Date.now() - 2 * 24 * 60 * 60 * 1000).toISOString(),
+    plannedDate: new Date(Date.now() - 10 * 60 * 1000).toISOString(), // 10 mins ago (active)
+    timeWindowMinutes: 60,
+    status: 'assigned'
+  },
+  {
+    id: 'asg-2',
+    mission_id: 'mission-anytown',
+    user_id: 'user-shopper-1',
+    store_id: 'store-any-1',
+    assigned_at: new Date(Date.now() - 1 * 24 * 60 * 60 * 1000).toISOString(),
+    plannedDate: new Date(Date.now() + 5 * 60 * 60 * 1000).toISOString(), // 5 hours future (upcoming)
+    timeWindowMinutes: 60,
+    status: 'assigned'
+  }
+];
