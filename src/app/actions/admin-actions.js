@@ -1,5 +1,4 @@
 
-
 'use server';
 
 import { revalidatePath } from 'next/cache';
@@ -104,10 +103,7 @@ export async function approveApplicationAction(applicationId, assignmentData) {
             mission.assignedTo.push(application.user_id);
         }
 
-        // For each selected store, create a specific assignment
-        // If the user said "validate multiple stores", it implies the user gets the mission for each store.
         assignmentData.storeIds.forEach((storeId, index) => {
-            // Check if assignment already exists for this specific combination
             const existing = mockAssignments.find(a => 
                 String(a.mission_id) === String(mission.id) && 
                 String(a.user_id) === String(application.user_id) &&
@@ -128,7 +124,6 @@ export async function approveApplicationAction(applicationId, assignmentData) {
             }
         });
         
-        // Backward compatibility for mission-level planned date for single-store missions
         mission.assignedStoreId = assignmentData.storeIds[0];
         mission.plannedDate = new Date(assignmentData.plannedDate);
         mission.timeWindowMinutes = assignmentData.timeWindowMinutes || 60;
@@ -137,20 +132,24 @@ export async function approveApplicationAction(applicationId, assignmentData) {
     revalidatePath('/admin/applications');
     revalidatePath('/admin/missions');
     revalidatePath('/missions/assigned');
-    return { success: true, message: "Candidature validée pour " + assignmentData.storeIds.length + " magasin(s)." };
+    return { success: true, message: "Candidature validée." };
 }
 
 /**
- * Refuse a shopper application
+ * Refuse a shopper application with reason
  */
 export async function refuseApplicationAction(applicationId, reason) {
-    const app = mockApplications.find(a => String(a.id) === String(applicationId));
-    if (!app) return { success: false, message: "Candidature non trouvée." };
+    console.log(`Server Action: Refusing application ${applicationId} with reason: ${reason}`);
+    await new Promise(resolve => setTimeout(resolve, 500));
 
-    app.status = 'refused';
-    app.refusal_reason = reason;
+    const appIndex = mockApplications.findIndex(app => String(app.id) === String(applicationId));
+    if (appIndex === -1) return { success: false, message: "Candidature non trouvée." };
+
+    mockApplications[appIndex].status = 'refused';
+    mockApplications[appIndex].refusal_reason = reason;
 
     revalidatePath('/admin/applications');
+    revalidatePath('/missions/assigned');
     return { success: true, message: "Candidature refusée." };
 }
 
@@ -219,7 +218,7 @@ export async function batchAddStoresAction(storesData) {
         added.push(newStore);
     });
     revalidatePath('/admin/stores');
-    return { success: true, message: `${added.length} magasins importés avec succès.` };
+    return { success: true, message: `${added.length} magasins importés.` };
 }
 
 export async function updateStoreAction(storeId, storeData) {
@@ -254,7 +253,7 @@ export async function approveReportAction(reportId, missionId) {
     
     revalidatePath(`/admin/missions/${missionId}/reports`);
     revalidatePath('/missions/completed');
-    return { success: true, message: "Rapport approuvé et paiement validé." };
+    return { success: true, message: "Rapport approuvé." };
 }
 
 export async function refuseReportAction(reportId, missionId, reason) {
@@ -265,6 +264,5 @@ export async function refuseReportAction(reportId, missionId, reason) {
     report.refusalReason = reason;
     
     revalidatePath(`/admin/missions/${missionId}/reports`);
-    return { success: true, message: "Rapport refusé avec motif." };
+    return { success: true, message: "Rapport refusé." };
 }
-

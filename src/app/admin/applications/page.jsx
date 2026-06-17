@@ -9,11 +9,12 @@ import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Checkbox } from '@/components/ui/checkbox';
+import { Textarea } from '@/components/ui/textarea';
 import {
   AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
   AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle
 } from "@/components/ui/alert-dialog";
-import { Loader2, UserCheck, Building, Clock, AlertCircle, ClipboardCheck, Info } from 'lucide-react';
+import { Loader2, UserCheck, Building, Clock, AlertCircle, ClipboardCheck, Info, XCircle } from 'lucide-react';
 import { mockApplications, mockMissions, mockStores } from '@/lib/mock-data';
 import { mockUsers } from '@/app/admin/users/users-mock.js';
 import { approveApplicationAction, refuseApplicationAction } from '../../actions/admin-actions.js';
@@ -34,6 +35,10 @@ export default function AdminApplicationsPage() {
     const [plannedTime, setPlannedTime] = useState('14:00');
     const [selectedStoreIds, setSelectedStoreIds] = useState([]);
     const [timeWindow, setTimeWindow] = useState('60'); 
+
+    // Refusal Dialog State
+    const [appToRefuse, setAppToRefuse] = useState(null);
+    const [refusalReason, setRefusalReason] = useState('');
 
     useEffect(() => {
         setIsLoading(true);
@@ -58,7 +63,6 @@ export default function AdminApplicationsPage() {
         finalDate.setHours(parseInt(hours), parseInt(minutes));
 
         try {
-            // Updated action to handle multiple store validation
             const result = await approveApplicationAction(appToApprove.id, {
                 storeIds: selectedStoreIds,
                 plannedDate: finalDate.toISOString(),
@@ -69,6 +73,25 @@ export default function AdminApplicationsPage() {
                 toast({ title: "Candidature validée", description: selectedStoreIds.length + " magasin(s) assigné(s) avec succès." });
                 setApplications(prev => prev.filter(a => String(a.id) !== String(appToApprove.id)));
                 setAppToApprove(null);
+            }
+        } catch (error) {
+            toast({ variant: "destructive", title: "Erreur", description: error.message });
+        } finally {
+            setIsProcessing(null);
+        }
+    };
+
+    const handleRefuse = async () => {
+        if (!appToRefuse || !refusalReason.trim()) return;
+
+        setIsProcessing(appToRefuse.id);
+        try {
+            const result = await refuseApplicationAction(appToRefuse.id, refusalReason);
+            if (result.success) {
+                toast({ title: "Candidature refusée", description: "Le shopper a été notifié." });
+                setApplications(prev => prev.filter(a => String(a.id) !== String(appToRefuse.id)));
+                setAppToRefuse(null);
+                setRefusalReason('');
             }
         } catch (error) {
             toast({ variant: "destructive", title: "Erreur", description: error.message });
@@ -138,7 +161,7 @@ export default function AdminApplicationsPage() {
                                             </div>
                                         </TableCell>
                                         <TableCell className="text-right space-x-2">
-                                            <Button size="sm" variant="ghost" className="text-destructive" onClick={() => refuseApplicationAction(app.id, 'Profil non retenu')}>Refuser</Button>
+                                            <Button size="sm" variant="ghost" className="text-destructive" onClick={() => setAppToRefuse(app)}>Refuser</Button>
                                             <Button size="sm" className="bg-green-600 hover:bg-green-700" onClick={() => {
                                                 setAppToApprove(app);
                                                 setSelectedStoreIds(app.selectedStoreIds || [app.selectedStoreId] || []);
@@ -150,6 +173,7 @@ export default function AdminApplicationsPage() {
                             })}
                         </TableBody>
                     </Table>
+                    {applications.length === 0 && <p className="text-center py-10 text-muted-foreground">Aucune candidature en attente.</p>}
                 </CardContent>
             </Card>
 
@@ -214,7 +238,6 @@ export default function AdminApplicationsPage() {
                                     })
                                 }
                             </div>
-                            <p className="text-[10px] text-muted-foreground italic">Note: Le shopper a postulé pour {appToApprove?.selectedStoreIds?.length || 1} magasin(s).</p>
                         </div>
 
                         <Separator />
@@ -245,10 +268,6 @@ export default function AdminApplicationsPage() {
                                     <SelectItem value="1440">Toute la journée</SelectItem>
                                 </SelectContent>
                             </Select>
-                            <p className="text-[10px] text-orange-700 flex items-start gap-1">
-                                <AlertCircle className="w-3 h-3 shrink-0 mt-0.5"/> 
-                                Le shopper aura accès au questionnaire uniquement pendant ce délai autour de l'heure fixée. Au-delà, la mission s'annulera.
-                            </p>
                         </div>
                     </div>
 
@@ -264,7 +283,39 @@ export default function AdminApplicationsPage() {
                     </AlertDialogFooter>
                 </AlertDialogContent>
             </AlertDialog>
+
+            {/* Refusal Modal */}
+            <AlertDialog open={!!appToRefuse} onOpenChange={() => setAppToRefuse(null)}>
+                <AlertDialogContent>
+                    <AlertDialogHeader>
+                        <AlertDialogTitle className="flex items-center gap-2 text-destructive">
+                            <XCircle className="w-5 h-5" /> Refuser la candidature
+                        </AlertDialogTitle>
+                        <AlertDialogDescription>
+                            Expliquez au shopper pourquoi son profil n'a pas été retenu pour cette mission.
+                        </AlertDialogDescription>
+                    </AlertDialogHeader>
+                    <div className="py-4 space-y-3">
+                        <Label className="font-bold">Motif du refus *</Label>
+                        <Textarea 
+                            placeholder="Ex: Le créneau demandé n'est plus disponible ou le profil ne correspond pas aux critères du client..." 
+                            value={refusalReason}
+                            onChange={(e) => setRefusalReason(e.target.value)}
+                            className="min-h-[100px]"
+                        />
+                    </div>
+                    <AlertDialogFooter>
+                        <AlertDialogCancel onClick={() => { setRefusalReason(''); }}>Annuler</AlertDialogCancel>
+                        <AlertDialogAction 
+                            onClick={handleRefuse} 
+                            disabled={!refusalReason.trim() || isProcessing}
+                            className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                        >
+                            {isProcessing ? <Loader2 className="animate-spin h-4 w-4" /> : "Confirmer le refus"}
+                        </AlertDialogAction>
+                    </AlertDialogFooter>
+                </AlertDialogContent>
+            </AlertDialog>
         </div>
     );
 }
-
