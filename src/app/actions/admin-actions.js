@@ -14,7 +14,7 @@ export async function createMissionAction(missionData) {
 
     const newMissionId = `mission-${Date.now()}`;
     const newMission = {
-        id: newMissionId,
+        id: String(newMissionId),
         ...missionData,
         reward: parseFloat(missionData.reward),
         deadline: new Date(missionData.deadline),
@@ -34,13 +34,13 @@ export async function createMissionAction(missionData) {
  * Delete a mission and its related data
  */
 export async function deleteMissionAction(missionId) {
-    const index = mockMissions.findIndex(m => m.id === missionId);
+    const index = mockMissions.findIndex(m => String(m.id) === String(missionId));
     if (index === -1) return { success: false, message: "Mission non trouvée." };
 
     mockMissions.splice(index, 1);
     
     // Cleanup related data
-    const appIndices = mockApplications.filter(a => a.mission_id === missionId).map(a => a.id);
+    const appIndices = mockApplications.filter(a => String(a.mission_id) === String(missionId)).map(a => a.id);
     appIndices.forEach(id => {
         const idx = mockApplications.findIndex(a => a.id === id);
         if (idx !== -1) mockApplications.splice(idx, 1);
@@ -55,7 +55,7 @@ export async function deleteMissionAction(missionId) {
  * Assign mission to specific shoppers
  */
 export async function assignMissionAction(missionId, userIds, details) {
-    const mission = mockMissions.find(m => m.id === missionId);
+    const mission = mockMissions.find(m => String(m.id) === String(missionId));
     if (!mission) return { success: false, message: "Mission non trouvée." };
 
     mission.status = 'assigned';
@@ -63,13 +63,14 @@ export async function assignMissionAction(missionId, userIds, details) {
 
     // Create assignments
     userIds.forEach(uid => {
-        const existing = mockAssignments.find(a => a.mission_id === missionId && a.user_id === uid);
+        const existing = mockAssignments.find(a => String(a.mission_id) === String(missionId) && String(a.user_id) === String(uid));
         if (!existing) {
             mockAssignments.push({
                 id: `asg-${Date.now()}-${uid}`,
                 mission_id: missionId,
                 user_id: uid,
                 assigned_at: new Date().toISOString(),
+                timeWindowMinutes: 60, // Default to 1 hour as requested
                 ...details
             });
         }
@@ -80,16 +81,16 @@ export async function assignMissionAction(missionId, userIds, details) {
 }
 
 /**
- * Approve positioning application
+ * Approve positioning application with multi-store choice
  */
 export async function approveApplicationAction(applicationId, assignmentData) {
-    const appIndex = mockApplications.findIndex(app => app.id === applicationId);
+    const appIndex = mockApplications.findIndex(app => String(app.id) === String(applicationId));
     if (appIndex === -1) return { success: false, message: "Candidature non trouvée." };
 
     const application = mockApplications[appIndex];
     application.status = 'approved';
 
-    const mission = mockMissions.find(m => m.id === application.mission_id);
+    const mission = mockMissions.find(m => String(m.id) === String(application.mission_id));
     if (mission) {
         mission.status = 'assigned';
         if (!mission.assignedTo.includes(application.user_id)) {
@@ -98,18 +99,19 @@ export async function approveApplicationAction(applicationId, assignmentData) {
         // Update mission with specific store and date for the shopper
         mission.assignedStoreId = assignmentData.storeId;
         mission.plannedDate = new Date(assignmentData.plannedDate);
+        mission.timeWindowMinutes = assignmentData.timeWindowMinutes || 60;
     }
 
     revalidatePath('/admin/applications');
     revalidatePath('/missions/assigned');
-    return { success: true, message: "Mission validée et planifiée." };
+    return { success: true, message: "Mission validée et planifiée avec un créneau de " + (assignmentData.timeWindowMinutes || 60) + " min." };
 }
 
 /**
  * Refuse a shopper application
  */
 export async function refuseApplicationAction(applicationId, reason) {
-    const app = mockApplications.find(a => a.id === applicationId);
+    const app = mockApplications.find(a => String(a.id) === String(applicationId));
     if (!app) return { success: false, message: "Candidature non trouvée." };
 
     app.status = 'refused';
@@ -120,7 +122,7 @@ export async function refuseApplicationAction(applicationId, reason) {
 }
 
 /**
- * Submit Positioning Application
+ * Submit Positioning Application with multiple stores
  */
 export async function submitApplicationAction(applicationData) {
     const newId = `app-${Date.now()}`;
@@ -138,8 +140,7 @@ export async function submitApplicationAction(applicationData) {
  * User Management Actions
  */
 export async function toggleUserStatusAction(userId, currentStatus) {
-    console.log(`Server Action: Toggling user status for ${userId}`);
-    const user = mockUsers.find(u => u.id === userId);
+    const user = mockUsers.find(u => String(u.id) === String(userId));
     if (!user) return { success: false, message: "Utilisateur non trouvé." };
     
     const newStatus = currentStatus === 'active' ? 'inactive' : 'active';
@@ -150,7 +151,7 @@ export async function toggleUserStatusAction(userId, currentStatus) {
 }
 
 export async function updateUserAction(userId, userData) {
-    const index = mockUsers.findIndex(u => u.id === userId);
+    const index = mockUsers.findIndex(u => String(u.id) === String(userId));
     if (index === -1) return { success: false, message: "Utilisateur non trouvé." };
     
     mockUsers[index] = { ...mockUsers[index], ...userData };
@@ -189,7 +190,7 @@ export async function batchAddStoresAction(storesData) {
 }
 
 export async function updateStoreAction(storeId, storeData) {
-    const index = mockStores.findIndex(s => s.id === storeId);
+    const index = mockStores.findIndex(s => String(s.id) === String(storeId));
     if (index === -1) return { success: false, message: "Magasin non trouvé." };
     mockStores[index] = { ...mockStores[index], ...storeData };
     revalidatePath('/admin/stores');
@@ -197,7 +198,7 @@ export async function updateStoreAction(storeId, storeData) {
 }
 
 export async function toggleStoreStatusAction(storeId) {
-    const store = mockStores.find(s => s.id === storeId);
+    const store = mockStores.find(s => String(s.id) === String(storeId));
     if (!store) return { success: false, message: "Magasin non trouvé." };
     store.active = !store.active;
     revalidatePath('/admin/stores');
@@ -208,15 +209,14 @@ export async function toggleStoreStatusAction(storeId) {
  * Report Review Actions
  */
 export async function approveReportAction(reportId, missionId) {
-    const report = mockReports.find(r => r.id === reportId);
+    const report = mockReports.find(r => String(r.id) === String(reportId));
     if (!report) return { success: false, message: "Rapport non trouvé." };
     
     report.status = 'approved';
     
-    // Update mission status if needed
-    const mission = mockMissions.find(m => m.id === missionId);
+    const mission = mockMissions.find(m => String(m.id) === String(missionId));
     if (mission) {
-        mission.status = 'approved';
+        mission.status = 'completed';
     }
     
     revalidatePath(`/admin/missions/${missionId}/reports`);
@@ -225,7 +225,7 @@ export async function approveReportAction(reportId, missionId) {
 }
 
 export async function refuseReportAction(reportId, missionId, reason) {
-    const report = mockReports.find(r => r.id === reportId);
+    const report = mockReports.find(r => String(r.id) === String(reportId));
     if (!report) return { success: false, message: "Rapport non trouvé." };
     
     report.status = 'refused';
@@ -233,16 +233,4 @@ export async function refuseReportAction(reportId, missionId, reason) {
     
     revalidatePath(`/admin/missions/${missionId}/reports`);
     return { success: true, message: "Rapport refusé avec motif." };
-}
-
-/**
- * Final closure
- */
-export async function finalizeMissionAction(missionId) {
-    const mission = mockMissions.find(m => m.id === missionId);
-    if (mission) {
-        mission.status = 'completed';
-    }
-    revalidatePath('/admin/missions');
-    return { success: true, message: "Mission terminée et archivée." };
 }

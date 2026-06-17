@@ -1,3 +1,4 @@
+
 'use client';
 
 import React, { useState, useEffect, useMemo } from 'react';
@@ -25,7 +26,7 @@ import { cn } from "@/lib/utils";
 
 const STEPS = [
     { id: 'details', label: 'Détails', icon: Info },
-    { id: 'store', label: 'Magasin', icon: Store },
+    { id: 'store', label: 'Magasins', icon: Store },
     { id: 'quiz', label: 'Profil', icon: ClipboardCheck },
 ];
 
@@ -40,13 +41,13 @@ export default function MissionDetailsPage() {
     const [isLoading, setIsLoading] = useState(true);
     const [isApplying, setIsApplying] = useState(false);
     
-    const [selectedStoreId, setSelectedStoreId] = useState(null);
+    const [selectedStoreIds, setSelectedStoreIds] = useState([]);
     const [searchTerm, setSearchTerm] = useState('');
     
     const [quizAnswers, setQuizAnswers] = useState({});
 
     useEffect(() => {
-        const found = mockMissions.find(m => m.id === missionId);
+        const found = mockMissions.find(m => String(m.id) === String(missionId));
         if (found) {
             setMission(found);
         }
@@ -55,7 +56,7 @@ export default function MissionDetailsPage() {
 
     const filteredStores = useMemo(() => {
         if (!mission) return [];
-        let stores = mockStores.filter(s => s.mission_id === missionId && s.active);
+        let stores = mockStores.filter(s => String(s.mission_id) === String(missionId) && s.active);
         if (searchTerm) {
             stores = stores.filter(s => 
                 s.city.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -63,19 +64,32 @@ export default function MissionDetailsPage() {
             );
         }
         return stores;
-    }, [mission, searchTerm]);
+    }, [mission, searchTerm, missionId]);
+
+    const toggleStoreSelection = (storeId) => {
+        setSelectedStoreIds(prev => 
+            prev.includes(storeId) 
+            ? prev.filter(id => id !== storeId) 
+            : [...prev, storeId]
+        );
+    };
 
     const handleApply = async () => {
+        if (selectedStoreIds.length === 0) {
+            toast({ variant: "destructive", title: "Erreur", description: "Veuillez sélectionner au moins un magasin." });
+            return;
+        }
+
         setIsApplying(true);
         try {
             const result = await submitApplicationAction({
                 mission_id: missionId,
                 user_id: mockUser.id,
-                selectedStoreId,
+                selectedStoreIds, // Sending an array of stores now
                 quizAnswers
             });
             if (result.success) {
-                toast({ title: "Candidature Envoyée !", description: "Votre profil est en cours de validation.", variant: "default" });
+                toast({ title: "Candidature Envoyée !", description: "Votre profil est en cours de validation pour " + selectedStoreIds.length + " magasin(s).", variant: "default" });
                 router.push('/missions/assigned');
             }
         } catch (e) {
@@ -189,25 +203,32 @@ export default function MissionDetailsPage() {
 
                     {step === 'store' && (
                         <div className="space-y-6 animate-in fade-in slide-in-from-right-4">
-                            <h3 className="text-xl font-bold text-primary flex items-center gap-2"><Store className="w-6 h-6" /> Choisissez votre magasin</h3>
+                            <div className="flex justify-between items-center">
+                                <h3 className="text-xl font-bold text-primary flex items-center gap-2"><Store className="w-6 h-6" /> Sélectionnez vos magasins</h3>
+                                <Badge variant="secondary">{selectedStoreIds.length} sélectionné(s)</Badge>
+                            </div>
                             <Input placeholder="Rechercher une ville..." className="pl-4 h-11" value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)}/>
                             <div className="space-y-2 max-h-[350px] overflow-y-auto pr-2 custom-scrollbar">
-                                {filteredStores.length > 0 ? filteredStores.map(store => (
-                                    <div key={store.id} onClick={() => setSelectedStoreId(store.id)}
-                                        className={cn("p-4 border rounded-xl cursor-pointer flex items-center justify-between group",
-                                            selectedStoreId === store.id ? 'border-primary bg-primary/5 ring-1 ring-primary' : 'hover:bg-secondary/50 border-border/60')}>
-                                        <div className="flex items-center gap-4">
-                                            <div className={cn("w-10 h-10 rounded-full flex items-center justify-center", selectedStoreId === store.id ? "bg-primary text-white" : "bg-muted")}>
-                                                <Store className="w-5 h-5" />
+                                {filteredStores.length > 0 ? filteredStores.map(store => {
+                                    const isSelected = selectedStoreIds.includes(store.id);
+                                    return (
+                                        <div key={store.id} onClick={() => toggleStoreSelection(store.id)}
+                                            className={cn("p-4 border rounded-xl cursor-pointer flex items-center justify-between group transition-all",
+                                                isSelected ? 'border-primary bg-primary/5 ring-1 ring-primary' : 'hover:bg-secondary/50 border-border/60')}>
+                                            <div className="flex items-center gap-4">
+                                                <Checkbox checked={isSelected} className="rounded-full" onCheckedChange={() => toggleStoreSelection(store.id)} />
+                                                <div className={cn("w-10 h-10 rounded-full flex items-center justify-center", isSelected ? "bg-primary text-white" : "bg-muted")}>
+                                                    <Store className="w-5 h-5" />
+                                                </div>
+                                                <div>
+                                                    <div className="font-bold">{store.name}</div>
+                                                    <div className="text-xs text-muted-foreground flex items-center gap-1"><MapPin className="h-3 w-3" /> {store.city}</div>
+                                                </div>
                                             </div>
-                                            <div>
-                                                <div className="font-bold">{store.name}</div>
-                                                <div className="text-xs text-muted-foreground flex items-center gap-1"><MapPin className="h-3 w-3" /> {store.city}</div>
-                                            </div>
+                                            {isSelected && <CheckCircle2 className="w-5 h-5 text-primary" />}
                                         </div>
-                                        {selectedStoreId === store.id && <CheckCircle2 className="w-5 h-5 text-primary" />}
-                                    </div>
-                                )) : <p className="text-center text-muted-foreground py-12">Aucun magasin trouvé.</p>}
+                                    );
+                                }) : <p className="text-center text-muted-foreground py-12">Aucun magasin trouvé.</p>}
                             </div>
                         </div>
                     )}
@@ -274,7 +295,7 @@ export default function MissionDetailsPage() {
                     {step === 'store' && (
                         <div className="flex gap-4 w-full">
                             <Button variant="outline" onClick={() => setStep('details')} className="h-12 flex-1">Retour</Button>
-                            <Button onClick={() => setStep('quiz')} disabled={!selectedStoreId} className="h-12 flex-[2] text-lg font-bold shadow-lg">Valider le magasin</Button>
+                            <Button onClick={() => setStep('quiz')} disabled={selectedStoreIds.length === 0} className="h-12 flex-[2] text-lg font-bold shadow-lg">Continuer ({selectedStoreIds.length} magasins)</Button>
                         </div>
                     )}
                     {step === 'quiz' && (
