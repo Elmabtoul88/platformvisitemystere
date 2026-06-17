@@ -168,7 +168,7 @@ export async function toggleUserStatusAction(userId, currentStatus) {
     const newStatus = currentStatus === 'active' ? 'inactive' : 'active';
     user.status = newStatus;
     revalidatePath('/admin/users');
-    return { success: true, newStatus, message: `Statut mis à jour: ${newStatus}` };
+    return { success: true, newStatus, message: `Statut mi à jour: ${newStatus}` };
 }
 
 /**
@@ -191,12 +191,31 @@ export async function addStoreAction(storeData) {
     return { success: true, message: "Magasin ajouté." };
 }
 
+export async function updateStoreAction(storeId, storeData) {
+    const index = mockStores.findIndex(s => String(s.id) === String(storeId));
+    if (index === -1) return { success: false, message: "Magasin non trouvé." };
+    mockStores[index] = { ...mockStores[index], ...storeData };
+    revalidatePath('/admin/stores');
+    return { success: true, message: "Magasin mis à jour." };
+}
+
 export async function toggleStoreStatusAction(storeId) {
     const store = mockStores.find(s => String(s.id) === String(storeId));
     if (!store) return { success: false, message: "Magasin non trouvé." };
     store.active = !store.active;
     revalidatePath('/admin/stores');
-    return { success: true, message: "Statut magasin mis à jour." };
+    return { success: true, message: "Statut magasin mi à jour." };
+}
+
+export async function batchAddStoresAction(storesData) {
+    const newStores = storesData.map((data, index) => ({
+        id: `store-batch-${Date.now()}-${index}`,
+        ...data,
+        active: data.active !== undefined ? data.active : true
+    }));
+    mockStores.push(...newStores);
+    revalidatePath('/admin/stores');
+    return { success: true, message: `${newStores.length} magasins importés avec succès.` };
 }
 
 /**
