@@ -10,7 +10,7 @@ import {
     Calendar as CalendarIcon, Search, CalendarDays
 } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle, CardFooter } from '@/components/ui/card';
-import { format, isWithinInterval, startOfDay, endOfDay, parseISO } from 'date-fns';
+import { format, startOfDay, endOfDay, isWithinInterval } from 'date-fns';
 import { Button } from '@/components/ui/button';
 import Link from 'next/link';
 import { Badge } from '@/components/ui/badge';
@@ -26,19 +26,25 @@ export default function CompletedMissionsPage() {
   const [endDate, setEndDate] = useState('');
   
   const myReports = useMemo(() => {
+    // Filtrer les rapports appartenant à l'utilisateur actuel
     return mockReports.filter(r => String(r.userId) === String(mockUser.id));
   }, []);
 
-  // Filtered reports logic
+  // Logique de filtrage robuste
   const filteredReports = useMemo(() => {
     return myReports.filter(report => {
         const mission = mockMissions.find(m => String(m.id) === String(report.missionId));
-        const matchesStatus = statusFilter === 'all' || report.paymentStatus === statusFilter;
-        const matchesSearch = !searchTerm || 
-            mission?.title?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-            mission?.businessName?.toLowerCase().includes(searchTerm.toLowerCase());
         
-        // Date Range logic
+        // 1. Filtre par Statut
+        const matchesStatus = statusFilter === 'all' || report.paymentStatus === statusFilter;
+        
+        // 2. Filtre par Recherche (Titre ou Enseigne)
+        const searchLower = searchTerm.toLowerCase().trim();
+        const missionTitle = (mission?.title || "").toLowerCase();
+        const businessName = (mission?.businessName || "").toLowerCase();
+        const matchesSearch = !searchLower || missionTitle.includes(searchLower) || businessName.includes(searchLower);
+        
+        // 3. Filtre par Plage de Dates
         let matchesDate = true;
         if (startDate || endDate) {
             const reportDate = new Date(report.submittedAt);
@@ -100,7 +106,7 @@ export default function CompletedMissionsPage() {
 
       {/* Financial Dashboard */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
-        <Card className="bg-primary/5 border-primary/20">
+        <Card className="bg-primary/5 border-primary/20 shadow-sm">
             <CardHeader className="pb-2"><CardTitle className="text-xs uppercase text-muted-foreground flex justify-between">Total Missions <History className="w-3 h-3"/></CardTitle></CardHeader>
             <CardContent>
                 <div className="text-2xl font-bold">{stats.total}</div>
@@ -110,21 +116,21 @@ export default function CompletedMissionsPage() {
                 </div>
             </CardContent>
         </Card>
-        <Card className="bg-green-50 border-green-200">
+        <Card className="bg-green-50 border-green-200 shadow-sm">
             <CardHeader className="pb-2"><CardTitle className="text-xs uppercase text-green-700 flex justify-between">Total Payé <CheckCircle className="w-3 h-3"/></CardTitle></CardHeader>
             <CardContent>
                 <div className="text-2xl font-bold text-green-800">{stats.totalPaid} $</div>
                 <p className="text-[10px] text-green-600">Reçu sur votre compte</p>
             </CardContent>
         </Card>
-        <Card className="bg-orange-50 border-orange-200">
+        <Card className="bg-orange-50 border-orange-200 shadow-sm">
             <CardHeader className="pb-2"><CardTitle className="text-xs uppercase text-orange-700 flex justify-between">En attente <Clock className="w-3 h-3"/></CardTitle></CardHeader>
             <CardContent>
                 <div className="text-2xl font-bold text-orange-800">{stats.totalPending} $</div>
                 <p className="text-[10px] text-orange-600">Traitement en cours</p>
             </CardContent>
         </Card>
-        <Card className="bg-red-50 border-red-200">
+        <Card className="bg-red-50 border-red-200 shadow-sm">
             <CardHeader className="pb-2"><CardTitle className="text-xs uppercase text-red-700 flex justify-between">Refusées <XCircle className="w-3 h-3"/></CardTitle></CardHeader>
             <CardContent>
                 <div className="text-2xl font-bold text-red-800">{stats.refusedCount}</div>
@@ -135,27 +141,27 @@ export default function CompletedMissionsPage() {
 
       <Tabs defaultValue="all" className="space-y-6">
         <div className="space-y-4">
-            <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
+            <div className="flex flex-col lg:flex-row justify-between items-start lg:items-center gap-4">
                 <TabsList>
                     <TabsTrigger value="all" className="flex items-center gap-2"><History className="w-4 h-4"/> Historique</TabsTrigger>
                     <TabsTrigger value="summary" className="flex items-center gap-2"><TrendingUp className="w-4 h-4"/> Analyse</TabsTrigger>
                 </TabsList>
 
                 {/* Main Filters Bar */}
-                <div className="flex flex-wrap items-center gap-2 w-full md:w-auto">
+                <div className="flex flex-wrap items-center gap-2 w-full lg:w-auto">
                     <div className="relative flex-grow md:w-64">
                         <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                         <Input 
-                            placeholder="Rechercher une mission..." 
+                            placeholder="Rechercher une mission ou enseigne..." 
                             value={searchTerm}
                             onChange={(e) => setSearchTerm(e.target.value)}
                             className="pl-9 h-9"
                         />
                     </div>
                     <Select value={statusFilter} onValueChange={setStatusFilter}>
-                        <SelectTrigger className="w-[150px] h-9">
+                        <SelectTrigger className="w-full sm:w-[180px] h-9">
                             <ListFilter className="w-4 h-4 mr-2" />
-                            <SelectValue placeholder="Statut" />
+                            <SelectValue placeholder="Filtrer par statut" />
                         </SelectTrigger>
                         <SelectContent>
                             <SelectItem value="all">Tous les statuts</SelectItem>
@@ -170,7 +176,7 @@ export default function CompletedMissionsPage() {
             {/* Date Range Filters Bar */}
             <Card className="p-3 bg-secondary/10 border-dashed">
                 <div className="flex flex-wrap items-end gap-4">
-                    <div className="space-y-1.5 flex-1 min-w-[150px]">
+                    <div className="space-y-1.5 flex-1 min-w-[140px]">
                         <Label className="text-[10px] uppercase font-bold text-muted-foreground flex items-center gap-1">
                             <CalendarDays className="w-3 h-3"/> Du
                         </Label>
@@ -181,7 +187,7 @@ export default function CompletedMissionsPage() {
                             onChange={(e) => setStartDate(e.target.value)}
                         />
                     </div>
-                    <div className="space-y-1.5 flex-1 min-w-[150px]">
+                    <div className="space-y-1.5 flex-1 min-w-[140px]">
                         <Label className="text-[10px] uppercase font-bold text-muted-foreground flex items-center gap-1">
                             <CalendarDays className="w-3 h-3"/> Au
                         </Label>
@@ -193,7 +199,7 @@ export default function CompletedMissionsPage() {
                         />
                     </div>
                     <Button variant="ghost" size="sm" className="h-8 text-xs text-muted-foreground hover:text-primary" onClick={clearFilters}>
-                        Réinitialiser
+                        Effacer les filtres
                     </Button>
                 </div>
             </Card>
@@ -214,7 +220,7 @@ export default function CompletedMissionsPage() {
                                 <div className="flex justify-between items-start mb-4">
                                     <div className="space-y-1">
                                         <h3 className="font-bold text-lg text-primary">{mission?.title || 'Mission archivée'}</h3>
-                                        <p className="text-xs text-muted-foreground font-medium">{mission?.businessName}</p>
+                                        <p className="text-xs text-muted-foreground font-medium">{mission?.businessName || 'Enseigne inconnue'}</p>
                                         <p className="text-sm text-muted-foreground flex items-center gap-2 pt-1">
                                             <Clock className="w-3 h-3"/> Réalisée le {format(new Date(report.submittedAt), 'PP')}
                                         </p>
