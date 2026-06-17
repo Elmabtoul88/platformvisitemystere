@@ -52,6 +52,9 @@ function Header({ isAuthenticated, userRole, pathname, closeMobileMenu }) {
       <Button variant={pathname === '/dashboard' ? "secondary" : "ghost"} size="sm" asChild onClick={closeMobileMenu}>
         <Link href="/dashboard"><Home className="w-4 h-4 mr-1" /> Missions</Link>
       </Button>
+      <Button variant={pathname === '/map' ? "secondary" : "ghost"} size="sm" asChild onClick={closeMobileMenu}>
+        <Link href="/map"><Map className="w-4 h-4 mr-1" /> Carte</Link>
+      </Button>
       <Button variant={pathname === '/missions/assigned' ? "secondary" : "ghost"} size="sm" asChild onClick={closeMobileMenu}>
         <Link href="/missions/assigned"><ListChecks className="w-4 h-4 mr-1" /> Suivi</Link>
       </Button>
