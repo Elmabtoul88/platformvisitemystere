@@ -1,5 +1,5 @@
 // IMPORTANT: This file maintains the mock data for the application.
-// Restructured to use flexible quiz definitions and assignments.
+// Synchronized with SQL schema and turn-based process requirements.
 
 export let mockMissions = [
   {
@@ -45,6 +45,25 @@ export let mockMissions = [
     appliedBy: [],
   },
   {
+    id: 'mission-2',
+    title: 'Retail Store Cleanliness Check',
+    description: 'Visit the downtown branch and assess store cleanliness, staff helpfulness, and product availability.',
+    deadline: new Date(Date.now() + 60 * 24 * 60 * 60 * 1000),
+    reward: 35,
+    location: 'Anytown, USA',
+    country: 'USA',
+    city: 'Anytown',
+    category: 'Retail',
+    businessName: 'Fashion Forward Ltd.',
+    clientId: 'client-2',
+    soughtProfile: 'Tout profil',
+    status: 'available',
+    profileQuiz: [],
+    briefingUrl: '#',
+    scenarioUrl: '#',
+    questionnairePdfUrl: '#',
+  },
+  {
     id: 'mission-5',
     title: 'Beauté et Bien-être - Test de Luminosité',
     description: 'La visite consiste à vous rendre dans un magasin de beauté et demander conseil sur un produits pour les peaux ternes.',
@@ -61,7 +80,6 @@ export let mockMissions = [
     assignedTo: ['user-shopper-1'],
     docsConsulted: { briefing: true, scenario: true, questionnaire: true },
     knowledgeQuizPassed: true,
-    plannedDate: new Date(Date.now() - 1000 * 60 * 10).toISOString(),
     briefingUrl: '/files/briefing_mission_5.pdf',
     scenarioUrl: '/files/scenario_mission_5.pdf',
     questionnairePdfUrl: '/files/questionnaire_mission_5.pdf',
@@ -86,7 +104,6 @@ export let mockMissions = [
     assignedTo: ['user-shopper-1'],
     docsConsulted: { briefing: false, scenario: false, questionnaire: false },
     knowledgeQuizPassed: false,
-    plannedDate: new Date(Date.now() + 1000 * 60 * 60 * 5).toISOString(),
     briefingUrl: '#',
     scenarioUrl: '#',
     questionnairePdfUrl: '#',
@@ -104,6 +121,7 @@ export const mockUser = {
   country: 'USA',
   status: 'active',
   completedMissions: 2,
+  // Detailed initial banking info
   bankingInfo: {
     accountHolder: 'Alex Shopper',
     rib: 'FR76 3000 6000 0112 3456 7890 123',
