@@ -3,7 +3,10 @@
 import React from 'react';
 import Image from 'next/image';
 import { Card, CardContent } from '@/components/ui/card';
-import { CheckCircle2, History, Target, Eye, ShieldCheck, Award, Briefcase, Handshake } from 'lucide-react';
+import { 
+  CheckCircle2, History, Target, Eye, ShieldCheck, 
+  Award, Briefcase, Handshake, Building2, Star, Globe 
+} from 'lucide-react';
 import images from '@/app/lib/placeholder-images.json';
 
 export default function AboutPage() {
@@ -52,7 +55,7 @@ export default function AboutPage() {
                 {[
                   { icon: Target, title: "Précision Millimétrée", desc: "Des protocoles d'audit validés scientifiquement pour une donnée pure." },
                   { icon: History, title: "Longévité & Stabilité", desc: "Un partenaire de confiance accompagnant ses clients sur le long terme." },
-                  { icon: Award, title: "Excellence Certifiée", desc: "Une méthodologie rigoureuse répondant aux plus hauts standards internationaux." },
+                  { icon: Award, title: "Excellence Certifiée", desc: "Un méthodologie rigoureuse répondant aux plus hauts standards internationaux." },
                   { icon: Handshake, title: "Engagement Partenarial", desc: "Nous agissons comme une extension de vos équipes internes." }
                 ].map((val, i) => (
                   <div key={i} className="space-y-3 p-6 rounded-2xl bg-secondary/20 border border-border/50 hover:border-accent transition-all duration-300">

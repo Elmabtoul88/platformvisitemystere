@@ -2,6 +2,7 @@
 
 import React from 'react';
 import { Card, CardContent } from '@/components/ui/card';
+import { Button } from '@/components/ui/button';
 import { Building2, Search, LineChart, ShieldCheck, Users2, Trophy, ArrowRight, Eye, ClipboardCheck, LayoutDashboard } from 'lucide-react';
 import Image from 'next/image';
 import images from '@/app/lib/placeholder-images.json';
