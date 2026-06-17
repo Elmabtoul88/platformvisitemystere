@@ -8,7 +8,7 @@ import { Button } from '@/components/ui/button';
 import {
     Home, ListChecks, CheckSquare, LogIn, Shield, Users, Settings as SettingsIcon,
     Map, Loader2, FileSignature, Menu, Bell, UserCheck as UserCheckIcon, Briefcase, Building, CreditCard,
-    Facebook, Linkedin, Twitter, Mail, Phone, MapPin
+    Facebook, Linkedin, Twitter, Mail, Phone, MapPin, ClipboardList
 } from 'lucide-react';
 import { ProfileMenu } from '@/components/profile-menu';
 import React, { useEffect, useState, Suspense } from 'react';
@@ -68,6 +68,12 @@ function Header({ isAuthenticated, userRole, pathname, closeMobileMenu }) {
       </Button>
       <Button variant={pathname.startsWith('/admin/missions') ? "secondary" : "ghost"} size="sm" asChild onClick={closeMobileMenu}>
         <Link href="/admin/missions"><FileSignature className="w-4 h-4 mr-1" /> Missions</Link>
+      </Button>
+      <Button variant={pathname.startsWith('/admin/applications') ? "secondary" : "ghost"} size="sm" asChild onClick={closeMobileMenu}>
+        <Link href="/admin/applications"><ClipboardList className="w-4 h-4 mr-1" /> Candidatures</Link>
+      </Button>
+      <Button variant={pathname.startsWith('/admin/stores') ? "secondary" : "ghost"} size="sm" asChild onClick={closeMobileMenu}>
+        <Link href="/admin/stores"><Building className="w-4 h-4 mr-1" /> Magasins</Link>
       </Button>
       <Button variant={pathname.startsWith('/admin/payments') ? "secondary" : "ghost"} size="sm" asChild onClick={closeMobileMenu}>
         <Link href="/admin/payments"><CreditCard className="w-4 h-4 mr-1" /> Paiements</Link>
