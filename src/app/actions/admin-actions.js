@@ -1,4 +1,5 @@
 
+
 'use server';
 
 import { revalidatePath } from 'next/cache';
@@ -52,14 +53,20 @@ export async function deleteMissionAction(missionId) {
 }
 
 /**
- * Assign mission to specific shoppers
+ * Assign mission to specific shoppers (Direct assignment)
  */
 export async function assignMissionAction(missionId, userIds, details) {
     const mission = mockMissions.find(m => String(m.id) === String(missionId));
     if (!mission) return { success: false, message: "Mission non trouvée." };
 
     mission.status = 'assigned';
-    mission.assignedTo = userIds;
+    
+    // Add unique users to assignedTo list
+    userIds.forEach(uid => {
+        if (!mission.assignedTo.includes(uid)) {
+            mission.assignedTo.push(uid);
+        }
+    });
 
     // Create assignments
     userIds.forEach(uid => {
@@ -70,7 +77,7 @@ export async function assignMissionAction(missionId, userIds, details) {
                 mission_id: missionId,
                 user_id: uid,
                 assigned_at: new Date().toISOString(),
-                timeWindowMinutes: 60, // Default to 1 hour as requested
+                timeWindowMinutes: 60,
                 ...details
             });
         }
@@ -81,7 +88,7 @@ export async function assignMissionAction(missionId, userIds, details) {
 }
 
 /**
- * Approve positioning application with multi-store choice
+ * Approve application with support for validation of multiple stores
  */
 export async function approveApplicationAction(applicationId, assignmentData) {
     const appIndex = mockApplications.findIndex(app => String(app.id) === String(applicationId));
@@ -96,15 +103,41 @@ export async function approveApplicationAction(applicationId, assignmentData) {
         if (!mission.assignedTo.includes(application.user_id)) {
             mission.assignedTo.push(application.user_id);
         }
-        // Update mission with specific store and date for the shopper
-        mission.assignedStoreId = assignmentData.storeId;
+
+        // For each selected store, create a specific assignment
+        // If the user said "validate multiple stores", it implies the user gets the mission for each store.
+        assignmentData.storeIds.forEach((storeId, index) => {
+            // Check if assignment already exists for this specific combination
+            const existing = mockAssignments.find(a => 
+                String(a.mission_id) === String(mission.id) && 
+                String(a.user_id) === String(application.user_id) &&
+                String(a.store_id) === String(storeId)
+            );
+
+            if (!existing) {
+                mockAssignments.push({
+                    id: `asg-v-${Date.now()}-${index}`,
+                    mission_id: mission.id,
+                    user_id: application.user_id,
+                    store_id: storeId,
+                    assigned_at: new Date().toISOString(),
+                    plannedDate: assignmentData.plannedDate,
+                    timeWindowMinutes: assignmentData.timeWindowMinutes || 60,
+                    status: 'assigned'
+                });
+            }
+        });
+        
+        // Backward compatibility for mission-level planned date for single-store missions
+        mission.assignedStoreId = assignmentData.storeIds[0];
         mission.plannedDate = new Date(assignmentData.plannedDate);
         mission.timeWindowMinutes = assignmentData.timeWindowMinutes || 60;
     }
 
     revalidatePath('/admin/applications');
+    revalidatePath('/admin/missions');
     revalidatePath('/missions/assigned');
-    return { success: true, message: "Mission validée et planifiée avec un créneau de " + (assignmentData.timeWindowMinutes || 60) + " min." };
+    return { success: true, message: "Candidature validée pour " + assignmentData.storeIds.length + " magasin(s)." };
 }
 
 /**
@@ -234,3 +267,4 @@ export async function refuseReportAction(reportId, missionId, reason) {
     revalidatePath(`/admin/missions/${missionId}/reports`);
     return { success: true, message: "Rapport refusé avec motif." };
 }
+
