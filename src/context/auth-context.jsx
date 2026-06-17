@@ -1,4 +1,3 @@
-
 'use client';
 
 import React, { createContext, useContext, useState, useEffect, useCallback } from 'react';
@@ -28,23 +27,25 @@ export function AuthProvider({ children }) {
   }, [setAuthState, router]);
 
   const login = useCallback(async (email, password) => {
-    await new Promise(resolve => setTimeout(resolve, 500));
+    await new Promise(resolve => setTimeout(resolve, 800));
     
-    // Simulations simples pour le prototype
-    const isClientLogin = email.toLowerCase() === 'client@gourmet.com' && password === 'password123';
-    const isAdminLogin = email.toLowerCase() === 'admin@example.com' && password === 'password123';
-    const isShopperLogin = email.toLowerCase() === 'alex@example.com' && password === 'password123';
+    const lowerEmail = email.toLowerCase().trim();
+    
+    // Simulations pour le prototype basées sur les identifiants fournis
+    const isClientLogin = lowerEmail === 'client@gourmet.com' && password === 'password123';
+    const isAdminLogin = lowerEmail === 'admin@example.com' && password === 'password123';
+    const isShopperLogin = lowerEmail === 'alex@example.com' && password === 'password123';
 
     let loggedInUser = null;
-    if (isClientLogin) {
-        loggedInUser = mockUsers.find(u => u.role === 'client' && u.email.toLowerCase() === email.toLowerCase());
-    } else if (isAdminLogin) {
+
+    if (isAdminLogin) {
         loggedInUser = mockUsers.find(u => u.role === 'admin');
-    } else if(isShopperLogin) {
-        loggedInUser = mockUsers.find(u => u.role === 'shopper' && u.email.toLowerCase() === email.toLowerCase());
+    } else {
+        // Recherche dans la liste des mockUsers pour les autres rôles
+        loggedInUser = mockUsers.find(u => u.email.toLowerCase() === lowerEmail);
     }
 
-    if (loggedInUser) {
+    if (loggedInUser && password === 'password123') {
         setAuthState(loggedInUser);
         return { success: true, message: "Connexion réussie !" };
     } else {
