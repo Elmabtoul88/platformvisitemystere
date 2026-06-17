@@ -59,9 +59,9 @@ export let mockMissions = [
     soughtProfile: 'Femme de 25 à 45 ans',
     status: 'assigned',
     assignedTo: ['user-shopper-1'],
-    docsConsulted: { briefing: true, scenario: true, questionnaire: true }, // Set to true for testing
-    knowledgeQuizPassed: true, // Set to true for testing
-    plannedDate: new Date(Date.now() - 1000 * 60 * 10), // 10 minutes ago
+    docsConsulted: { briefing: true, scenario: true, questionnaire: true },
+    knowledgeQuizPassed: true,
+    plannedDate: new Date(Date.now() - 1000 * 60 * 10).toISOString(),
     briefingUrl: '/files/briefing_mission_5.pdf',
     scenarioUrl: '/files/scenario_mission_5.pdf',
     questionnairePdfUrl: '/files/questionnaire_mission_5.pdf',
@@ -86,7 +86,7 @@ export let mockMissions = [
     assignedTo: ['user-shopper-1'],
     docsConsulted: { briefing: false, scenario: false, questionnaire: false },
     knowledgeQuizPassed: false,
-    plannedDate: new Date(Date.now() + 1000 * 60 * 60 * 5), // 5 hours in future
+    plannedDate: new Date(Date.now() + 1000 * 60 * 60 * 5).toISOString(),
     briefingUrl: '#',
     scenarioUrl: '#',
     questionnairePdfUrl: '#',
@@ -103,7 +103,15 @@ export const mockUser = {
   city: 'Anytown',
   country: 'USA',
   status: 'active',
-  completedMissions: 1,
+  completedMissions: 2,
+  bankingInfo: {
+    accountHolder: 'Alex Shopper',
+    rib: 'FR76 3000 6000 0112 3456 7890 123',
+    bankName: 'BNP Paribas',
+    swift: 'BNPAFRPP',
+    country: 'France',
+    currency: 'EUR'
+  }
 };
 
 export let mockApplications = [
@@ -118,7 +126,30 @@ export let mockApplications = [
     }
 ];
 
-export let mockReports = [];
+export let mockReports = [
+    {
+        id: 'report-past-1',
+        missionId: 'mission-5',
+        userId: 'user-shopper-1',
+        status: 'approved',
+        submittedAt: new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString(),
+        paymentStatus: 'paid',
+        paymentDate: new Date(Date.now() - 15 * 24 * 60 * 60 * 1000).toISOString(),
+        reward: 20,
+        transactionRef: 'TRX-998877',
+        answers: { q1_rating: { type: 'rating', value: 5 }, q2_text: { type: 'text', value: 'Excellent service' } }
+    },
+    {
+        id: 'report-past-2',
+        missionId: 'mission-anytown',
+        userId: 'user-shopper-1',
+        status: 'approved',
+        submittedAt: new Date(Date.now() - 5 * 24 * 60 * 60 * 1000).toISOString(),
+        paymentStatus: 'pending',
+        reward: 50,
+        answers: { q1_text: { type: 'text', value: 'Audit complete' } }
+    }
+];
 
 export let mockSurveyQuestions = {
   'mission-1': [
@@ -149,7 +180,7 @@ export let mockAssignments = [
     user_id: 'user-shopper-1',
     store_id: 'store-2',
     assigned_at: new Date(Date.now() - 2 * 24 * 60 * 60 * 1000).toISOString(),
-    plannedDate: new Date(Date.now() - 10 * 60 * 1000).toISOString(), // 10 mins ago (active)
+    plannedDate: new Date(Date.now() - 10 * 60 * 1000).toISOString(),
     timeWindowMinutes: 60,
     status: 'assigned'
   },
@@ -159,7 +190,7 @@ export let mockAssignments = [
     user_id: 'user-shopper-1',
     store_id: 'store-any-1',
     assigned_at: new Date(Date.now() - 1 * 24 * 60 * 60 * 1000).toISOString(),
-    plannedDate: new Date(Date.now() + 5 * 60 * 60 * 1000).toISOString(), // 5 hours future (upcoming)
+    plannedDate: new Date(Date.now() + 5 * 60 * 60 * 1000).toISOString(),
     timeWindowMinutes: 60,
     status: 'assigned'
   }

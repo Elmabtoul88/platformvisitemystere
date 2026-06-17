@@ -1,177 +1,149 @@
-
 "use client";
 
 import React, { useMemo } from 'react';
-import { MissionCard } from '@/components/mission-card';
-import { mockMissions, mockReports, mockUser } from '@/lib/mock-data'; // Using mock data
+import { mockMissions, mockReports, mockUser } from '@/lib/mock-data';
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
-import { CheckCircle, SearchX, ArrowLeft, DollarSign, Wallet } from 'lucide-react'; // Added Wallet icon
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'; // Added CardHeader, CardTitle
-import { format } from 'date-fns';
-import Image from 'next/image';
+import { CheckCircle, SearchX, ArrowLeft, DollarSign, Wallet, Clock, XCircle, CreditCard, History, TrendingUp } from 'lucide-react';
+import { Card, CardContent, CardHeader, CardTitle, CardFooter } from '@/components/ui/card';
+import { format, startOfMonth, endOfMonth, isWithinInterval } from 'date-fns';
 import { Button } from '@/components/ui/button';
 import Link from 'next/link';
 import { Badge } from '@/components/ui/badge';
-
-
-// Helper to find the report for a completed mission
-const findReportForMission = (missionId) => {
-    // Ensure the report belongs to the current mock user and is approved
-    return mockReports.find(report =>
-        report.missionId === missionId &&
-        report.userId === mockUser.id &&
-        report.status === 'approved' // Only find approved reports for completed list
-    );
-}
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 
 export default function CompletedMissionsPage() {
-  // Filter missions completed and approved for the mock user
-  const completedMissions = useMemo(() => {
-    return mockMissions.filter(mission =>
-        (mission.status === 'completed' || mission.status === 'approved') // Show completed/approved
-        && (Array.isArray(mission.assignedTo) ? mission.assignedTo.includes(mockUser.id) : mission.assignedTo === mockUser.id) // Check assignment
-        && findReportForMission(mission.id) // Ensure an approved report exists for this user
-    );
-  }, []); // Dependency array ensures this runs once based on mock data
+  const myReports = useMemo(() => {
+    return mockReports.filter(r => String(r.userId) === String(mockUser.id));
+  }, []);
 
-  // Calculate total payment
-  const totalPayment = useMemo(() => {
-    return completedMissions.reduce((sum, mission) => sum + mission.reward, 0);
-  }, [completedMissions]);
+  const monthlySummary = useMemo(() => {
+    const now = new Date();
+    const start = startOfMonth(now);
+    const end = endOfMonth(now);
+
+    const thisMonth = myReports.filter(r => {
+        const date = new Date(r.submittedAt);
+        return isWithinInterval(date, { start, end });
+    });
+
+    return {
+        count: thisMonth.length,
+        earned: thisMonth.reduce((sum, r) => sum + (r.reward || 0), 0),
+        paid: thisMonth.filter(r => r.paymentStatus === 'paid').reduce((sum, r) => sum + (r.reward || 0), 0),
+        pending: thisMonth.filter(r => r.paymentStatus === 'pending').reduce((sum, r) => sum + (r.reward || 0), 0),
+    };
+  }, [myReports]);
+
+  const getPaymentStatusBadge = (status) => {
+    switch (status) {
+        case 'paid': return <Badge className="bg-green-100 text-green-800 border-green-200">Payée</Badge>;
+        case 'pending': return <Badge variant="outline" className="bg-orange-50 text-orange-700 border-orange-200">En attente</Badge>;
+        case 'refused': return <Badge variant="destructive">Paiement Refusé</Badge>;
+        default: return <Badge variant="secondary">Inconnu</Badge>;
+    }
+  };
 
   return (
-    <div className="container mx-auto py-8 px-4">
+    <div className="container mx-auto py-8 px-4 max-w-5xl">
        <Button asChild variant="outline" size="sm" className="mb-6">
-         <Link href="/">
-           <ArrowLeft className="w-4 h-4 mr-1" /> Back to Available Missions
-         </Link>
+         <Link href="/"><ArrowLeft className="w-4 h-4 mr-1" /> Retour aux missions</Link>
        </Button>
-      <h1 className="text-2xl font-bold mb-6 text-primary flex items-center gap-2">
-        <CheckCircle className="w-6 h-6" /> My Completed Missions
+      
+      <h1 className="text-2xl font-bold mb-8 text-primary flex items-center gap-2">
+        <CheckCircle className="w-7 h-7" /> Mes Missions Terminées
       </h1>
 
-      {/* Total Payment Card */}
-      <Card className="mb-6 shadow-sm bg-primary/5 border-primary/20">
-        <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-          <CardTitle className="text-sm font-medium text-primary flex items-center gap-2">
-            <Wallet className="w-4 h-4" /> Total Earnings
-          </CardTitle>
-          {/* Optional icon or detail */}
-        </CardHeader>
-        <CardContent>
-          <div className="text-2xl font-bold text-primary">${totalPayment.toFixed(2)}</div>
-          <p className="text-xs text-primary/80">
-            Total earnings from all approved missions.
-          </p>
-        </CardContent>
-      </Card>
+      <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-8">
+        <Card className="bg-primary/5 border-primary/20">
+            <CardHeader className="pb-2"><CardTitle className="text-xs uppercase text-muted-foreground">Missions ce mois</CardTitle></CardHeader>
+            <CardContent><div className="text-2xl font-bold">{monthlySummary.count}</div></CardContent>
+        </Card>
+        <Card className="bg-primary/5 border-primary/20">
+            <CardHeader className="pb-2"><CardTitle className="text-xs uppercase text-muted-foreground">Gagné ce mois</CardTitle></CardHeader>
+            <CardContent><div className="text-2xl font-bold">{monthlySummary.earned} $</div></CardContent>
+        </Card>
+        <Card className="bg-green-50 border-green-200">
+            <CardHeader className="pb-2"><CardTitle className="text-xs uppercase text-green-700">Payé ce mois</CardTitle></CardHeader>
+            <CardContent><div className="text-2xl font-bold text-green-800">{monthlySummary.paid} $</div></CardContent>
+        </Card>
+        <Card className="bg-orange-50 border-orange-200">
+            <CardHeader className="pb-2"><CardTitle className="text-xs uppercase text-orange-700">Reste à recevoir</CardTitle></CardHeader>
+            <CardContent><div className="text-2xl font-bold text-orange-800">{monthlySummary.pending} $</div></CardContent>
+        </Card>
+      </div>
 
+      <Tabs defaultValue="all" className="space-y-6">
+        <TabsList>
+            <TabsTrigger value="all" className="flex items-center gap-2"><History className="w-4 h-4"/> Historique Complet</TabsTrigger>
+            <TabsTrigger value="summary" className="flex items-center gap-2"><TrendingUp className="w-4 h-4"/> Récapitulatif</TabsTrigger>
+        </TabsList>
 
-      {completedMissions.length > 0 ? (
-        <div className="space-y-6">
-          {completedMissions.map(mission => {
-            const report = findReportForMission(mission.id); // Report will always be approved here due to filter
-            return (
-                <Card key={mission.id} className="shadow-sm overflow-hidden">
-                    <div className="grid md:grid-cols-3">
-                         {/* Mission Details Column */}
-                         <div className="md:col-span-2 border-b md:border-b-0 md:border-r">
-                             <MissionCard
-                                mission={mission}
-                                showApplyButton={false} // No apply button needed
-                                // Optionally add a handler to view report details if needed
-                              />
-                         </div>
-
-                         {/* Report Summary & Payment Column */}
-                         <div className="md:col-span-1 p-4 bg-secondary/50">
-                            {report ? (
-                                <div className="space-y-4"> {/* Increased spacing */}
+        <TabsContent value="all" className="space-y-4">
+            {myReports.length > 0 ? myReports.map(report => {
+                const mission = mockMissions.find(m => String(m.id) === String(report.missionId));
+                return (
+                    <Card key={report.id} className="overflow-hidden border-l-4 border-l-primary">
+                        <div className="flex flex-col md:flex-row">
+                            <div className="flex-grow p-6">
+                                <div className="flex justify-between items-start mb-4">
                                     <div>
-                                        <h3 className="text-md font-semibold text-foreground flex items-center justify-between mb-1">
-                                            Submitted Report
-                                            <Badge variant='default' className="capitalize bg-green-100 text-green-800 border-green-300">
-                                                <CheckCircle className="w-3 h-3 mr-1"/> Approved
-                                            </Badge>
-                                        </h3>
-                                        <p className="text-sm text-muted-foreground">
-                                            Submitted on: {format(new Date(report.submittedAt), 'PPp')}
+                                        <h3 className="font-bold text-lg text-primary">{mission?.title || 'Mission archivée'}</h3>
+                                        <p className="text-sm text-muted-foreground flex items-center gap-2">
+                                            <Clock className="w-3 h-3"/> Réalisée le {format(new Date(report.submittedAt), 'PP')}
                                         </p>
                                     </div>
-
-                                    {/* Payment Information Section */}
-                                    <div className="p-3 border rounded-md bg-background shadow-sm">
-                                        <h4 className="text-sm font-semibold text-primary flex items-center gap-1 mb-1">
-                                            <DollarSign className="w-4 h-4"/> Payment Status
-                                        </h4>
-                                        <p className="text-sm text-green-700 font-medium">
-                                            Paid: ${mission.reward.toFixed(2)} {/* Ensure 2 decimal places */}
-                                        </p>
-                                        <p className="text-xs text-muted-foreground mt-1">
-                                            Payment processed upon report approval (simulated).
-                                        </p>
+                                    <div className="text-right flex flex-col items-end gap-2">
+                                        <span className="text-xl font-black text-primary">{report.reward} $</span>
+                                        {getPaymentStatusBadge(report.paymentStatus)}
                                     </div>
-
-                                    {/* Optional Report Details (rating, comment, photo) */}
-                                    {(report.rating || report.comments || report.photoUrl) && (
-                                    <div className="space-y-2 pt-2 border-t mt-4">
-                                        {report.rating && (
-                                            <div className="flex items-center gap-1">
-                                                {Array.from({ length: 5 }).map((_, i) => (
-                                                    <CheckCircle /* Using CheckCircle as placeholder for Star */
-                                                        key={i}
-                                                        className={`w-4 h-4 ${i < report.rating ? 'text-accent fill-accent' : 'text-muted-foreground/50'}`}
-                                                    />
-                                                ))}
-                                                <span className="text-sm font-medium ml-1">({report.rating}/5)</span>
-                                            </div>
-                                        )}
-                                        {report.comments && (
-                                            <p className="text-sm text-foreground bg-card p-2 rounded border italic line-clamp-3">
-                                                "{report.comments}"
-                                            </p>
-                                        )}
-                                        {report.photoUrl && (
-                                        <div>
-                                            <p className="text-xs text-muted-foreground mb-1">Submitted Photo:</p>
-                                            <Image
-                                                src={report.photoUrl}
-                                                alt="Submitted photo"
-                                                width={100}
-                                                height={75}
-                                                className="rounded border object-cover"
-                                            />
+                                </div>
+                                
+                                {report.paymentStatus === 'paid' && (
+                                    <div className="bg-green-50 p-3 rounded-lg border border-green-100 flex items-center gap-3 mt-2 animate-in fade-in slide-in-from-top-1">
+                                        <CreditCard className="w-5 h-5 text-green-600"/>
+                                        <div className="text-xs text-green-800">
+                                            <p className="font-bold">Virement effectué le {format(new Date(report.paymentDate), 'PP')}</p>
+                                            <p className="opacity-80 italic">Réf: {report.transactionRef}</p>
                                         </div>
-                                        )}
                                     </div>
-                                    )}
-                                </div>
-                            ) : (
-                                <div className="flex items-center justify-center h-full text-muted-foreground text-sm">
-                                    Report details not found.
-                                </div>
-                            )}
-                         </div>
+                                )}
+
+                                {report.paymentStatus === 'refused' && (
+                                    <div className="bg-destructive/10 p-3 rounded-lg border border-destructive/20 mt-2">
+                                        <p className="text-xs text-destructive font-bold">Motif du refus de paiement :</p>
+                                        <p className="text-xs text-destructive italic">"{report.adminNotes || 'Contactez le support pour plus d\'informations.'}"</p>
+                                    </div>
+                                )}
+                            </div>
+                        </div>
+                    </Card>
+                );
+            }) : (
+                <div className="text-center py-20 bg-secondary/10 rounded-xl border-2 border-dashed">
+                    <SearchX className="w-12 h-12 mx-auto text-muted-foreground mb-4 opacity-50"/>
+                    <p className="text-muted-foreground font-medium">Aucune mission terminée pour le moment.</p>
+                </div>
+            )}
+        </TabsContent>
+
+        <TabsContent value="summary">
+            <Card>
+                <CardHeader><CardTitle>Performance & Gains</CardTitle></CardHeader>
+                <CardContent className="space-y-4">
+                    <p className="text-sm text-muted-foreground italic">Cette section sera enrichie avec des graphiques de performance prochainement.</p>
+                    <div className="border rounded-lg p-6 flex items-center justify-between bg-secondary/20">
+                        <div className="space-y-1">
+                            <p className="text-xs uppercase text-muted-foreground">Total à vie</p>
+                            <p className="text-4xl font-black text-primary">
+                                {myReports.filter(r => r.paymentStatus === 'paid').reduce((sum, r) => sum + (r.reward || 0), 0)} $
+                            </p>
+                        </div>
+                        <Wallet className="w-12 h-12 text-primary/20"/>
                     </div>
-                </Card>
-            );
-          })}
-        </div>
-      ) : (
-        <Alert className="mt-6 bg-secondary border-secondary-foreground/10">
-          <SearchX className="h-4 w-4" />
-          <AlertTitle>No Completed Missions</AlertTitle>
-          <AlertDescription>
-            You haven't completed any missions yet. Finish your assigned missions and wait for approval to see them here.
-          </AlertDescription>
-        </Alert>
-      )}
-       {/* Link to Assigned Missions */}
-        <div className="mt-6 text-center">
-             <Button asChild variant="link">
-                 <Link href="/missions/assigned">View Assigned Missions</Link>
-             </Button>
-         </div>
+                </CardContent>
+            </Card>
+        </TabsContent>
+      </Tabs>
     </div>
   );
 }
