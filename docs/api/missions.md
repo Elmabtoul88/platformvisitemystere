@@ -1,176 +1,153 @@
-# MissionView API Documentation - Missions (Shopper)
+# Documentation API - Missions (`/api/missions`)
 
-This document outlines the mission-related endpoints accessible by **shoppers**.
+Ce document décrit les points d'entrée de gestion et consultation des missions sur la plateforme **Emberton Group**.
 
-**Base URL:** `/api/missions`
-
-**Authentication:** All endpoints require a valid JWT token in the `Authorization: Bearer <token>` header.
+**Base URL :** `https://api.embertongroup.com/api/missions`  
+**Authentification :** En-tête `Authorization: Bearer <token>` ou `x-auth-token: <token>`.
 
 ---
 
-## Get Available Missions
+## 1. Missions Côté Shopper (Auditeur)
 
-Retrieves a list of missions currently available for application.
+### Récupérer les missions avec statut auditeur (`/missionsApp/:userId`)
+Retourne l'ensemble des missions disponibles enrichies du statut de candidature et de rapport pour l'auditeur connecté.
 
--   **URL:** `/`
--   **Method:** `GET`
--   **Access:** Private (Shopper Role)
--   **Query Parameters (Optional):**
-    -   `category`: Filter by mission category (e.g., `Restaurant`, `Retail`)
-    -   `location`: Filter by location (implementation TBD)
-    -   `date`: Filter by deadline (implementation TBD)
--   **Success Response:**
-    -   **Code:** 200 OK
-    -   **Content:**
-        ```json
-        [
+- **URL :** `/missionsApp/:userId`
+- **Méthode :** `GET`
+- **Accès :** Privé (`shopper` ou `admin`)
+- **Réponse Succès (200 OK) :**
+  ```json
+  {
+    "status": 200,
+    "data": [
+      {
+        "id": 1,
+        "title": "Audit Accueil & Merchandising - Casablanca",
+        "description": "Visite mystère en boutique de luxe...",
+        "deadline": "2026-12-31T23:59:59.000Z",
+        "reward": 450,
+        "category": "Mode & Luxe",
+        "status": "available",
+        "has_applied": false,
+        "application_status": "available",
+        "report_status": null,
+        "stores": [
           {
-            "id": 1,
-            "title": "Fast Food Drive-Thru Accuracy",
-            "description": "Order a specific meal combo via drive-thru...",
-            "deadline": "2024-08-20T23:59:59.000Z",
-            "reward": 25,
-            "location": "34.0580,-118.2350",
-            "category": "Restaurant",
-            "businessName": "Burger Bonanza"
-          },
-          // ... more available missions
-        ]
-        ```
--   **Error Responses:**
-    -   **Code:** 401 Unauthorized (Missing or invalid token)
-    -   **Code:** 403 Forbidden (User role is not 'shopper')
-    -   **Code:** 500 Internal Server Error
-
----
-
-## Get Mission Details
-
-Retrieves detailed information about a specific mission. Only accessible if the mission is 'available' or assigned to the requesting shopper.
-
--   **URL:** `/:id`
--   **Method:** `GET`
--   **Access:** Private (Shopper Role)
--   **URL Parameters:**
-    -   `id`: The ID of the mission to retrieve.
--   **Success Response:**
-    -   **Code:** 200 OK
-    -   **Content:**
-        ```json
-        {
-          "id": 1,
-          "title": "Fast Food Drive-Thru Accuracy",
-          "description": "Order a specific meal combo via drive-thru...",
-          "deadline": "2024-08-20T23:59:59.000Z",
-          "reward": 25,
-          "location": "34.0580,-118.2350",
-          "category": "Restaurant",
-          "businessName": "Burger Bonanza",
-          "status": "available", // or 'assigned', 'submitted' etc. if assigned to user
-          "assignedTo": ["123"] // Array of user IDs if assigned
-        }
-        ```
--   **Error Responses:**
-    -   **Code:** 401 Unauthorized
-    -   **Code:** 403 Forbidden
-    -   **Code:** 404 Not Found (Mission doesn't exist or is not accessible to the user)
-    -   **Code:** 500 Internal Server Error
-
----
-
-## Apply for Mission
-
-Allows a shopper to apply for an available mission. On successful application, the mission status typically changes to 'assigned' and an assignment record is created.
-
--   **URL:** `/:id/apply`
--   **Method:** `POST`
--   **Access:** Private (Shopper Role)
--   **URL Parameters:**
-    -   `id`: The ID of the mission to apply for.
--   **Success Response:**
-    -   **Code:** 200 OK
-    -   **Content:** `{ "message": "Successfully applied and assigned to the mission" }`
--   **Error Responses:**
-    -   **Code:** 400 Bad Request
-        -   `{ "message": "Mission is no longer available for application" }`
-        -   `{ "message": "You have already applied for or are assigned to this mission" }`
-    -   **Code:** 401 Unauthorized
-    -   **Code:** 403 Forbidden
-    -   **Code:** 404 Not Found `{ "message": "Mission not found" }`
-    -   **Code:** 500 Internal Server Error
-
----
-
-## Get Assigned Missions
-
-Retrieves a list of missions currently assigned to the logged-in shopper (status 'assigned' or 'submitted').
-
--   **URL:** `/assigned`
--   **Method:** `GET`
--   **Access:** Private (Shopper Role)
--   **Success Response:**
-    -   **Code:** 200 OK
-    -   **Content:** (Array of mission objects, similar to Get Available Missions, but status is 'assigned' or 'submitted')
-        ```json
-        [
-          {
-            "id": 3,
-            "title": "Coffee Shop Speed of Service",
-            // ... other fields
-            "status": "assigned"
-          },
-          {
-             "id": 2,
-             "title": "Retail Store Cleanliness Check",
-             // ... other fields
-             "status": "submitted"
+            "id": 10,
+            "name": "Boutique Maarif",
+            "city": "Casablanca",
+            "address": "Boulevard Al Massira",
+            "latitude": 33.5852,
+            "longitude": -7.6324
           }
-          // ... more assigned/submitted missions
         ]
-        ```
--   **Error Responses:**
-    -   **Code:** 401 Unauthorized
-    -   **Code:** 403 Forbidden
-    -   **Code:** 500 Internal Server Error
+      }
+    ]
+  }
+  ```
 
 ---
 
-## Get Completed Missions
+### Récupérer les statistiques de l'auditeur (`/stats/:userId`)
+Fournit les métriques globales du shopper pour le tableau de bord de l'accueil.
 
-Retrieves a list of missions that the logged-in shopper has completed (status 'approved' or 'refused'). Includes basic report status info.
-
--   **URL:** `/completed`
--   **Method:** `GET`
--   **Access:** Private (Shopper Role)
--   **Success Response:**
-    -   **Code:** 200 OK
-    -   **Content:** (Array of mission objects with added report details)
-        ```json
-        [
-          {
-            "id": 4,
-            "title": "Completed: Hotel Check-in Experience",
-            // ... other mission fields
-            "status": "approved",
-            "reportSubmittedAt": "2024-08-15T10:00:00.000Z",
-            "reportStatus": "approved",
-            "refusalReason": null
-          },
-           {
-            "id": 7,
-            "title": "Refused: Library Ambiance Check",
-            // ... other mission fields
-            "status": "refused",
-            "reportSubmittedAt": "2024-08-12T14:30:00.000Z",
-            "reportStatus": "refused",
-            "refusalReason": "Report was too brief..."
-          }
-          // ... more completed/refused missions
-        ]
-        ```
--   **Error Responses:**
-    -   **Code:** 401 Unauthorized
-    -   **Code:** 403 Forbidden
-    -   **Code:** 500 Internal Server Error
+- **URL :** `/stats/:userId`
+- **Méthode :** `GET`
+- **Accès :** Privé (`shopper` ou `admin`)
+- **Réponse Succès (200 OK) :**
+  ```json
+  {
+    "status": 200,
+    "data": {
+      "total": 12,
+      "available": 8,
+      "applied": 3,
+      "pending": 1,
+      "approved": 2,
+      "refused": 0,
+      "totalEarned": 1350
+    }
+  }
+  ```
 
 ---
+
+### Détails d'une Mission Spécifique (`/:id`)
+Récupère les détails, briefing, scénario et magasins associés à une mission.
+
+- **URL :** `/:id`
+- **Méthode :** `GET`
+- **Accès :** Privé (`shopper`, `admin`, `client`)
+- **Réponse Succès (200 OK) :** Retourne l'objet mission complet avec ses magasins et métadonnées.
+
+---
+
+### Vérification d'Accès au Questionnaire (`/:missionId/check-access/:userId`)
+Valide si l'auditeur a bien été approuvé pour cette mission avant de lui permettre de saisir le questionnaire d'audit.
+
+- **URL :** `/:missionId/check-access/:userId`
+- **Méthode :** `GET`
+- **Accès :** Privé (`shopper`)
+- **Réponse Succès (200 OK) :** `{ "success": true, "hasAccess": true, "mission": { ... } }`
+
+---
+
+## 2. Missions Côté Administration (`admin`)
+
+### Liste complète pour l'administration (`/admin/all`)
+Récupère toutes les missions (disponibles, terminées, archivées) avec les compteurs de candidatures et rapports associés.
+
+- **URL :** `/admin/all`
+- **Méthode :** `GET`
+- **Accès :** Privé (`admin` uniquement)
+
+---
+
+### Création d'une Mission avec Quiz (`/quiz_mission`)
+Crée une mission avec ses fichiers PDF joints (briefing, scénario, questionnaire), ses magasins et ses quiz de qualification éventuels.
+
+- **URL :** `/quiz_mission`
+- **Méthode :** `POST`
+- **Accès :** Privé (`admin` uniquement)
+- **Format :** `multipart/form-data`
+
+---
+
+### Assignation d'Exception / Directe (`/assign-direct`)
+Attribue manuellement une mission et un magasin spécifique à un auditeur sans exiger de quiz préalable.
+
+- **URL :** `/assign-direct`
+- **Méthode :** `POST`
+- **Accès :** Privé (`admin` uniquement)
+- **Corps JSON :**
+  ```json
+  {
+    "missionId": 1,
+    "userId": 5,
+    "storeId": 10,
+    "timeSlot": "14:00 - 16:00"
+  }
+  ```
+- **Réponse Succès (200 OK) :** `{ "success": true, "message": "Auditeur assigné avec succès" }`
+
+---
+
+### Prolongation de la Date Limite (`/extend-deadline`)
+Modifie l'échéance de la mission pour permettre à d'autres auditeurs d'intervenir.
+
+- **URL :** `/extend-deadline`
+- **Méthode :** `POST`
+- **Accès :** Privé (`admin` uniquement)
+- **Corps JSON :**
+  ```json
+  {
+    "missionId": 1,
+    "newDeadline": "2026-12-31"
+  }
+  ```
+
+---
+
+### Modification & Suppression (`PUT /:id`, `DELETE /:id`)
+- **`PUT /:id`** : Mise à jour des informations de la mission.
+- **`DELETE /:id`** : Suppression sécurisée de la mission et de ses dépendances.

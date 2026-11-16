@@ -19,6 +19,15 @@ flowchart LR
 
 ---
 
+## 🎨 Charte Haute Visibilité & Expérience Shopper
+
+L'ensemble de l'espace Shopper a bénéficié d'une refonte graphique complète pour garantir une lisibilité optimale sur le terrain, en plein soleil ou en mobilité :
+* **Arrière-plan lumineux** : `bg-slate-50/90` éliminant les fonds sombres étouffants.
+* **Cartes blanches éclatantes** : `bg-white border-slate-200/80 shadow-sm rounded-2xl` avec typographie sombre ardoise (`text-slate-900`) et Bleu Nuit Emberton (`#041F40`).
+* **Accents Or & Émeraude** : Badges de rémunération en Or (`#D6C799`) et validations en Émeraude (`#10b981`).
+
+---
+
 ## 📑 Pages et Fonctionnalités Shopper
 
 ### 1. Découverte des Missions Disponibles (`/` et `/map`)

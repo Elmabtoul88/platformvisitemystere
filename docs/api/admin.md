@@ -2,7 +2,7 @@
 
 Ce document décrit l'ensemble des points d'accès (endpoints) réservés aux **administrateurs** dans l'application MissionView.
 
-**URL de base :** `/api` (ou `/api/admin`)  
+**URL de base :** `https://api.embertongroup.com/api/` (ou `/api/admin`)  
 **Authentification :** Requiert un jeton JWT valide transmis dans l'en-tête `Authorization: Bearer <token>` ou `x-auth-token: <token>`, avec rôle `admin`.
 
 ---

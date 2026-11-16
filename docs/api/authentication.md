@@ -1,129 +1,127 @@
-# MissionView API Documentation - Authentication
+# Documentation API - Authentification & Comptes
 
-This document outlines the authentication endpoints for the MissionView API.
+Ce document décrit l'ensemble des endpoints liés à l'authentification, à la sécurité et à la gestion des mots de passe.
 
-**Base URL:** `/api/auth`
+**Base URL :** `https://api.embertongroup.com/api/auth` (et `https://api.embertongroup.com/api/users`)
 
 ---
 
-## Register User
+## 1. Connexion Utilisateur (`POST /api/auth`)
 
-Registers a new user account. Defaults role to 'shopper' if not provided.
+Authentifie un utilisateur (shopper, client ou administrateur) et retourne un jeton JWT avec les métadonnées de l'utilisateur.
 
--   **URL:** `/register`
--   **Method:** `POST`
--   **Access:** Public
--   **Request Body:**
-
-    ```json
-    {
-      "name": "John Doe",
-      "email": "john.doe@example.com",
-      "password": "password123",
-      "role": "shopper", // Optional, defaults to 'shopper'. Can be 'admin'.
-      "telephone": "+15551234567", // Optional
-      "city": "Anytown", // Optional
-      "motivation": "...", // Optional
-      "birthYear": 1990, // Optional
-      "gender": "male", // Optional ('male', 'female', 'other', 'prefer_not_say')
-      "cvUrl": "/path/to/cv.pdf" // Optional
+- **URL :** `POST https://api.embertongroup.com/api/auth`
+- **Accès :** Public
+- **Protection Anti-Brute-Force :** Rate Limiting coulissant (10 tentatives maximum par tranche de 15 minutes par IP). En cas de dépassement, code HTTP 429 avec en-tête `Retry-After`.
+- **Corps JSON :**
+  ```json
+  {
+    "email": "auditeur@example.com",
+    "password": "MotDePasse123!"
+  }
+  ```
+- **Réponse Succès (200 OK) :**
+  ```json
+  {
+    "token": "eyJhbGciOiJIUzI1NiIsIn...",
+    "user": {
+      "id": 12,
+      "name": "Jean Dupont",
+      "email": "auditeur@example.com",
+      "role": "shopper",
+      "status": "active",
+      "city": "Casablanca",
+      "profilePicUrl": "/uploads/avatar.webp"
     }
-    ```
-
--   **Success Response:**
-    -   **Code:** 201 Created
-    -   **Content:**
-        ```json
-        {
-          "message": "User registered successfully. Please log in.",
-          "userId": 123
-        }
-        ```
--   **Error Responses:**
-    -   **Code:** 400 Bad Request
-        -   **Content:** `{ "message": "Please add all required fields (name, email, password)" }`
-        -   **Content:** `{ "message": "Password must be at least 6 characters long" }`
-        -   **Content:** `{ "message": "User already exists with this email" }`
-    -   **Code:** 500 Internal Server Error
-        -   **Content:** `{ "message": "Server error during registration" }`
+  }
+  ```
+- **Erreurs Possibles :**
+  - **400 Bad Request :** Mot de passe incorrect ou email mal formé.
+  - **403 Forbidden :** Compte inactif (`"Votre compte est inactif. Veuillez contacter le support."`).
+  - **404 Not Found :** Aucun compte associé à cette adresse email.
+  - **429 Too Many Requests :** Trop de tentatives infructueuses (`"Trop de tentatives de connexion. Réessayez dans 15 minutes."`).
 
 ---
 
-## Login User
+## 2. Inscription d'un Auditeur (`POST /api/users`)
 
-Authenticates an existing user and returns a JWT token.
+Crée un nouveau compte mystery shopper.
 
--   **URL:** `/login`
--   **Method:** `POST`
--   **Access:** Public
--   **Request Body:**
-
-    ```json
-    {
-      "email": "john.doe@example.com",
-      "password": "password123"
+- **URL :** `POST https://api.embertongroup.com/api/users`
+- **Accès :** Public
+- **Corps JSON :**
+  ```json
+  {
+    "name": "Jean Dupont",
+    "email": "jean.dupont@example.com",
+    "password": "Password123!",
+    "role": "shopper",
+    "city": "Paris",
+    "telephone": "+33 6 12 34 56 78",
+    "birth_year": 1995,
+    "gender": "male",
+    "motivation": "Passionné par l'expérience client dans le commerce de luxe"
+  }
+  ```
+- **Réponse Succès (200 OK) :**
+  ```json
+  {
+    "token": "eyJhbGciOiJIUzI1NiIsIn...",
+    "user": {
+      "id": 13,
+      "name": "Jean Dupont",
+      "email": "jean.dupont@example.com",
+      "role": "shopper"
     }
-    ```
-
--   **Success Response:**
-    -   **Code:** 200 OK
-    -   **Content:**
-        ```json
-        {
-          "_id": 123,
-          "name": "John Doe",
-          "email": "john.doe@example.com",
-          "role": "shopper", // or 'admin'
-          "token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..." // JWT Token
-        }
-        ```
--   **Error Responses:**
-    -   **Code:** 400 Bad Request
-        -   **Content:** `{ "message": "Email ou mot de passe incorrect." }`
-    -   **Code:** 403 Forbidden
-        -   **Content:** `{ "message": "Votre compte est inactif. Veuillez contacter le support." }`
-    -   **Code:** 404 Not Found
-        -   **Content:** `{ "message": "Compte non trouvé. Veuillez vous inscrire." }`
-    -   **Code:** 429 Too Many Requests (Rate Limiting anti-brute-force)
-        -   **Trigger:** 10 échecs consécutifs d'authentification sur une fenêtre de 15 minutes par adresse IP (compatible proxys cPanel `x-forwarded-for`).
-        -   **Headers renvoyés:**
-            - `Retry-After: <secondes>`
-            - `X-RateLimit-Limit: 10`
-            - `X-RateLimit-Remaining: 0`
-            - `X-RateLimit-Reset: <timestamp_unix>`
-        -   **Content:**
-            ```json
-            {
-              "success": false,
-              "status": 429,
-              "error": "Trop de tentatives de connexion.",
-              "message": "Trop de tentatives de connexion infructueuses. Pour votre sécurité, veuillez patienter X minute(s) avant de réessayer.",
-              "retryAfterMinutes": 15
-            }
-            ```
-    -   **Code:** 500 Internal Server Error
-        -   **Content:** `{ "message": "Erreur serveur interne." }`
+  }
+  ```
 
 ---
 
-## Forgot Password
+## 3. Mot de Passe Oublié (`POST /api/auth/forgot-password`)
 
-Demande de réinitialisation de mot de passe par email.
+Génère un jeton de réinitialisation sécurisé à usage unique (valable 30 minutes) et transmet un email HTML contenant le lien de renouvellement.
 
--   **URL:** `/forgot-password`
--   **Method:** `POST`
--   **Access:** Public
--   **Request Body:** `{ "email": "user@example.com" }`
--   **Success Response:** `200 OK` `{ "success": true, "message": "Un email avec les instructions vous a été envoyé." }`
+- **URL :** `POST https://api.embertongroup.com/api/auth/forgot-password`
+- **Accès :** Public
+- **Corps JSON :** `{ "email": "jean.dupont@example.com" }`
+- **Réponse Succès (200 OK) :**
+  ```json
+  {
+    "success": true,
+    "message": "Un email contenant le lien de réinitialisation vous a été envoyé."
+  }
+  ```
 
 ---
 
-## Reset Password
+## 4. Vérification du Jeton de Réinitialisation (`POST /api/auth/verify-reset-token`)
 
-Application du nouveau mot de passe avec le token de sécurité temporaire reçu par email.
+Valide la validité et la non-expiration du jeton avant l'affichage du formulaire de saisie du nouveau mot de passe.
 
--   **URL:** `/reset-password/:token`
--   **Method:** `POST`
--   **Access:** Public
--   **Request Body:** `{ "password": "NewStrongPassword2026!" }`
--   **Success Response:** `200 OK` `{ "success": true, "message": "Mot de passe réinitialisé avec succès." }`
+- **URL :** `POST https://api.embertongroup.com/api/auth/verify-reset-token`
+- **Corps JSON :** `{ "userId": 13, "token": "a1b2c3d4..." }`
+- **Réponse Succès (200 OK) :** `{ "valid": true, "message": "Jeton valide." }`
+
+---
+
+## 5. Définition du Nouveau Mot de Passe (`POST /api/auth/reset-password`)
+
+Met à jour le mot de passe utilisateur et invalide immédiatement le jeton de récupération.
+
+- **URL :** `POST https://api.embertongroup.com/api/auth/reset-password`
+- **Corps JSON :**
+  ```json
+  {
+    "userId": 13,
+    "token": "a1b2c3d4...",
+    "password": "NouveauSuperMotDePasse2026!"
+  }
+  ```
+- **Réponse Succès (200 OK) :**
+  ```json
+  {
+    "success": true,
+    "message": "Votre mot de passe a été réinitialisé avec succès."
+  }
+  ```

@@ -8,11 +8,11 @@ Ce guide décrit la procédure exacte pour déployer la plateforme **MissionView
 
 L'application est déployée sous forme de deux services Node.js distincts ou d'un domaine avec sous-domaine :
 
-| Service | Emplacement cPanel | URL | Fichier Startup |
+| Service | Emplacement cPanel | URL Réelle Déployée | Fichier Startup |
 | :--- | :--- | :--- | :--- |
-| **Frontend Next.js** | `/home/user/frontend` (ou `public_html`) | `https://votre-domaine.com` | `server.js` |
-| **Backend Express API** | `/home/user/api` (ou `/home/user/backend`) | `https://api.votre-domaine.com` (ou `/api`) | `app.js` |
-| **Base de Données** | cPanel MySQL | `localhost:3306` | Base `user_missionview` |
+| **Frontend Next.js** | `/home/user/frontend` (ou `public_html`) | `https://app.embertongroup.com` | `server.js` |
+| **Backend Express API** | `/home/user/api` (ou `/home/user/backend`) | `https://api.embertongroup.com/api/` | `app.js` |
+| **Base de Données** | cPanel MySQL | `localhost:3306` | Base de données MySQL |
 
 ---
 
@@ -97,7 +97,7 @@ ADMIN_EMAIL=contact@votre-domaine.com
 Avant d'envoyer les fichiers sur cPanel, compilez le projet Next.js sur votre machine :
 1. Dans le fichier `.env` à la racine :
    ```env
-   NEXT_PUBLIC_API_URL=https://api.votre-domaine.com/api/
+   NEXT_PUBLIC_API_URL=https://api.embertongroup.com/api/
    ```
 2. Lancez le build propre :
    ```bash
