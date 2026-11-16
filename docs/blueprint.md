@@ -71,7 +71,8 @@ L'ensemble de la plateforme utilise le design system institutionnel Emberton Gro
 
 ### 3. Client Partenaire (`client`)
 * **Espace Dédié (`/client`)** : Consultation des rapports d'audit validés concernant leurs points de vente.
-* **Rapports & Statistiques** : Évaluation de la conformité de service, analyses graphiques et téléchargement des synthèses officielles en PDF.
+* **Rapports & Statistiques** : Évaluation de la conformité de service, analyses graphiques, diagrammes radar comparatifs multi-magasins et téléchargement des synthèses officielles en PDF et Excel.
+* **Documentation détaillée** : Consultez [docs/frontend/client-space.md](docs/frontend/client-space.md).
 
 ### 4. Pages Publiques d'Information
 * **Accueil (`/`)** : Vitrine institutionnelle Emberton Group pour les visiteurs non authentifiés.

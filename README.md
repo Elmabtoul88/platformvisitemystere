@@ -104,7 +104,7 @@ platformvisitemystere/
 ├── docs/                     # Documentation technique détaillée
 │   ├── api/                  # Spécifications OpenAPI/REST (missions, admin, auth, reports)
 │   ├── deployment/           # Guide de déploiement cPanel (Passenger)
-│   ├── frontend/             # Guides des espaces Shopper et Admin
+│   ├── frontend/             # Guides des espaces Shopper, Client et Admin
 │   └── blueprint.md          # Architecture globale et spécifications produit
 │
 ├── public/                   # Fichiers publics PWA, icônes et scripts
