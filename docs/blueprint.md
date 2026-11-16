@@ -46,6 +46,7 @@ L'ensemble de la plateforme utilise le design system institutionnel Emberton Gro
 ## 👥 Rôles Utilisateurs & Espaces
 
 ### 1. Administrateur (`admin`)
+* **Guide d'utilisation complet** : Consultez [docs/guides/admin-user-guide.md](docs/guides/admin-user-guide.md) pour le manuel d'exploitation pas-à-pas.
 * **Tableau de Bord & KPIs (`/admin`)** : Supervision en temps réel des statistiques d'audits, graphiques d'évolution des inscriptions, répartition des catégories et taux de complétion.
 * **Gestion des Missions (`/admin/missions`)** : Création assistée, modification, prolongation de dates limites, suppression sécurisée.
 * **Assignation par Exception** : Attribution manuelle immédiate sans obligation de passage de quiz préalable.
