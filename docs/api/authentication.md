@@ -79,14 +79,51 @@ Authenticates an existing user and returns a JWT token.
         ```
 -   **Error Responses:**
     -   **Code:** 400 Bad Request
-        -   **Content:** `{ "message": "Please provide email and password" }`
-    -   **Code:** 401 Unauthorized
-        -   **Content:** `{ "message": "Invalid credentials" }` (Incorrect email or password)
+        -   **Content:** `{ "message": "Email ou mot de passe incorrect." }`
     -   **Code:** 403 Forbidden
-        -   **Content:** `{ "message": "Account is inactive. Please contact support." }`
+        -   **Content:** `{ "message": "Votre compte est inactif. Veuillez contacter le support." }`
+    -   **Code:** 404 Not Found
+        -   **Content:** `{ "message": "Compte non trouvé. Veuillez vous inscrire." }`
+    -   **Code:** 429 Too Many Requests (Rate Limiting anti-brute-force)
+        -   **Trigger:** 10 échecs consécutifs d'authentification sur une fenêtre de 15 minutes par adresse IP (compatible proxys cPanel `x-forwarded-for`).
+        -   **Headers renvoyés:**
+            - `Retry-After: <secondes>`
+            - `X-RateLimit-Limit: 10`
+            - `X-RateLimit-Remaining: 0`
+            - `X-RateLimit-Reset: <timestamp_unix>`
+        -   **Content:**
+            ```json
+            {
+              "success": false,
+              "status": 429,
+              "error": "Trop de tentatives de connexion.",
+              "message": "Trop de tentatives de connexion infructueuses. Pour votre sécurité, veuillez patienter X minute(s) avant de réessayer.",
+              "retryAfterMinutes": 15
+            }
+            ```
     -   **Code:** 500 Internal Server Error
-        -   **Content:** `{ "message": "Server error during login" }`
+        -   **Content:** `{ "message": "Erreur serveur interne." }`
 
 ---
 
-*Note: Forgot password and reset password functionalities are planned for future implementation.*
+## Forgot Password
+
+Demande de réinitialisation de mot de passe par email.
+
+-   **URL:** `/forgot-password`
+-   **Method:** `POST`
+-   **Access:** Public
+-   **Request Body:** `{ "email": "user@example.com" }`
+-   **Success Response:** `200 OK` `{ "success": true, "message": "Un email avec les instructions vous a été envoyé." }`
+
+---
+
+## Reset Password
+
+Application du nouveau mot de passe avec le token de sécurité temporaire reçu par email.
+
+-   **URL:** `/reset-password/:token`
+-   **Method:** `POST`
+-   **Access:** Public
+-   **Request Body:** `{ "password": "NewStrongPassword2026!" }`
+-   **Success Response:** `200 OK` `{ "success": true, "message": "Mot de passe réinitialisé avec succès." }`

@@ -34,13 +34,13 @@ export function ProfileMenu({ isMobile = false, onLinkClick }) {
       try {
         const count = parseInt(
           localStorage.getItem(CHAT_NOTIFICATION_KEY) || "0",
-          10
+          10,
         );
         setNotificationCount(count);
       } catch (error) {
         console.error(
           "Failed to read notification count from localStorage:",
-          error
+          error,
         );
         setNotificationCount(0);
       }
@@ -66,7 +66,7 @@ export function ProfileMenu({ isMobile = false, onLinkClick }) {
     router.push("/login");
   };
 
-  const handleChatClick = () => {
+  /*const handleChatClick = () => {
     setNotificationCount(0);
     try {
       localStorage.setItem(CHAT_NOTIFICATION_KEY, "0");
@@ -75,12 +75,32 @@ export function ProfileMenu({ isMobile = false, onLinkClick }) {
           key: CHAT_NOTIFICATION_KEY,
           newValue: "0",
           storageArea: localStorage,
-        })
+        }),
       );
     } catch (error) {
       console.error(
         "Failed to reset notification count in localStorage:",
-        error
+        error,
+      );
+    }
+    if (onLinkClick) onLinkClick();
+  };*/
+
+  const handleChatClick = () => {
+    setNotificationCount(0);
+    try {
+      localStorage.setItem(CHAT_NOTIFICATION_KEY, "0");
+      window.dispatchEvent(
+        new StorageEvent("storage", {
+          key: CHAT_NOTIFICATION_KEY,
+          newValue: "0",
+          storageArea: null, // ✅ Utiliser null au lieu de localStorage
+        }),
+      );
+    } catch (error) {
+      console.error(
+        "Failed to reset notification count in localStorage:",
+        error,
       );
     }
     if (onLinkClick) onLinkClick();
@@ -96,10 +116,14 @@ export function ProfileMenu({ isMobile = false, onLinkClick }) {
 
   const chatLink = userRole === "admin" ? "/admin/chat" : "/chat";
   const settingsLink = userRole === "admin" ? "/admin/settings" : "/settings";
-  
+
   // Extraire nom et initiales
   const userName = user?.name || "User";
-  const userInitials = userName.split(' ').map(n => n[0]).join('').toUpperCase();
+  const userInitials = userName
+    .split(" ")
+    .map((n) => n[0])
+    .join("")
+    .toUpperCase();
 
   // Version mobile avec nom
   if (isMobile) {
@@ -120,7 +144,7 @@ export function ProfileMenu({ isMobile = false, onLinkClick }) {
             </div>
           </div>
         )}
-        
+
         <Button
           variant="ghost"
           size="sm"
@@ -132,13 +156,13 @@ export function ProfileMenu({ isMobile = false, onLinkClick }) {
             <Bell className="w-4 h-4" />
             <span>Chat</span>
             {notificationCount > 0 || messageCount > 0 ? (
-    <Badge
-      variant="destructive"
-      className="ml-auto text-xs px-1.5 py-0.5"
-    >
-      {notificationCount + messageCount}
-    </Badge>
-  ) : null}
+              <Badge
+                variant="destructive"
+                className="ml-auto text-xs px-1.5 py-0.5"
+              >
+                {notificationCount + messageCount}
+              </Badge>
+            ) : null}
           </Link>
         </Button>
         <Button
@@ -171,10 +195,7 @@ export function ProfileMenu({ isMobile = false, onLinkClick }) {
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
         <div className="relative">
-          <Button
-            variant="outline"
-            className="h-8 gap-2 px-2 rounded-full"
-          >
+          <Button variant="outline" className="h-8 gap-2 px-2 rounded-full">
             <Avatar className="h-6 w-6">
               <AvatarImage src={user?.profilePicUrl} alt={userName} />
               <AvatarFallback className="text-xs bg-primary text-primary-foreground">

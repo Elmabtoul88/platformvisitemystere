@@ -16,16 +16,16 @@ const API_BASE_URL = API_BASE + "reports";
 async function fetchWithAuth(url, options = {}) {
   const headers = {
     "Content-Type": "application/json",
-    // 'Authorization': `Bearer ${getToken()}`, // Add token retrieval logic here
     ...options.headers,
   };
-  try {
-    // Assuming getToken() retrieves the stored JWT token
-    const token = /* await getToken() */ null; // Replace with actual token retrieval
-    if (token) {
-      headers["Authorization"] = `Bearer ${token}`;
-    }
 
+  const token = options.headers?.["x-auth-token"] || options.headers?.["Authorization"]?.replace("Bearer ", "");
+  if (token) {
+    headers["x-auth-token"] = token;
+    headers["Authorization"] = `Bearer ${token}`;
+  }
+
+  try {
     const response = await fetch(`${API_BASE_URL}${url}`, {
       ...options,
       headers,
@@ -90,7 +90,9 @@ async function fetchWithAuth(url, options = {}) {
  * @param {string} token - The authentication token.
  */
 export async function submitReport(submittedData, missionId, userId, token) {
-  console.log(`Soumission rapport - Mission: ${missionId}, User: ${userId}`);
+  console.log(
+    `Soumission rapport - Mission: ${missionId}, User: ${userId} data: ${submittedData}`,
+  );
 
   // ✅ Transform answers correctly based on structure (array or object)
   const transformAnswers = (data) => {
@@ -128,14 +130,17 @@ export async function submitReport(submittedData, missionId, userId, token) {
     const responseData = await fetchWithAuth(`/`, {
       method: "POST",
       headers: {
-        Authorization: `Bearer ${token}`,
+        "x-auth-token": token,
+        "Content-Type": "application/json",
       },
       body: JSON.stringify({
         mission_id: parseInt(missionId),
         nomMagazin: submittedData.nomMagazin,
-        specificStoreAddress: submittedData.specificStoreAddress,
+        store_id: submittedData.store_id,
         scenario: submittedData.scenario,
         dateTimeMission: submittedData.dateTimeMission,
+        specificStoreAddress: submittedData.specificStoreAddress,
+        ville: submittedData.ville,
         user_id: parseInt(userId),
         answers: output,
         status: "submitted",

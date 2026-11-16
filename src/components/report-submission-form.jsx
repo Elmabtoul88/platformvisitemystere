@@ -35,14 +35,28 @@ import {
   TextCursorInput,
   ListOrdered,
   CheckSquare,
+  Calendar,
+  Clock,
+  CheckCircle2,
+  Hash,
+  Columns,
+  Info,
+  ArrowLeft,
+  ArrowRight,
+  Check,
+  RotateCcw,
+  Save,
 } from "lucide-react"; // Import base icons
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, useMemo } from "react";
 import Image from "next/image";
 import { useRouter } from "next/navigation";
 import { useToast } from "@/hooks/use-toast";
+import { queryClient } from "@/context/query-provider";
 import { Checkbox } from "@/components/ui/checkbox";
+import { Badge } from "@/components/ui/badge";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group"; // Assuming RadioGroup exists
-import { Alert, AlertTitle } from "@/components/ui/alert"; // For GPS/Audio messages
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert"; // For GPS/Audio messages
+import { compressImages } from "@/lib/imageCompression";
 
 // Helper to get icon for display
 const getIconForType = (type) => {
@@ -61,6 +75,18 @@ const getIconForType = (type) => {
       return <MapPin className="w-4 h-4 mr-1" />;
     case "audio_recording":
       return <Mic className="w-4 h-4 mr-1" />;
+    case "date":
+      return <Calendar className="w-4 h-4 mr-1 text-blue-600" />;
+    case "time":
+      return <Clock className="w-4 h-4 mr-1 text-amber-600" />;
+    case "yes_no":
+      return <CheckCircle2 className="w-4 h-4 mr-1 text-emerald-600" />;
+    case "number":
+      return <Hash className="w-4 h-4 mr-1 text-purple-600" />;
+    case "section_header":
+      return <Columns className="w-4 h-4 mr-1" />;
+    case "info_text":
+      return <Info className="w-4 h-4 mr-1" />;
     default:
       return null;
   }
@@ -81,12 +107,6 @@ export function ReportSubmissionForm({
   const [gpsCoords, setGpsCoords] = useState({});
   const [audioData, setAudioData] = useState({});
 
-  console.log(" Props reçues dans ReportSubmissionForm:", {
-    userId,
-    token: token ? "présent" : "absent",
-    missionId: mission?.id,
-  });
-
   const audioRecorderRef = useRef(null);
   const audioChunksRef = useRef([]);
   const audioStreamRef = useRef(null);
@@ -97,6 +117,218 @@ export function ReportSubmissionForm({
   });
 
   const getFieldName = (q) => `q${q.id}_${q.type}`;
+
+  // Découpage du questionnaire en sections successives (Next / Previous)
+  const sections = useMemo(() => {
+    if (!surveyQuestions || surveyQuestions.length === 0) return [];
+
+    const secList = [];
+    let currentSec = {
+      id: "sec-0",
+      title: "Général",
+      description: "",
+      items: [],
+    };
+
+    surveyQuestions.forEach((item, index) => {
+      if (item.type === "section_header") {
+        if (currentSec.items.length > 0) {
+          secList.push(currentSec);
+        }
+        currentSec = {
+          id: item.id ? `sec-${item.id}` : `sec-${index}`,
+          title: item.text || item.title || `Section ${secList.length + 1}`,
+          description: item.description || "",
+          items: [],
+        };
+      } else {
+        currentSec.items.push(item);
+      }
+    });
+
+    if (currentSec.items.length > 0 || secList.length === 0) {
+      secList.push(currentSec);
+    }
+
+    return secList;
+  }, [surveyQuestions]);
+
+  const [currentSectionIndex, setCurrentSectionIndex] = useState(0);
+  const totalSections = Math.max(1, sections.length);
+  const currentSection =
+    sections[currentSectionIndex] || sections[0] || { items: [] };
+  const isFirstSection = currentSectionIndex === 0;
+  const isLastSection = currentSectionIndex === totalSections - 1;
+
+  // -------------------------------------------------------------------------
+  // GESTION DU BROUILLON AUTOMATIQUE (LOCALSTORAGE MOBILE-FIRST)
+  // -------------------------------------------------------------------------
+  const draftStorageKey = useMemo(() => {
+    const mId = mission?.id || "m";
+    const sId = mission?.storeId || "default";
+    const uId = userId || "shopper";
+    return `emberton_draft_${mId}_${sId}_${uId}`;
+  }, [mission?.id, mission?.storeId, userId]);
+
+  const [hasDraft, setHasDraft] = useState(false);
+  const [draftSavedAt, setDraftSavedAt] = useState(null);
+  const [autoSaveStatus, setAutoSaveStatus] = useState("idle"); // "idle", "saving", "saved"
+
+  // 1. Détection initiale du brouillon
+  useEffect(() => {
+    if (typeof window === "undefined" || !draftStorageKey) return;
+    try {
+      const raw = localStorage.getItem(draftStorageKey);
+      if (raw) {
+        const parsed = JSON.parse(raw);
+        if (parsed?.answers && Object.keys(parsed.answers).length > 0) {
+          setHasDraft(true);
+          setDraftSavedAt(parsed.savedAt ? new Date(parsed.savedAt) : new Date());
+        }
+      }
+    } catch (e) {
+      console.warn("Erreur lecture brouillon:", e);
+    }
+  }, [draftStorageKey]);
+
+  // 2. Sauvegarde automatique en arrière-plan à chaque saisie
+  useEffect(() => {
+    if (typeof window === "undefined" || !draftStorageKey) return;
+
+    const subscription = form.watch((values) => {
+      if (!values || Object.keys(values).length === 0) return;
+
+      setAutoSaveStatus("saving");
+      const timeout = setTimeout(() => {
+        try {
+          const draftData = {
+            answers: values,
+            imagePreviews,
+            gpsCoords,
+            audioData,
+            currentSectionIndex,
+            savedAt: new Date().toISOString(),
+            missionId: mission?.id,
+            storeId: mission?.storeId,
+          };
+          localStorage.setItem(draftStorageKey, JSON.stringify(draftData));
+          setDraftSavedAt(new Date());
+          setAutoSaveStatus("saved");
+        } catch (err) {
+          console.warn("Échec sauvegarde auto:", err);
+        }
+      }, 700);
+
+      return () => clearTimeout(timeout);
+    });
+
+    return () => subscription.unsubscribe();
+  }, [form, draftStorageKey, imagePreviews, gpsCoords, audioData, currentSectionIndex, mission?.id, mission?.storeId]);
+
+  const restoreDraft = () => {
+    try {
+      const raw = localStorage.getItem(draftStorageKey);
+      if (!raw) return;
+      const parsed = JSON.parse(raw);
+      if (parsed?.answers) {
+        Object.entries(parsed.answers).forEach(([field, val]) => {
+          form.setValue(field, val, { shouldDirty: true, shouldTouch: true });
+        });
+      }
+      if (parsed?.imagePreviews) setImagePreviews(parsed.imagePreviews);
+      if (parsed?.gpsCoords) setGpsCoords(parsed.gpsCoords);
+      if (parsed?.audioData) setAudioData(parsed.audioData);
+      if (typeof parsed?.currentSectionIndex === "number" && parsed.currentSectionIndex < sections.length) {
+        setCurrentSectionIndex(parsed.currentSectionIndex);
+      }
+      setHasDraft(false);
+      setAutoSaveStatus("saved");
+      toast({
+        title: "Brouillon restauré avec succès",
+        description: "Toutes vos réponses précédentes ont été rechargées.",
+      });
+    } catch (e) {
+      console.error("Erreur restauration brouillon:", e);
+    }
+  };
+
+  const discardDraft = () => {
+    try {
+      localStorage.removeItem(draftStorageKey);
+      setHasDraft(false);
+      setDraftSavedAt(null);
+      toast({
+        title: "Brouillon réinitialisé",
+        description: "Vous repartez sur une enquête vierge.",
+      });
+    } catch (e) {}
+  };
+
+  // Numérotation continue globale de toutes les questions du questionnaire
+  const questionNumberMap = useMemo(() => {
+    const map = new Map();
+    let counter = 0;
+    surveyQuestions.forEach((q) => {
+      if (q.type !== "section_header" && q.type !== "info_text") {
+        counter += 1;
+        map.set(q.id, counter);
+      }
+    });
+    return map;
+  }, [surveyQuestions]);
+
+  // Passage à la section suivante avec validation des champs requis
+  const handleNextSection = async () => {
+    const currentItems = sections[currentSectionIndex]?.items || [];
+    const fieldsToValidate = currentItems
+      .filter((q) => q.type !== "section_header" && q.type !== "info_text")
+      .map((q) => getFieldName(q));
+
+    const isValid = await form.trigger(fieldsToValidate);
+
+    if (!isValid) {
+      toast({
+        variant: "destructive",
+        title: "Champs obligatoires manquants",
+        description:
+          "Veuillez répondre à toutes les questions obligatoires de cette section avant de continuer.",
+      });
+      return;
+    }
+
+    setCurrentSectionIndex((prev) => Math.min(totalSections - 1, prev + 1));
+    window.scrollTo({ top: 320, behavior: "smooth" });
+  };
+
+  // Retour à la section précédente
+  const handlePrevSection = () => {
+    setCurrentSectionIndex((prev) => Math.max(0, prev - 1));
+    window.scrollTo({ top: 320, behavior: "smooth" });
+  };
+
+  // Gestion des erreurs globales lors du submit final
+  const onFormError = (errors) => {
+    console.log("Validation errors on submit:", errors);
+    const errorKeys = Object.keys(errors);
+    if (errorKeys.length > 0) {
+      for (let sIdx = 0; sIdx < sections.length; sIdx++) {
+        const secFieldNames = sections[sIdx].items
+          .filter((q) => q.type !== "section_header" && q.type !== "info_text")
+          .map((q) => getFieldName(q));
+
+        if (errorKeys.some((k) => secFieldNames.includes(k))) {
+          setCurrentSectionIndex(sIdx);
+          toast({
+            variant: "destructive",
+            title: `Section "${sections[sIdx].title}" incomplète`,
+            description:
+              "Veuillez compléter toutes les questions obligatoires avant de soumettre.",
+          });
+          break;
+        }
+      }
+    }
+  };
   const handleImageChange = async (
     event,
     questionId,
@@ -107,22 +339,25 @@ export function ReportSubmissionForm({
     if (!files.length) return;
 
     const currentPreviews = imagePreviews[questionId] || [];
-    const filesToProcess = allowMultiple
+    const rawFilesToProcess = allowMultiple
       ? files.slice(0, maxImages - currentPreviews.length)
       : [files[0]];
 
     if (
-      filesToProcess.length === 0 &&
+      rawFilesToProcess.length === 0 &&
       !allowMultiple &&
       currentPreviews.length > 0
     ) {
       toast({
         variant: "destructive",
-        title: "Limit Reached",
-        description: "Only one image allowed for this question.",
+        title: "Limite atteinte",
+        description: "Une seule image est autorisée pour cette question.",
       });
       return;
     }
+
+    // Compression haute efficacité côté smartphone avant envoi (économise l'espace cPanel et accélère en 4G)
+    const filesToProcess = await compressImages(rawFilesToProcess);
 
     filesToProcess.forEach((file) => {
       const reader = new FileReader();
@@ -237,7 +472,6 @@ export function ReportSubmissionForm({
               4,
             )}, Lng: ${coords.lng.toFixed(4)}`,
           });
-          console.log("GPS Captured:", coords);
         },
         (error) => {
           setGpsCoords((prev) => ({ ...prev, [questionId]: "error" }));
@@ -315,8 +549,6 @@ export function ReportSubmissionForm({
         });
 
         try {
-          console.log(" Upload audio...");
-
           const formData = new FormData();
           formData.append(
             "audio",
@@ -330,7 +562,6 @@ export function ReportSubmissionForm({
           });
 
           const result = await response.json();
-          console.log(" Audio uploadé:", result.url);
 
           const audioUrl = result.url;
 
@@ -420,7 +651,6 @@ export function ReportSubmissionForm({
     toast({ title: "Audio Removed" });
   };
 
-  console.log("questions", surveyQuestions);
   /*const processSubmit = async (data) => {
     setIsSubmitting(true);
     try {
@@ -519,150 +749,491 @@ export function ReportSubmissionForm({
     }
   };*/
   const processSubmit = async (data) => {
-  setIsSubmitting(true);
+    setIsSubmitting(true);
 
-  try {
-    const groupedAnswers = [];
-    let currentSection = null;
+    try {
+      const groupedAnswers = [];
+      let currentSection = null;
 
-    surveyQuestions.forEach((q) => {
-      // 1️⃣ SECTION HEADER
-      if (q.type === "section_header") {
-        currentSection = {
-          section_id: q.id,
-          section_header: q.text,
-          responses: [],
-        };
-        groupedAnswers.push(currentSection);
-        return;
-      }
+      surveyQuestions.forEach((q) => {
+        // 1️⃣ SECTION HEADER
+        if (q.type === "section_header") {
+          currentSection = {
+            section_id: q.id,
+            section_header: q.text || q.title || "Section",
+            responses: [],
+          };
+          groupedAnswers.push(currentSection);
+          return;
+        }
 
-      // 2️⃣ Ignore questions before first section (optional safety)
-      if (!currentSection) return;
+        // Ignore informational text blocks (no answer needed)
+        if (q.type === "info_text") {
+          return;
+        }
 
-      const fieldName = `q${q.id}_${q.type}`;
-      const rawValue = data[fieldName];
+        // 2️⃣ Ensure a section exists (default to Général if not set)
+        if (!currentSection) {
+          currentSection = {
+            section_id: 0,
+            section_header: "Général",
+            responses: [],
+          };
+          groupedAnswers.push(currentSection);
+        }
 
-      // Skip empty answers
-      if (
-        rawValue === undefined ||
-        rawValue === null ||
-        rawValue === "" ||
-        (Array.isArray(rawValue) && rawValue.length === 0)
-      ) {
-        return;
-      }
+        const fieldName = `q${q.id}_${q.type}`;
+        const rawValue = data[fieldName];
 
-      // Normalize GPS
-      let value = rawValue;
-      if (q.type === "gps_capture" && rawValue) {
-        value = {
-          lat: rawValue.lat ?? null,
-          lng: rawValue.lng ?? null,
-        };
-      }
+        // Skip empty answers
+        if (
+          rawValue === undefined ||
+          rawValue === null ||
+          rawValue === "" ||
+          (Array.isArray(rawValue) && rawValue.length === 0)
+        ) {
+          return;
+        }
 
-      currentSection.responses.push({
-        question_id: q.id,
-        question: q.text,
-        type: q.type,
-        value,
+        // Normalize GPS
+        let value = rawValue;
+        if (q.type === "gps_capture" && rawValue) {
+          value = {
+            lat: rawValue.lat ?? null,
+            lng: rawValue.lng ?? null,
+          };
+        }
+
+        currentSection.responses.push({
+          question_id: q.id,
+          question: q.text,
+          type: q.type,
+          value,
+        });
       });
-    });
 
-    console.log("✅ GROUPED ANSWERS:", groupedAnswers);
+      const submittedData = {
+        mission_id: mission.id,
+        user_id: userId,
+        nomMagazin: mission.nomMagazin || mission.businessName || mission.title || "Magasin",
+        store_id: mission.storeId || mission.store_id || (mission.stores?.[0]?.id) || 1,
+        scenario: mission.scenario || "Visite mystère",
+        dateTimeMission: mission.dateTimeMission || new Date().toISOString(),
+        specificStoreAddress: mission.specificStoreAddress || mission.location || "",
+        ville: mission.ville || mission.location || "Maroc",
+        answers: groupedAnswers,
+        status: "submitted",
+      };
 
-    const submittedData = {
-      mission_id: mission.id,
-      user_id: userId,
-      nomMagazin: mission.nomMagazin,
-      specificStoreAddress: mission.specificStoreAddress,
-      scenario: mission.scenario,
-      dateTimeMission: mission.dateTimeMission,
-      answers: groupedAnswers,
-      status: "submitted",
-    };
+      console.log("Structured Submission Data:", submittedData);
 
-    const result = await onSubmitAction(
-      submittedData,
-      mission.id,
-      userId,
-      token
-    );
+      const result = await onSubmitAction(
+        submittedData,
+        mission.id,
+        userId,
+        token,
+      );
 
-    if (result.success) {
+      // Invalider les caches TanStack Query pour rafraîchir immédiatement la liste des missions
+      if (queryClient) {
+        if (userId) {
+          queryClient.invalidateQueries({ queryKey: ["assigned_userId" + userId] });
+          queryClient.removeQueries({ queryKey: ["assigned_userId" + userId] });
+        }
+        queryClient.invalidateQueries({ queryKey: ["missions"] });
+        queryClient.invalidateQueries({ queryKey: ["reports"] });
+      }
+
+      if (result.success) {
+        // Nettoyage immédiat du brouillon local après soumission réussie
+        try {
+          if (typeof window !== "undefined" && draftStorageKey) {
+            localStorage.removeItem(draftStorageKey);
+          }
+        } catch (e) {}
+
+        const isAllDone =
+          result.data?.allStoresCompleted ??
+          result.allStoresCompleted ??
+          true;
+        const remaining =
+          result.data?.remainingStoresCount ??
+          result.remainingStoresCount ??
+          0;
+
+        if (!isAllDone && remaining > 0) {
+          toast({
+            title: "Magasin enregistré avec succès !",
+            description: `Votre rapport pour "${mission.nomMagazin || mission.title}" a été enregistré. Il vous reste ${remaining} magasin(s) à évaluer pour cette mission.`,
+          });
+          router.push("/missions/assigned");
+        } else {
+          toast({
+            title: "Mission complétée avec succès !",
+            description: `Tous les magasins de la mission "${mission.title}" ont été évalués. Votre rapport est en attente de validation.`,
+          });
+          router.push("/missions/completed");
+        }
+      } else {
+        toast({
+          variant: "destructive",
+          title: "Information",
+          description:
+            result.message ||
+            "Vous avez déjà soumis un rapport pour ce magasin.",
+        });
+        router.push("/missions/assigned");
+      }
+    } catch (error) {
+      console.error("Submission failed:", error);
       toast({
-        title: "Report Submitted Successfully!",
-        description: `Your report for "${mission.title}" has been submitted.`,
+        variant: "destructive",
+        title: "Échec de la soumission",
+        description: error.message || "Impossible de soumettre le rapport.",
       });
-      router.push("/missions/assigned");
+    } finally {
+      setIsSubmitting(false);
     }
-  } catch (error) {
-    console.error("Submission failed:", error);
-    toast({
-      variant: "destructive",
-      title: "Submission Failed",
-      description: error.message || "Could not submit the report.",
-    });
-  } finally {
-    setIsSubmitting(false);
-  }
-};
-
+  };
 
   return (
-    <Card className="w-full max-w-3xl mx-auto shadow-lg">
-      <CardHeader>
-        <CardTitle className="text-xl font-semibold text-primary">
-          Submit Report: {mission.title}
-        </CardTitle>
-        <CardDescription>
-          Complete the survey questions below for mission ID: {mission.id}
-        </CardDescription>
+    <Card className="w-full max-w-3xl mx-auto shadow-xl border border-[#041F40]/10 overflow-hidden rounded-2xl bg-white">
+      <CardHeader className="p-4 sm:p-6 bg-gradient-to-r from-[#041F40] to-[#0A2E5C] text-white">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+          <div>
+            <div className="flex items-center gap-2">
+              <span className="text-[11px] font-bold uppercase tracking-wider text-[#D6C799]">
+                Questionnaire d'Audit Mystère
+              </span>
+              <Badge className="bg-[#D6C799] text-[#041F40] border-none font-bold text-[10px]">
+                {totalSections} Section{totalSections > 1 ? "s" : ""}
+              </Badge>
+            </div>
+            <CardTitle className="text-lg sm:text-xl font-bold text-white mt-1">
+              {mission.title}
+            </CardTitle>
+            <CardDescription className="text-slate-300 text-xs mt-0.5">
+              Remplissez attentivement les critères section par section
+            </CardDescription>
+          </div>
+
+          <div className="flex flex-wrap items-center gap-2">
+            {autoSaveStatus === "saving" && (
+              <span className="text-[11px] text-[#D6C799] flex items-center gap-1 font-medium animate-pulse">
+                <Loader2 className="w-3.5 h-3.5 animate-spin" /> Enregistrement...
+              </span>
+            )}
+            {autoSaveStatus === "saved" && draftSavedAt && (
+              <span className="text-[11px] text-emerald-300 flex items-center gap-1 font-medium">
+                <CheckCircle2 className="w-3.5 h-3.5" /> Brouillon auto
+              </span>
+            )}
+            <Badge className="bg-white/10 text-[#D6C799] border-white/20 text-xs font-semibold px-3 py-1">
+              Étape {currentSectionIndex + 1} / {totalSections}
+            </Badge>
+          </div>
+        </div>
+
+        {/* Alerte Détection de Brouillon non finalisé */}
+        {hasDraft && (
+          <div className="mt-4 p-3.5 rounded-xl bg-amber-500/20 border border-amber-400/40 text-amber-100 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 shadow-md">
+            <div className="space-y-0.5">
+              <div className="flex items-center gap-2 font-bold text-xs text-white">
+                <RotateCcw className="w-4 h-4 text-[#D6C799] shrink-0" />
+                <span>Brouillon d'enquête sauvegardé</span>
+              </div>
+              <p className="text-[11px] text-slate-300">
+                Sauvegardé sur cet appareil le {draftSavedAt?.toLocaleDateString()} à {draftSavedAt?.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}.
+              </p>
+            </div>
+            <div className="flex items-center gap-2 shrink-0 w-full sm:w-auto">
+              <Button
+                type="button"
+                size="sm"
+                onClick={restoreDraft}
+                className="flex-1 sm:flex-initial bg-[#D6C799] hover:bg-[#D6C799]/90 text-[#041F40] font-bold text-xs h-8 px-3"
+              >
+                <Check className="w-3.5 h-3.5 mr-1" /> Reprendre
+              </Button>
+              <Button
+                type="button"
+                variant="ghost"
+                size="sm"
+                onClick={discardDraft}
+                className="flex-1 sm:flex-initial text-slate-300 hover:text-white hover:bg-white/10 text-xs h-8 px-2"
+              >
+                Ignorer
+              </Button>
+            </div>
+          </div>
+        )}
+
+        {/* Barre de progression & Stepper */}
+        {totalSections > 1 && (
+          <div className="mt-4 pt-4 border-t border-white/10 space-y-3">
+            <div className="flex items-center justify-between text-xs text-slate-300 font-medium">
+              <span>Progression du questionnaire</span>
+              <span className="text-[#D6C799] font-bold">
+                {Math.round(((currentSectionIndex + 1) / totalSections) * 100)}%
+              </span>
+            </div>
+
+            <div className="w-full bg-white/20 rounded-full h-2 overflow-hidden">
+              <div
+                className="bg-[#D6C799] h-full transition-all duration-300 ease-out rounded-full"
+                style={{
+                  width: `${Math.round(((currentSectionIndex + 1) / totalSections) * 100)}%`,
+                }}
+              />
+            </div>
+
+            {/* Stepper pills cliquables */}
+            <div className="flex items-center gap-2 overflow-x-auto pt-2 pb-1 scrollbar-none">
+              {sections.map((sec, sIdx) => {
+                const isActive = sIdx === currentSectionIndex;
+                const isPast = sIdx < currentSectionIndex;
+
+                return (
+                  <button
+                    key={sec.id || sIdx}
+                    type="button"
+                    onClick={async () => {
+                      if (sIdx <= currentSectionIndex) {
+                        setCurrentSectionIndex(sIdx);
+                      } else {
+                        const currentItems =
+                          sections[currentSectionIndex]?.items || [];
+                        const fieldsToValidate = currentItems
+                          .filter(
+                            (q) =>
+                              q.type !== "section_header" &&
+                              q.type !== "info_text",
+                          )
+                          .map((q) => getFieldName(q));
+
+                        const isValid = await form.trigger(fieldsToValidate);
+                        if (isValid) {
+                          setCurrentSectionIndex(sIdx);
+                        } else {
+                          toast({
+                            variant: "destructive",
+                            title: "Section incomplète",
+                            description:
+                              "Veuillez compléter toutes les questions obligatoires de la section en cours.",
+                          });
+                        }
+                      }
+                    }}
+                    className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold whitespace-nowrap transition-all border ${
+                      isActive
+                        ? "bg-[#D6C799] text-[#041F40] border-[#D6C799] shadow-sm font-bold"
+                        : isPast
+                          ? "bg-white/15 text-emerald-300 border-emerald-400/30 hover:bg-white/25"
+                          : "bg-white/5 text-slate-300 border-white/10 hover:bg-white/10"
+                    }`}
+                  >
+                    {isPast ? (
+                      <Check className="w-3.5 h-3.5 text-emerald-300" />
+                    ) : (
+                      <span
+                        className={`w-4 h-4 rounded-full flex items-center justify-center text-[10px] ${
+                          isActive
+                            ? "bg-[#041F40] text-[#D6C799] font-bold"
+                            : "bg-white/20 text-slate-200"
+                        }`}
+                      >
+                        {sIdx + 1}
+                      </span>
+                    )}
+                    <span className="truncate max-w-[130px]">{sec.title}</span>
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+        )}
       </CardHeader>
       <Form {...form}>
         {/* Use RHF's handleSubmit to trigger validation and then call processSubmit */}
-        <form onSubmit={form.handleSubmit(processSubmit)} className="space-y-8">
-          <CardContent className="space-y-6">
+        <form
+          onSubmit={form.handleSubmit(processSubmit, onFormError)}
+          onKeyDown={(e) => {
+            if (
+              e.key === "Enter" &&
+              !isLastSection &&
+              e.target.tagName !== "TEXTAREA"
+            ) {
+              e.preventDefault();
+              handleNextSection();
+            }
+          }}
+          className="space-y-6"
+        >
+          <CardContent className="p-4 sm:p-6 space-y-4 sm:space-y-6">
             {surveyQuestions.length === 0 && (
-              <p className="text-muted-foreground text-center py-4">
-                No survey questions found for this mission.
+              <p className="text-muted-foreground text-center py-8">
+                Aucune question trouvée pour cette mission.
               </p>
             )}
-            {surveyQuestions.map((q, index) => {
-              const fieldName = getFieldName(q);
-              return (
-                <FormField
-                  control={form.control}
-                  name={fieldName}
-                  rules={{ required: q.isRequired }}
-                  key={q.id}
-                  render={({ field }) => (
-                    <FormItem className="border-t pt-6 first:border-t-0 first:pt-0">
-                      {/* Question Label with Type Icon */}
-                      <FormLabel className="font-semibold text-md flex items-center gap-2">
-                        {getIconForType(q.type)}
-                        {index + 1}. {q.text}
-                        {q.isRequired && (
-                          <span className="text-destructive text-xs ml-1">
-                            *
-                          </span>
-                        )}
-                      </FormLabel>
-                      {/* Optional Description */}
-                      {q.description && (
-                        <FormDescription className="text-sm ml-6">
-                          {q.description}
-                        </FormDescription>
-                      )}
 
-                      {/* Render input based on question type */}
-                      <FormControl className="pl-6 mt-2">
-                        {/* Wrap content in a div to receive props from Slot */}
-                        <div>
-                          {q.type === "text" && (
-                            <Textarea placeholder="Your answer..." {...field} />
+            {sections.map((sec, secIdx) => {
+              const isCurrent = secIdx === currentSectionIndex;
+              return (
+                <div
+                  key={sec.id || `section-${secIdx}`}
+                  className={isCurrent ? "space-y-6 block" : "hidden"}
+                >
+                  {/* Bannière de titre de la section */}
+                  <div className="p-4 rounded-xl bg-gradient-to-r from-[#041F40]/10 via-[#D6C799]/15 to-transparent border-l-4 border-[#041F40] mb-6">
+                    <div className="flex items-center justify-between gap-2">
+                      <h3 className="text-lg font-bold text-[#041F40] flex items-center gap-2">
+                        <Columns className="w-5 h-5 text-[#D6C799]" />
+                        {sec.title}
+                      </h3>
+                      <Badge className="bg-[#041F40] text-[#D6C799] border-none text-[11px] font-bold">
+                        Section {secIdx + 1} / {totalSections}
+                      </Badge>
+                    </div>
+                    {sec.description && (
+                      <p className="text-xs text-slate-600 mt-1.5 font-medium leading-relaxed">
+                        {sec.description}
+                      </p>
+                    )}
+                  </div>
+
+                  {sec.items.length === 0 ? (
+                    <p className="text-center text-slate-400 py-6 text-sm">
+                      Aucune question dans cette section.
+                    </p>
+                  ) : (
+                    sec.items.map((q, qLocalIndex) => {
+                      if (q.type === "info_text") {
+                        return (
+                          <div
+                            key={q.id || `info-${qLocalIndex}`}
+                            className="p-4 rounded-xl bg-sky-50 border border-sky-200 text-sky-900 text-sm flex items-start gap-3 my-3 shadow-xs"
+                          >
+                            <Info className="w-5 h-5 text-sky-600 shrink-0 mt-0.5" />
+                            <div className="whitespace-pre-line leading-relaxed font-medium">
+                              {q.text || q.content}
+                            </div>
+                          </div>
+                        );
+                      }
+
+                      const qNumber =
+                        questionNumberMap.get(q.id) || qLocalIndex + 1;
+                      const fieldName = getFieldName(q);
+                      return (
+                        <FormField
+                          control={form.control}
+                          name={fieldName}
+                          rules={{ required: q.isRequired }}
+                          key={q.id || `q-${qLocalIndex}`}
+                          render={({ field }) => (
+                      <FormItem className="border-t pt-6 first:border-t-0 first:pt-0">
+                        {/* Question Label with Type Icon */}
+                        <FormLabel className="font-semibold text-md flex items-center gap-2 text-slate-900">
+                          {getIconForType(q.type)}
+                          <span>
+                            {qNumber}. {q.text}
+                          </span>
+                          {q.isRequired && (
+                            <span className="text-destructive text-xs ml-1 font-bold">
+                              *
+                            </span>
                           )}
+                        </FormLabel>
+                        {/* Optional Description */}
+                        {q.description && (
+                          <FormDescription className="text-sm ml-6">
+                            {q.description}
+                          </FormDescription>
+                        )}
+
+                        {/* Render input based on question type */}
+                        <FormControl className="pl-6 mt-2">
+                          <div>
+                            {q.type === "text" && (
+                              <Textarea
+                                placeholder="Votre réponse détaillée..."
+                                className="min-h-[90px] focus:border-[#041F40]"
+                                {...field}
+                                value={field.value || ""}
+                              />
+                            )}
+
+                            {q.type === "date" && (
+                              <Input
+                                type="date"
+                                className="max-w-xs focus:border-[#041F40]"
+                                {...field}
+                                value={field.value || ""}
+                              />
+                            )}
+
+                            {q.type === "time" && (
+                              <Input
+                                type="time"
+                                className="max-w-xs focus:border-[#041F40]"
+                                {...field}
+                                value={field.value || ""}
+                              />
+                            )}
+
+                            {q.type === "number" && (
+                              <Input
+                                type="number"
+                                placeholder="0"
+                                className="max-w-xs focus:border-[#041F40]"
+                                {...field}
+                                value={field.value ?? ""}
+                                onChange={(e) =>
+                                  field.onChange(
+                                    e.target.value === ""
+                                      ? ""
+                                      : Number(e.target.value),
+                                  )
+                                }
+                              />
+                            )}
+
+                            {q.type === "yes_no" && (
+                              <div className="flex gap-4 items-center pt-1">
+                                <Button
+                                  type="button"
+                                  variant={field.value === "Oui" ? "default" : "outline"}
+                                  className={
+                                    field.value === "Oui"
+                                      ? "bg-emerald-600 hover:bg-emerald-700 text-white font-medium shadow-sm"
+                                      : "border-slate-300 text-slate-700 hover:border-emerald-500 hover:text-emerald-700"
+                                  }
+                                  onClick={() =>
+                                    form.setValue(fieldName, "Oui", {
+                                      shouldValidate: true,
+                                    })
+                                  }
+                                >
+                                  <CheckCircle2 className="w-4 h-4 mr-1.5" /> Oui
+                                </Button>
+                                <Button
+                                  type="button"
+                                  variant={field.value === "Non" ? "default" : "outline"}
+                                  className={
+                                    field.value === "Non"
+                                      ? "bg-rose-600 hover:bg-rose-700 text-white font-medium shadow-sm"
+                                      : "border-slate-300 text-slate-700 hover:border-rose-500 hover:text-rose-700"
+                                  }
+                                  onClick={() =>
+                                    form.setValue(fieldName, "Non", {
+                                      shouldValidate: true,
+                                    })
+                                  }
+                                >
+                                  <AlertCircle className="w-4 h-4 mr-1.5" /> Non
+                                </Button>
+                              </div>
+                            )}
 
                           {q.type === "rating" && (
                             <div className="flex space-x-1 items-center">
@@ -715,7 +1286,6 @@ export function ReportSubmissionForm({
                               value={field.value}
                               className="space-y-2"
                             >
-                              {console.log("multi_choices", q.options)}
                               {(q.options || [])?.map((opt) => (
                                 <FormItem
                                   key={opt.id}
@@ -956,22 +1526,64 @@ export function ReportSubmissionForm({
                   )}
                 />
               );
-            })}
-          </CardContent>
-          <CardFooter>
-            <Button type="submit" disabled={isSubmitting} className="w-full">
-              {isSubmitting ? (
-                <>
-                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />{" "}
-                  Submitting...
-                </>
-              ) : (
-                <>
-                  <Send className="w-4 h-4 mr-2" /> Submit Report
-                </>
-              )}
-            </Button>
-          </CardFooter>
+            })
+          )}
+        </div>
+      );
+    })}
+  </CardContent>
+
+  {/* PIED DE PAGE : NAVIGATION ENTRE SECTIONS & ENVOI FINAL */}
+  <CardFooter className="flex flex-col sm:flex-row items-center justify-between gap-3 sm:gap-4 p-4 sm:p-6 bg-slate-50/90 border-t border-slate-200">
+    {/* Bouton Précédent */}
+    {currentSectionIndex > 0 ? (
+      <Button
+        type="button"
+        variant="outline"
+        onClick={handlePrevSection}
+        className="w-full sm:w-auto flex items-center justify-center gap-2 h-11 sm:h-10 px-5 text-sm font-semibold border-slate-300 text-[#041F40] hover:bg-white rounded-xl shadow-xs"
+      >
+        <ArrowLeft className="w-4 h-4" />
+        Section précédente
+      </Button>
+    ) : (
+      <div className="hidden sm:block" />
+    )}
+
+    <div className="text-xs font-semibold text-slate-500 text-center order-first sm:order-none">
+      Section {currentSectionIndex + 1} sur {totalSections}
+    </div>
+
+    {/* Bouton Suivant OU Finaliser & Envoyer */}
+    {!isLastSection ? (
+      <Button
+        type="button"
+        onClick={handleNextSection}
+        className="w-full sm:w-auto flex items-center justify-center gap-2 h-11 sm:h-10 px-6 text-sm font-bold bg-[#041F40] hover:bg-[#0c2b54] text-[#D6C799] rounded-xl shadow-md transition-all hover:scale-[1.02]"
+      >
+        Section suivante
+        <ArrowRight className="w-4 h-4" />
+      </Button>
+    ) : (
+      <Button
+        type="submit"
+        disabled={isSubmitting}
+        className="w-full sm:w-auto flex items-center justify-center gap-2 h-12 sm:h-11 px-8 text-sm font-bold bg-gradient-to-r from-emerald-600 to-emerald-700 hover:from-emerald-700 hover:to-emerald-800 text-white rounded-xl shadow-lg shadow-emerald-600/20 transition-all hover:scale-[1.02]"
+      >
+        {isSubmitting ? (
+          <>
+            <Loader2 className="w-4 h-4 animate-spin mr-2" />
+            Envoi du rapport en cours...
+          </>
+        ) : (
+          <>
+            <Send className="w-4 h-4 mr-2" />
+            Finaliser & Envoyer le rapport
+          </>
+        )}
+      </Button>
+    )}
+  </CardFooter>
         </form>
       </Form>
       {/* Global error for permissions if needed */}

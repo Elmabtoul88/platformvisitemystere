@@ -9,14 +9,13 @@ const API_BASE_URL =
 async function fetchWithAuth(url, options = {}) {
   const headers = {
     "Content-Type": "application/json",
-    // 'Authorization': `Bearer ${getToken()}`, // Add token retrieval logic here
     ...options.headers,
   };
   try {
     // Assuming getToken() retrieves the stored JWT token
     const token = /* await getToken() */ null; // Replace with actual token retrieval
     if (token) {
-      headers["Authorization"] = `Bearer ${token}`;
+      headers["x-auth-token"] = `${token}`;
     }
 
     const response = await fetch(`${API_BASE_URL}${url}`, {
@@ -47,7 +46,7 @@ async function fetchWithAuth(url, options = {}) {
 
     if (!response.ok) {
       const error = new Error(
-        data?.message || `HTTP error! status: ${response.status}`
+        data?.message || `HTTP error! status: ${response.status}`,
       );
       error.status = response.status;
       error.data = data;
@@ -57,7 +56,7 @@ async function fetchWithAuth(url, options = {}) {
   } catch (error) {
     console.error(
       `API Request Error (${options.method || "GET"} ${url}):`,
-      error
+      error,
     );
     throw {
       success: false,
@@ -98,10 +97,10 @@ export async function saveSurvey(missionId, questions, token) {
         method: "POST",
         body: JSON.stringify({ questions }), // Send as { questions: [...] }
         headers: {
-          // Pass token in headers
-          Authorization: `Bearer ${token}`,
+          "x-auth-token": token,
+          "Content-Type": "application/json",
         },
-      }
+      },
     );
 
     console.log("API Response (Save Survey):", responseData);

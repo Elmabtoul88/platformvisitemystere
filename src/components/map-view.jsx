@@ -1,291 +1,441 @@
 "use client";
 
 import React, { useState, useEffect, useRef } from "react";
-import L from "leaflet"; // Import Leaflet directly
-import "leaflet/dist/leaflet.css"; // Import Leaflet CSS
-import { Loader2, MapPin } from "lucide-react";
+import L from "leaflet";
+import "leaflet/dist/leaflet.css";
+import { Loader2, MapPin, Navigation, Crosshair } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import Link from "next/link"; // Import Link for popups
-import { useToast } from "@/hooks/use-toast"; // Import useToast
+import { useToast } from "@/hooks/use-toast";
 
-export function MapView({ availableMissions = [], assignedMissions = [] }) {
-  console.log("mapviewww", availableMissions, assignedMissions);
-  const mapContainerRef = useRef(null); // Ref for the map container div
-  const mapRef = useRef(null); // Ref to store the Leaflet map instance
-  const markersRef = useRef([]); // Ref to store marker instances for cleanup
+// Coordonnées par défaut : Maroc (Casablanca / Rabat)
+const DEFAULT_CENTER = [33.5731, -7.5898];
+
+export function MapView({
+  availableMissions = [],
+  assignedMissions = [],
+  selectedCity = null,
+}) {
+  const mapContainerRef = useRef(null);
+  const mapRef = useRef(null);
+  const markersRef = useRef([]);
   const [currentLocation, setCurrentLocation] = useState(null);
-  const [locationError, setLocationError] = useState(null);
-  const [isLoadingLocation, setIsLoadingLocation] = useState(true);
-  const [initialCenter, setInitialCenter] = useState([34.0522, -118.2437]); // Default center (Los Angeles)
-  const { toast } = useToast(); // Initialize toast
+  const [isLocating, setIsLocating] = useState(false);
+  const { toast } = useToast();
 
-  // Effect for fetching current location
-  useEffect(() => {
-    setIsLoadingLocation(true);
-    if (navigator.geolocation) {
-      navigator.geolocation.getCurrentPosition(
-        (position) => {
-          const loc = {
-            lat: position.coords.latitude,
-            lng: position.coords.longitude,
-          };
-          setCurrentLocation(loc);
-          setInitialCenter([loc.lat, loc.lng]); // Set center based on location
-          setLocationError(null);
-          setIsLoadingLocation(false);
-          console.log("Current location:", loc);
-        },
-        (error) => {
-          console.error("Error getting location:", error);
-          setLocationError(
-            `Error getting location: ${error.message}. Displaying default map center.`
-          );
-          // Keep default LA center if location fails
-          setIsLoadingLocation(false); // Still stop loading on error
-        },
-        { enableHighAccuracy: true, timeout: 10000, maximumAge: 0 }
-      );
-    } else {
-      setLocationError(
-        "Geolocation is not supported by this browser. Displaying default map center."
-      );
-      // Keep default LA center if geolocation not supported
-      setIsLoadingLocation(false);
-    }
-  }, []); // Run once on mount
+  // Création d'icônes Leaflet personnalisées via SVG haute visibilité
+  const createCustomPinIcon = (type = "available") => {
+    // Couleurs vives et contrastées
+    const isAvailable = type === "available";
+    const isAssigned = type === "assigned";
+    const isUser = type === "user";
 
-  // Effect for initializing and updating the map
-  useEffect(() => {
-    // Ensure the container exists and Leaflet is loaded AND location attempt is finished
-    if (mapContainerRef.current && !mapRef.current && !isLoadingLocation) {
-      console.log("Initializing Leaflet map with center:", initialCenter);
-      // Initialize map ONLY if it hasn't been initialized yet
-      mapRef.current = L.map(mapContainerRef.current, {
-        center: initialCenter,
-        zoom: 13,
-      });
+    const pinColor = isAvailable
+      ? "#F59E0B" // Ambre / Doré vibrant
+      : isAssigned
+        ? "#059669" // Émeraude vif
+        : "#0284C7"; // Bleu cyan ciel pour l'utilisateur
 
-      L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
-        attribution:
-          '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors',
-        maxZoom: 19,
-      }).addTo(mapRef.current);
-    }
+    const iconSvg = isUser
+      ? `<circle cx="12" cy="12" r="5" fill="#0284C7"/><path d="M12 2v3m0 14v3M2 12h3m14 0h3" stroke="#0284C7" stroke-width="2" stroke-linecap="round"/>`
+      : isAssigned
+        ? `<path d="M9 16.2L4.8 12l-1.4 1.4L9 19 21 7l-1.4-1.4L9 16.2z" fill="#059669"/>`
+        : `<path d="M20 4H4v2h16V4zm1 10v-2l-1-5H4l-1 5v2h1v6h10v-6h4v6h2v-6h1zm-9 4H6v-4h6v4z" fill="#D97706"/>`;
 
-    // Add/Update markers when map is ready and data is available
-    if (mapRef.current) {
-      console.log("Updating markers...");
-      // --- Clear existing markers ---
-      markersRef.current.forEach((marker) => marker.remove());
-      markersRef.current = []; // Reset the markers array
-
-      // --- Add Available Mission Markers ---
-      availableMissions.forEach((mission) => {
-        const position = parseLocation(mission.latitude, mission.longitude);
-        console.log("kkkkkkkkk", position);
-        if (position) {
-          const popupContent = `
-                        <strong>${
-                          mission.title || "Mission"
-                        }</strong> (Available)<br/>
-                        ${mission.businessName || "N/A"}<br/>
-                        Reward: $${mission.reward || 0}<br/>
-                        <a href="/missions/${
-                          mission.id
-                        }/details" class="text-primary underline hover:text-primary/80 text-xs font-semibold">
-                           View Details & Apply
-                        </a>
-                    `;
-          try {
-            const marker = L.marker([position.lat, position.lng], {
-              icon: yellowIcon,
-            })
-              .addTo(mapRef.current)
-              .bindPopup(popupContent);
-            markersRef.current.push(marker); // Store marker instance
-          } catch (e) {
-            console.error(
-              "Error adding available mission marker:",
-              e,
-              "Position:",
-              position
-            );
-          }
-        }
-      });
-
-      // --- Add Assigned Mission Markers ---
-      assignedMissions.forEach((mission) => {
-        const position = parseLocation(mission.latitude, mission.longitude);
-        console.log("pppppppp", position);
-        if (position) {
-          const popupContent = `
-                        <strong>${
-                          mission.title || "Mission"
-                        }</strong> (Assigned)<br/>
-                        ${mission.businessName || "N/A"}<br/>
-                        Status: ${mission.status || "N/A"}<br/>
-                         <a href="/report/${
-                           mission.id
-                         }" class="text-primary underline hover:text-primary/80 text-xs font-semibold">
-                            ${
-                              mission.status === "submitted"
-                                ? "View Submitted Report"
-                                : "Start/Continue Report"
-                            }
-                         </a>
-                    `;
-          try {
-            const marker = L.marker([position.lat, position.lng], {
-              icon: greenIcon,
-            })
-              .addTo(mapRef.current)
-              .bindPopup(popupContent);
-            markersRef.current.push(marker); // Store marker instance
-          } catch (e) {
-            console.error(
-              "Error adding assigned mission marker:",
-              e,
-              "Position:",
-              position
-            );
-          }
-        }
-      });
-
-      // --- Add Current Location Marker ---
-      if (currentLocation) {
-        try {
-          const marker = L.marker([currentLocation.lat, currentLocation.lng], {
-            icon: blueIcon,
-          })
-            .addTo(mapRef.current)
-            .bindPopup("Your current location");
-          markersRef.current.push(marker); // Store marker instance
-        } catch (e) {
-          console.error(
-            "Error adding current location marker:",
-            e,
-            "Location:",
-            currentLocation
-          );
-        }
-      }
-
-      // Optional: Fit map bounds only if there are markers
-      if (markersRef.current.length > 0) {
-        const group = L.featureGroup(markersRef.current);
-        // Check if bounds are valid before fitting
-        if (group.getBounds().isValid()) {
-          mapRef.current.fitBounds(group.getBounds().pad(0.1)); // Add padding
-        } else {
-          console.warn(
-            "Could not fit bounds: Invalid bounds calculated from markers."
-          );
-          // Fallback to centering on initial center or current location if bounds are invalid
-          mapRef.current.setView(
-            currentLocation
-              ? [currentLocation.lat, currentLocation.lng]
-              : initialCenter,
-            13
-          );
-        }
-      } else if (currentLocation) {
-        mapRef.current.setView([currentLocation.lat, currentLocation.lng], 13); // Center on user if no markers
-      } else {
-        mapRef.current.setView(initialCenter, 13); // Fallback center
-      }
-    }
-
-    // --- Cleanup function for component unmount ---
-    return () => {
-      if (mapRef.current) {
-        console.log("Unmounting MapView: Cleaning up Leaflet map instance.");
-        mapRef.current.remove();
-        mapRef.current = null;
-      }
-    };
-  }, [
-    availableMissions,
-    assignedMissions,
-    currentLocation,
-    initialCenter,
-    isLoadingLocation,
-  ]); // Re-run if data or location status changes
-
-  const handleRecenter = () => {
-    if (mapRef.current && currentLocation) {
-      mapRef.current.setView([currentLocation.lat, currentLocation.lng], 14); // Recenter map with slightly more zoom
-    } else if (!isLoadingLocation && !currentLocation) {
-      toast({
-        variant: "destructive",
-        title: "Location Unavailable",
-        description:
-          locationError || "Could not retrieve your current location.",
-      });
-    }
-  };
-  // Custom Icon Creation using L.divIcon for colored markers
-  const createMarkerIcon = (color) => {
     return L.divIcon({
-      html: `<svg viewBox="0 0 24 24" fill="${color}" class="w-6 h-6 drop-shadow-md"><path d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7zm0 9.5c-1.38 0-2.5-1.12-2.5-2.5s1.12-2.5 2.5-2.5 2.5 1.12 2.5 2.5-1.12 2.5-2.5 2.5z"/></svg>`,
-      className: "", // Avoid default Leaflet styles conflicting
-      iconSize: [24, 24],
-      iconAnchor: [12, 24], // Point of the icon which will correspond to marker's location
-      popupAnchor: [0, -24], // Point from which the popup should open relative to the iconAnchor
+      className: "custom-leaflet-marker",
+      html: `
+        <div style="position: relative; width: 36px; height: 44px; display: flex; align-items: center; justify-content: center; filter: drop-shadow(0 3px 6px rgba(0,0,0,0.4)); cursor: pointer; transition: transform 0.2s ease;">
+          <svg viewBox="0 0 36 44" width="36" height="44" fill="none">
+            <path d="M18 0C8.06 0 0 8.06 0 18C0 29.5 18 44 18 44C18 44 36 29.5 36 18C36 8.06 27.94 0 18 0Z" fill="${pinColor}"/>
+            <circle cx="18" cy="18" r="12" fill="#FFFFFF"/>
+          </svg>
+          <div style="position: absolute; top: 6px; left: 6px; width: 24px; height: 24px; display: flex; align-items: center; justify-content: center;">
+            <svg viewBox="0 0 24 24" width="16" height="16" fill="currentColor">
+              ${iconSvg}
+            </svg>
+          </div>
+          ${
+            isUser
+              ? `<div style="position: absolute; width: 44px; height: 44px; border-radius: 50%; border: 2px solid #0284C7; animation: ping 1.5s cubic-bezier(0, 0, 0.2, 1) infinite; opacity: 0.6; pointer-events: none;"></div>`
+              : ""
+          }
+        </div>
+      `,
+      iconSize: [36, 44],
+      iconAnchor: [18, 44],
+      popupAnchor: [0, -42],
     });
   };
 
-  // Define icons using CSS variables from the theme
-  const greenIcon = createMarkerIcon("hsl(var(--chart-1))"); // Green for assigned
-  const yellowIcon = createMarkerIcon("hsl(var(--accent))"); // Yellow for available
-  const blueIcon = createMarkerIcon("hsl(var(--primary))"); // Blue for current location
+  const availableStoreIcon = createCustomPinIcon("available");
+  const assignedStoreIcon = createCustomPinIcon("assigned");
+  const userLocationIcon = createCustomPinIcon("user");
 
-  // Helper to parse location strings (simple example, adjust as needed)
-  // IMPORTANT: Assumes location is stored as "lat,lng" string or similar parsable format.
-  // If location format is different (e.g., address only), you'll need a geocoding service.
-  const parseLocation = (latitude, longitude) => {
-    // Basic validation for Lat,Lng format (adjust regex if needed)
-    const lat = parseFloat(latitude);
-    const lng = parseFloat(longitude);
-    // Further validation for valid ranges
-    return { lat, lng };
+  // Initialisation de la carte Leaflet
+  useEffect(() => {
+    if (!mapContainerRef.current || mapRef.current) return;
+
+    const mapInstance = L.map(mapContainerRef.current, {
+      center: DEFAULT_CENTER,
+      zoom: 11,
+      scrollWheelZoom: true,
+      zoomControl: true,
+    });
+
+    L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
+      attribution:
+        '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>',
+      maxZoom: 19,
+    }).addTo(mapInstance);
+
+    mapRef.current = mapInstance;
+
+    // Invalider la taille après le montage pour éviter un affichage partiel
+    setTimeout(() => {
+      mapInstance.invalidateSize();
+    }, 250);
+
+    return () => {
+      mapInstance.remove();
+      mapRef.current = null;
+    };
+  }, []);
+
+  // Géolocalisation
+  useEffect(() => {
+    if (!navigator.geolocation) return;
+
+    setIsLocating(true);
+    navigator.geolocation.getCurrentPosition(
+      (position) => {
+        const loc = {
+          lat: position.coords.latitude,
+          lng: position.coords.longitude,
+        };
+        setCurrentLocation(loc);
+        setIsLocating(false);
+      },
+      () => {
+        setIsLocating(false);
+      },
+      { timeout: 8000, maximumAge: 60000 },
+    );
+  }, []);
+
+  // Affichage de tous les magasins et missions
+  useEffect(() => {
+    if (!mapRef.current) return;
+
+    // Nettoyer les anciens marqueurs
+    markersRef.current.forEach((m) => m.remove());
+    markersRef.current = [];
+
+    const allBoundsCoords = [];
+
+    // Helper pour valider les coordonnées
+    const isValidCoord = (lat, lng) => {
+      const parsedLat = parseFloat(lat);
+      const parsedLng = parseFloat(lng);
+      return (
+        !isNaN(parsedLat) &&
+        !isNaN(parsedLng) &&
+        parsedLat !== 0 &&
+        parsedLng !== 0 &&
+        parsedLat >= -90 &&
+        parsedLat <= 90 &&
+        parsedLng >= -180 &&
+        parsedLng <= 180
+      );
+    };
+
+    // 1. MARQUEURS DES MAGASINS DISPONIBLES
+    availableMissions.forEach((mission) => {
+      const stores = Array.isArray(mission.stores)
+        ? mission.stores
+        : mission.store
+          ? [mission.store]
+          : [];
+
+      // Filtrer les magasins avec coordonnées valides
+      const storesWithCoords = stores.filter((s) =>
+        isValidCoord(s?.latitude, s?.longitude),
+      );
+
+      if (storesWithCoords.length > 0) {
+        // Placer un marqueur pour CHAQUE magasin possédant lat/lng
+        storesWithCoords.forEach((store) => {
+          if (
+            selectedCity &&
+            store.city &&
+            !store.city.toLowerCase().includes(selectedCity.toLowerCase())
+          ) {
+            return;
+          }
+
+          const sLat = parseFloat(store.latitude);
+          const sLng = parseFloat(store.longitude);
+
+          const popupContent = `
+            <div style="font-family: inherit; font-size: 13px; min-width: 240px; max-width: 300px; padding: 4px 2px; color: #041F40; line-height: 1.4;">
+              <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 6px;">
+                <span style="font-size: 10px; font-weight: 700; background: #FEF3C7; color: #92400E; padding: 2px 8px; border-radius: 9999px; text-transform: uppercase;">
+                  Point de vente
+                </span>
+                ${store.category ? `<span style="font-size: 10px; color: #64748B;">${store.category}</span>` : ""}
+              </div>
+
+              <h4 style="margin: 0 0 4px 0; font-size: 15px; font-weight: 800; color: #041F40;">
+                ${store.name || "Magasin partenaire"}
+              </h4>
+
+              <div style="font-size: 12px; color: #475569; margin-bottom: 6px; display: flex; align-items: flex-start; gap: 4px;">
+                <span>📍</span>
+                <span>${store.address ? store.address + ", " : ""}${store.city || mission.ville || ""}</span>
+              </div>
+
+              <div style="background: #F1F5F9; border-radius: 8px; padding: 6px 10px; margin-bottom: 10px;">
+                <div style="font-size: 11px; color: #64748B;">Mission associée</div>
+                <div style="font-weight: 700; color: #041F40; font-size: 13px;">${mission.title}</div>
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-top: 4px;">
+                  <span style="font-size: 11px; color: #64748B;">${mission.businessName || ""}</span>
+                  <span style="font-size: 13px; font-weight: 800; color: #059669;">
+                    ${mission.reward ? parseFloat(mission.reward).toFixed(0) + " MAD" : "Gratuit"}
+                  </span>
+                </div>
+              </div>
+
+              <div>
+                <a href="/missions/${mission.id}/details" style="display: block; text-align: center; background: #041F40; color: #D6C799; padding: 8px 12px; border-radius: 8px; text-decoration: none; font-weight: 700; font-size: 12px; transition: background 0.2s;">
+                  Voir détails & Postuler →
+                </a>
+              </div>
+            </div>
+          `;
+
+          const marker = L.marker([sLat, sLng], { icon: availableStoreIcon })
+            .addTo(mapRef.current)
+            .bindPopup(popupContent, { maxWidth: 320 });
+
+          markersRef.current.push(marker);
+          allBoundsCoords.push([sLat, sLng]);
+        });
+      } else if (isValidCoord(mission.latitude, mission.longitude)) {
+        // Fallback : coordonnées au niveau de la mission
+        const mLat = parseFloat(mission.latitude);
+        const mLng = parseFloat(mission.longitude);
+
+        if (
+          selectedCity &&
+          mission.ville &&
+          !mission.ville.toLowerCase().includes(selectedCity.toLowerCase())
+        ) {
+          return;
+        }
+
+        const popupContent = `
+          <div style="font-family: inherit; font-size: 13px; min-width: 230px; padding: 4px 2px; color: #041F40;">
+            <span style="font-size: 10px; font-weight: 700; background: #FEF3C7; color: #92400E; padding: 2px 8px; border-radius: 9999px;">
+              Mission disponible
+            </span>
+            <h4 style="margin: 6px 0 4px 0; font-size: 15px; font-weight: 800; color: #041F40;">
+              ${mission.title}
+            </h4>
+            <div style="font-size: 12px; color: #475569; margin-bottom: 6px;">
+              🏢 ${mission.businessName || "Enseigne"} • 📍 ${mission.ville || mission.location || "Maroc"}
+            </div>
+            <div style="font-weight: 800; color: #059669; font-size: 13px; margin-bottom: 8px;">
+              Rémunération: ${mission.reward || 0} MAD
+            </div>
+            <a href="/missions/${mission.id}/details" style="display: block; text-align: center; background: #041F40; color: #D6C799; padding: 7px 10px; border-radius: 8px; text-decoration: none; font-weight: 700; font-size: 12px;">
+              Voir détails & Postuler →
+            </a>
+          </div>
+        `;
+
+        const marker = L.marker([mLat, mLng], { icon: availableStoreIcon })
+          .addTo(mapRef.current)
+          .bindPopup(popupContent);
+
+        markersRef.current.push(marker);
+        allBoundsCoords.push([mLat, mLng]);
+      }
+    });
+
+    // 2. MARQUEURS DES MAGASINS ASSIGNÉS
+    assignedMissions.forEach((mission) => {
+      const stores =
+        Array.isArray(mission.stores) && mission.stores.length > 0
+          ? mission.stores
+          : Array.isArray(mission.all_stores) && mission.all_stores.length > 0
+            ? mission.all_stores
+            : mission.store
+              ? [mission.store]
+              : [];
+
+      const storesWithCoords = stores.filter((s) =>
+        isValidCoord(s?.latitude, s?.longitude),
+      );
+
+      if (storesWithCoords.length > 0) {
+        storesWithCoords.forEach((store) => {
+          if (
+            selectedCity &&
+            store.city &&
+            !store.city.toLowerCase().includes(selectedCity.toLowerCase())
+          ) {
+            return;
+          }
+
+          const sLat = parseFloat(store.latitude);
+          const sLng = parseFloat(store.longitude);
+
+          const popupContent = `
+            <div style="font-family: inherit; font-size: 13px; min-width: 240px; padding: 4px 2px; color: #041F40;">
+              <span style="font-size: 10px; font-weight: 700; background: #D1FAE5; color: #065F46; padding: 2px 8px; border-radius: 9999px;">
+                ✅ Mission Assignée
+              </span>
+              <h4 style="margin: 6px 0 4px 0; font-size: 15px; font-weight: 800; color: #041F40;">
+                ${store.name || mission.title}
+              </h4>
+              <div style="font-size: 12px; color: #475569; margin-bottom: 6px;">
+                📍 ${store.address ? store.address + ", " : ""}${store.city || ""}
+              </div>
+              <div style="background: #F8FAFC; border-radius: 6px; padding: 6px; margin-bottom: 8px;">
+                <span style="font-size: 11px; color: #64748B;">Mission: </span>
+                <strong style="color: #041F40;">${mission.title}</strong>
+              </div>
+              <a href="/report/${mission.id}?storeId=${store.id}" style="display: block; text-align: center; background: #059669; color: white; padding: 8px 12px; border-radius: 8px; text-decoration: none; font-weight: 700; font-size: 12px;">
+                Remplir le questionnaire →
+              </a>
+            </div>
+          `;
+
+          const marker = L.marker([sLat, sLng], { icon: assignedStoreIcon })
+            .addTo(mapRef.current)
+            .bindPopup(popupContent);
+
+          markersRef.current.push(marker);
+          allBoundsCoords.push([sLat, sLng]);
+        });
+      } else if (isValidCoord(mission.latitude, mission.longitude)) {
+        const mLat = parseFloat(mission.latitude);
+        const mLng = parseFloat(mission.longitude);
+
+        if (
+          selectedCity &&
+          mission.ville &&
+          !mission.ville.toLowerCase().includes(selectedCity.toLowerCase())
+        ) {
+          return;
+        }
+
+        const popupContent = `
+          <div style="font-family: inherit; font-size: 13px; min-width: 230px; padding: 4px 2px; color: #041F40;">
+            <span style="font-size: 10px; font-weight: 700; background: #D1FAE5; color: #065F46; padding: 2px 8px; border-radius: 9999px;">
+              ✅ Mission Assignée
+            </span>
+            <h4 style="margin: 6px 0 4px 0; font-size: 15px; font-weight: 800; color: #041F40;">
+              ${mission.title}
+            </h4>
+            <div style="font-size: 12px; color: #475569; margin-bottom: 8px;">
+              🏢 ${mission.businessName || ""} • 📍 ${mission.location || ""}
+            </div>
+            <a href="/report/${mission.id}" style="display: block; text-align: center; background: #059669; color: white; padding: 7px 10px; border-radius: 8px; text-decoration: none; font-weight: 700; font-size: 12px;">
+              Remplir le questionnaire →
+            </a>
+          </div>
+        `;
+
+        const marker = L.marker([mLat, mLng], { icon: assignedStoreIcon })
+          .addTo(mapRef.current)
+          .bindPopup(popupContent);
+
+        markersRef.current.push(marker);
+        allBoundsCoords.push([mLat, mLng]);
+      }
+    });
+
+    // 3. MARQUEUR DE LA POSITION DE L'UTILISATEUR
+    if (currentLocation) {
+      const userMarker = L.marker([currentLocation.lat, currentLocation.lng], {
+        icon: userLocationIcon,
+      })
+        .addTo(mapRef.current)
+        .bindPopup(
+          `<div style="text-align: center; padding: 4px; color: #041F40;">
+            <strong style="color: #0284C7;">Votre position actuelle</strong>
+            <p style="margin: 4px 0 0 0; font-size: 11px; color: #64748B;">Prêt pour les audits à proximité</p>
+          </div>`,
+        );
+      markersRef.current.push(userMarker);
+    }
+
+    // Ajustement automatique du cadrage de la carte sur tous les magasins
+    if (allBoundsCoords.length > 0) {
+      try {
+        if (allBoundsCoords.length === 1) {
+          mapRef.current.setView(allBoundsCoords[0], 13);
+        } else {
+          const bounds = L.latLngBounds(allBoundsCoords);
+          mapRef.current.fitBounds(bounds, { padding: [50, 50], maxZoom: 15 });
+        }
+      } catch (e) {
+        console.warn("Erreur fitBounds:", e);
+      }
+    }
+  }, [availableMissions, assignedMissions, currentLocation, selectedCity]);
+
+  const handleRecenter = () => {
+    if (mapRef.current && currentLocation) {
+      mapRef.current.flyTo([currentLocation.lat, currentLocation.lng], 14, {
+        duration: 1.2,
+      });
+      toast({
+        title: "Position centrée",
+        description: "La carte a été recentrée sur votre position.",
+      });
+    } else {
+      toast({
+        title: "Position non disponible",
+        description: "Veuillez autoriser la géolocalisation dans votre navigateur.",
+      });
+    }
   };
 
   return (
-    <div className="relative h-[calc(100vh-10rem)] w-full rounded-lg overflow-hidden shadow-lg border">
-      {/* The map container div - ensure it's always rendered */}
-      <div ref={mapContainerRef} style={{ height: "100%", width: "100%" }}>
-        {/* Loading indicator shown while waiting for location/map init */}
-        {isLoadingLocation && (
-          <div className="absolute inset-0 flex justify-center items-center bg-secondary/50 z-10">
-            <Loader2 className="h-8 w-8 animate-spin text-primary" />
-            <span className="ml-2">Loading Map & Location...</span>
-          </div>
+    <div className="relative h-[60vh] sm:h-[calc(100vh-14rem)] min-h-[380px] sm:min-h-[480px] w-full rounded-2xl overflow-hidden shadow-2xl border border-[#D6C799]/20">
+      <div ref={mapContainerRef} className="h-full w-full z-0" />
+
+      {/* Bouton de recentrage flottant */}
+      <Button
+        variant="secondary"
+        size="icon"
+        onClick={handleRecenter}
+        className="absolute bottom-5 right-5 z-[1000] shadow-xl rounded-full bg-[#041F40] text-[#D6C799] hover:bg-[#0c2b54] border border-[#D6C799]/40 h-11 w-11 transition-transform hover:scale-105"
+        title="Centrer sur ma position"
+      >
+        {isLocating ? (
+          <Loader2 className="w-5 h-5 animate-spin text-[#D6C799]" />
+        ) : (
+          <Crosshair className="w-5 h-5 text-[#D6C799]" />
         )}
-      </div>
+      </Button>
 
-      {/* Recenter Button */}
-      {!isLoadingLocation && ( // Show button only after initial location attempt
-        <Button
-          variant="secondary"
-          size="icon"
-          onClick={handleRecenter}
-          className="absolute bottom-4 right-4 z-[1000] shadow-lg rounded-full" // Ensure button is above map layers, make round
-          aria-label="Recenter Map"
-          title="Recenter Map on Your Location"
-          disabled={isLoadingLocation || !currentLocation} // Disable if loading or no location
-        >
-          <MapPin className="w-5 h-5" />
-        </Button>
-      )}
-
-      {/* Location Error Message */}
-      {locationError && !isLoadingLocation && (
-        <div className="absolute top-4 left-1/2 transform -translate-x-1/2 z-[1000] bg-destructive/90 text-destructive-foreground text-xs p-2 rounded shadow-lg max-w-xs text-center">
-          {locationError}
-        </div>
-      )}
+      <style jsx global>{`
+        .leaflet-popup-content-wrapper {
+          border-radius: 14px;
+          box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.25),
+            0 8px 10px -6px rgba(0, 0, 0, 0.25);
+          border: 1px solid rgba(214, 199, 153, 0.3);
+          overflow: hidden;
+        }
+        .leaflet-popup-tip {
+          background: white;
+        }
+        .leaflet-popup-content {
+          margin: 14px 16px;
+        }
+      `}</style>
     </div>
   );
 }

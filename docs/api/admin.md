@@ -1,414 +1,145 @@
-# MissionView API Documentation - Admin
+# MissionView API Documentation - Administration
 
-This document outlines the endpoints specifically for **administrators**.
+Ce document décrit l'ensemble des points d'accès (endpoints) réservés aux **administrateurs** dans l'application MissionView.
 
-**Base URL:** `/api/admin`
-
-**Authentication:** All endpoints require a valid JWT token in the `Authorization: Bearer <token>` header, and the token must correspond to a user with the `admin` role.
-
----
-
-## User Management
-
-Endpoints for managing user accounts.
-
-### Get All Users
-
-Retrieves a list of all users in the system.
-
--   **URL:** `/users`
--   **Method:** `GET`
--   **Access:** Private (Admin Role)
--   **Query Parameters (Optional):**
-    -   `role`: Filter by user role (e.g., `shopper`, `admin`)
-    -   `status`: Filter by status (`active`, `inactive`)
-    -   `page`, `limit`: For pagination (implementation TBD)
--   **Success Response:**
-    -   **Code:** 200 OK
-    -   **Content:** (Array of user objects)
-        ```json
-        [
-          {
-            "id": 123,
-            "name": "John Doe",
-            "email": "john.doe@example.com",
-            "role": "shopper",
-            "status": "active",
-            "city": "Anytown",
-            "registration_date": "2024-01-15T10:00:00.000Z",
-            "completed_missions": 5
-          },
-          // ... more users
-        ]
-        ```
--   **Error Responses:** 401, 403, 500
-
-### Get User by ID
-
-Retrieves detailed information for a specific user.
-
--   **URL:** `/users/:id`
--   **Method:** `GET`
--   **Access:** Private (Admin Role)
--   **URL Parameters:**
-    -   `id`: The ID of the user to retrieve.
--   **Success Response:**
-    -   **Code:** 200 OK
-    -   **Content:**
-        ```json
-        {
-          "id": 123,
-          "name": "John Doe",
-          "email": "john.doe@example.com",
-          "role": "shopper",
-          "status": "active",
-          "telephone": "+15551234567",
-          "city": "Anytown",
-          "motivation": "...",
-          "birthYear": 1990,
-          "gender": "male",
-          "cvUrl": "/path/to/cv.pdf",
-          "registrationDate": "2024-01-15T10:00:00.000Z",
-          "completedMissions": 5
-        }
-        ```
--   **Error Responses:** 401, 403, 404 (User not found), 500
-
-### Update User
-
-Updates specific details of a user account.
-
--   **URL:** `/users/:id`
--   **Method:** `PUT`
--   **Access:** Private (Admin Role)
--   **URL Parameters:**
-    -   `id`: The ID of the user to update.
--   **Request Body:** (Include only fields to be updated)
-    ```json
-    {
-      "name": "John A. Doe", // Optional
-      "role": "shopper",     // Optional (Use with caution)
-      "status": "inactive",  // Optional ('active', 'inactive')
-      "city": "New City",    // Optional
-      "motivation": "Updated motivation", // Optional
-      "telephone": "+15559876543", // Optional
-      "birthYear": 1991,     // Optional
-      "gender": "male"       // Optional
-    }
-    ```
--   **Success Response:**
-    -   **Code:** 200 OK
-    -   **Content:** `{ "message": "User updated successfully" }`
--   **Error Responses:** 400 (No valid fields), 401, 403, 404 (User not found), 500
-
-### Toggle User Status
-
-Activates or deactivates a user account.
-
--   **URL:** `/users/:id/status`
--   **Method:** `PATCH`
--   **Access:** Private (Admin Role)
--   **URL Parameters:**
-    -   `id`: The ID of the user whose status to toggle.
--   **Request Body:**
-    ```json
-    {
-      "currentStatus": "active" // or "inactive"
-    }
-    ```
--   **Success Response:**
-    -   **Code:** 200 OK
-    -   **Content:** `{ "message": "User status updated to inactive", "newStatus": "inactive" }`
--   **Error Responses:** 400 (Missing/invalid `currentStatus`), 401, 403, 404 (User not found), 500
+**URL de base :** `/api` (ou `/api/admin`)  
+**Authentification :** Requiert un jeton JWT valide transmis dans l'en-tête `Authorization: Bearer <token>` ou `x-auth-token: <token>`, avec rôle `admin`.
 
 ---
 
-## Mission Management
+## 1. Gestion des Utilisateurs (`/api/users` & `/api/admin/users`)
 
-Endpoints for creating, viewing, updating, and deleting missions.
+### Liste de tous les utilisateurs
+* **URL :** `GET /api/users`
+* **Accès :** Admin
+* **Description :** Retourne la liste complète des utilisateurs avec rôles, statuts, dates d'inscription et compteurs de missions.
 
-### Create Mission
+### Détail d'un utilisateur
+* **URL :** `GET /api/users/:id`
+* **Accès :** Admin / Shopper propriétaire
 
-Creates a new mission.
+### Modifier un utilisateur
+* **URL :** `PUT /api/users/:id`
+* **Corps :** `{ name, city, telephone, motivation, birth_year, gender, role, status }`
 
--   **URL:** `/missions`
--   **Method:** `POST`
--   **Access:** Private (Admin Role)
--   **Request Body:**
-    ```json
-    {
-      "title": "New Retail Experience Audit",
-      "description": "Visit the flagship store and evaluate product displays...",
-      "deadline": "2024-09-30T23:59:59.000Z",
-      "reward": 40,
-      "location": "34.0522,-118.2437", // Lat,Lng or Address
-      "category": "Retail",
-      "businessName": "Trendy Threads Co."
-    }
-    ```
--   **Success Response:**
-    -   **Code:** 201 Created
-    -   **Content:** `{ "message": "Mission created successfully", "missionId": 15 }`
--   **Error Responses:** 400 (Missing fields), 401, 403, 500
-
-### Get All Missions (Admin View)
-
-Retrieves a list of all missions, potentially with more details than the shopper view (e.g., assigned users list).
-
--   **URL:** `/missions`
--   **Method:** `GET`
--   **Access:** Private (Admin Role)
--   **Query Parameters (Optional):** Filters for status, category, etc. (TBD)
--   **Success Response:**
-    -   **Code:** 200 OK
-    -   **Content:** (Array of mission objects with assignment/report info)
-        ```json
-        [
-          {
-            "id": 1,
-            "title": "Dinner Service Evaluation...",
-            "businessName": "Gourmet Place Inc.",
-            "location": "34.0550,-118.2450",
-            "deadline": "...",
-            "reward": 50,
-            "status": "submitted",
-            "category": "Restaurant",
-            "assignedTo": [123, 456], // Array of assigned user IDs
-            "submittedReportsCount": 2
-          },
-          // ... more missions
-        ]
-        ```
--   **Error Responses:** 401, 403, 500
-
-### Update Mission
-
-Updates details of an existing mission.
-
--   **URL:** `/missions/:id`
--   **Method:** `PUT`
--   **Access:** Private (Admin Role)
--   **URL Parameters:**
-    -   `id`: The ID of the mission to update.
--   **Request Body:** (Include only fields to be updated)
-    ```json
-    {
-      "title": "Updated Mission Title", // Optional
-      "description": "Updated description.", // Optional
-      "deadline": "2024-10-15T23:59:59.000Z", // Optional
-      "reward": 45, // Optional
-      "location": "34.0600,-118.2500", // Optional
-      "category": "Service", // Optional
-      "businessName": "Trendy Threads Updated", // Optional
-      "status": "available" // Optional - Allows admin to change status
-    }
-    ```
--   **Success Response:**
-    -   **Code:** 200 OK
-    -   **Content:** `{ "message": "Mission updated successfully" }`
--   **Error Responses:** 400 (No valid fields), 401, 403, 404 (Mission not found), 500
-
-### Delete Mission
-
-Deletes a mission and its associated assignments and reports.
-
--   **URL:** `/missions/:id`
--   **Method:** `DELETE`
--   **Access:** Private (Admin Role)
--   **URL Parameters:**
-    -   `id`: The ID of the mission to delete.
--   **Success Response:**
-    -   **Code:** 200 OK
-    -   **Content:** `{ "message": "Mission and associated data deleted successfully" }`
--   **Error Responses:** 400 (Cannot delete if assigned/submitted), 401, 403, 404 (Mission not found), 500
+### Basculer le statut d'un utilisateur (Actif / Inactif)
+* **URL :** `PATCH /api/users/:id/status`
+* **Corps :** `{ currentStatus: "active" | "inactive" }`
+* **Réponse :** `{ success: true, newStatus: "inactive", message: "Statut mis à jour avec succès" }`
 
 ---
 
-## Assignment Management
+## 2. Gestion des Missions (`/api/missions` & `/api/admin/missions`)
 
-Endpoints for assigning missions to users.
+### Récupérer toutes les missions (Vue Admin)
+* **URL :** `GET /api/missions/admin/all`
+* **Accès :** Admin
+* **Description :** Retourne l'ensemble des missions, y compris celles expirées et terminées, avec compteurs de rapports soumis et magasins associés.
 
-### Assign Mission to User
+### Créer une nouvelle mission
+* **URL :** `POST /api/missions`
+* **Corps :** `{ title, description, location, deadline, reward, category, business_id }`
 
-Assigns a specific user to a specific mission.
+### Modifier une mission
+* **URL :** `PATCH /api/missions/:id`
+* **Corps :** `{ title, description, deadline, reward, location, category, status }`
 
--   **URL:** `/missions/:missionId/assign`
--   **Method:** `POST`
--   **Access:** Private (Admin Role)
--   **URL Parameters:**
-    -   `missionId`: The ID of the mission.
--   **Request Body:**
-    ```json
-    {
-      "userId": 123 // The ID of the user to assign
-    }
-    ```
--   **Success Response:**
-    -   **Code:** 200 OK
-    -   **Content:** `{ "message": "Mission assigned successfully" }` OR `{ "message": "User is already assigned to this mission" }`
--   **Error Responses:** 400 (Missing `userId`, Invalid user/mission state), 401, 403, 404 (Mission/User not found), 500
+### Supprimer une mission
+* **URL :** `DELETE /api/missions/:id`
 
 ---
 
-## Report Review
+## 3. Assignation de Missions & Exception (`/api/assignements`)
 
-Endpoints for reviewing submitted reports.
-
-### Get Reports for Mission
-
-Retrieves all submitted reports for a specific mission.
-
--   **URL:** `/missions/:missionId/reports`
--   **Method:** `GET`
--   **Access:** Private (Admin Role)
--   **URL Parameters:**
-    -   `missionId`: The ID of the mission.
--   **Success Response:**
-    -   **Code:** 200 OK
-    -   **Content:** (Array of report objects, potentially including shopper details)
-        ```json
-        [
-          {
-            "id": 456,
-            "mission_id": 2,
-            "user_id": 123,
-            "answers": { /* Parsed answers */ },
-            "submitted_at": "...",
-            "status": "submitted",
-            "refusal_reason": null,
-            "shopperName": "John Doe",
-            "shopperEmail": "john.doe@example.com"
-          },
-          // ... more reports
-        ]
-        ```
--   **Error Responses:** 401, 403, 500
-
-### Approve Report
-
-Approves a submitted report and updates the mission status (and optionally user stats).
-
--   **URL:** `/reports/:reportId/approve`
--   **Method:** `PATCH`
--   **Access:** Private (Admin Role)
--   **URL Parameters:**
-    -   `reportId`: The ID of the report to approve.
--   **Success Response:**
-    -   **Code:** 200 OK
-    -   **Content:** `{ "success": true, "message": "Report approved and payment processed (simulated)." }`
--   **Error Responses:** 400 (Report not 'submitted'), 401, 403, 404 (Report not found), 500
-
-### Refuse Report
-
-Refuses a submitted report, providing a reason, and updates the mission status.
-
--   **URL:** `/reports/:reportId/refuse`
--   **Method:** `PATCH`
--   **Access:** Private (Admin Role)
--   **URL Parameters:**
-    -   `reportId`: The ID of the report to refuse.
--   **Request Body:**
-    ```json
-    {
-      "reason": "The submitted photos were unclear."
-    }
-    ```
--   **Success Response:**
-    -   **Code:** 200 OK
-    -   **Content:** `{ "success": true, "message": "Report refused and shopper notified (simulated)." }`
--   **Error Responses:** 400 (Missing `reason`, Report not 'submitted'), 401, 403, 404 (Report not found), 500
+### Assignation Manuelle d'Exception (Directe)
+Permet d'assigner immédiatement un auditeur à une mission et un magasin spécifique sans exiger la validation préalable des quiz ni une candidature en attente.
+* **URL :** `POST /api/assignements/multi`
+* **Accès :** Admin
+* **Corps :**
+  ```json
+  {
+    "mission_id": 12,
+    "user_ids": [5, 8],
+    "store_id": 3
+  }
+  ```
+* **Réponse :** `{ "success": true, "inserted": 2, "message": "Assignation d'exception effectuée" }`
 
 ---
 
-## Survey Management
+## 4. Gestion des Magasins & Réseau (`/api/stores`)
 
-Endpoints for managing survey questions associated with missions.
+### Liste des magasins avec missions rattachées
+* **URL :** `GET /api/stores/missions`
+* **Accès :** Authentifié
+* **Réponse :** Tableau des magasins avec `id`, `name`, `city`, `address`, `latitude`, `longitude`, `category`, `mission_id`, `active`.
 
-### Save Survey Questions
+### Créer un magasin manuellement
+* **URL :** `POST /api/stores`
+* **Corps :** `{ name, city, address, mission_id, category, latitude, longitude, active }`
 
-Creates or updates the survey questions for a specific mission.
+### Import en masse de magasins (Excel / CSV)
+* **URL :** `POST /api/stores/batch`
+* **Corps :** Tableau d'objets magasins normalisés extraits du fichier Excel.
+* **Réponse :** `{ "success": true, "count": 25, "message": "25 magasins importés" }`
 
--   **URL:** `/missions/:missionId/survey`
--   **Method:** `POST`
--   **Access:** Private (Admin Role)
--   **URL Parameters:**
-    -   `missionId`: The ID of the mission.
--   **Request Body:** (Array of question objects)
-    ```json
-    [
-      { "id": "q_1", "type": "rating", "text": "Rate cleanliness", "isRequired": true, "maxRating": 5 },
-      { "id": "q_2", "type": "text", "text": "Comments", "isRequired": false },
-      // ... more questions
-    ]
-    ```
--   **Success Response:**
-    -   **Code:** 200 OK
-    -   **Content:** `{ "success": true, "message": "Survey saved successfully." }`
--   **Error Responses:** 400 (Invalid questions format), 401, 403, 404 (Mission not found), 500
-
-### Get Survey Questions
-
-Retrieves the survey questions for a specific mission.
-
--   **URL:** `/missions/:missionId/survey`
--   **Method:** `GET`
--   **Access:** Private (Admin Role) - *May also be needed by Shopper when fetching mission details for report submission.*
--   **URL Parameters:**
-    -   `missionId`: The ID of the mission.
--   **Success Response:**
-    -   **Code:** 200 OK
-    -   **Content:** (Array of question objects)
-        ```json
-        [
-          { "id": "q_1", "type": "rating", "text": "Rate cleanliness", ... },
-          { "id": "q_2", "type": "text", "text": "Comments", ... },
-          // ...
-        ]
-        ```
--   **Error Responses:** 401, 403, 404 (Mission not found), 500
+### Activer / Désactiver un magasin
+* **URL :** `PATCH /api/stores/:id/toggle`
+* **Réponse :** `{ "success": true, "active": false, "message": "Statut du point de vente modifié" }`
 
 ---
 
-## Dashboard Statistics
+## 5. Gestion des Candidatures (`/api/applications`)
 
-Endpoint for retrieving aggregated statistics for the admin dashboard.
+### Liste des candidatures
+* **URL :** `GET /api/applications`
+* **Filtres :** Par mission ou par statut (`applied`, `approved`, `rejected`).
 
-### Get Dashboard Stats
-
-Retrieves key statistics about users, missions, and reports.
-
--   **URL:** `/stats`
--   **Method:** `GET`
--   **Access:** Private (Admin Role)
--   **Success Response:**
-    -   **Code:** 200 OK
-    -   **Content:**
-        ```json
-        {
-          "totalUsers": 55,
-          "totalShoppers": 50,
-          "totalMissions": 25,
-          "pendingReports": 5,
-          "approvedMissions": 10,
-          "missionStatusCounts": {
-            "available": 8,
-            "assigned": 5,
-            "submitted": 2,
-            "approved": 10,
-            "refused": 0
-          },
-          "missionsByCategory": [
-            { "category": "Retail", "count": 12 },
-            { "category": "Restaurant", "count": 8 },
-            { "category": "Service", "count": 5 }
-          ],
-          "reportStatusCounts": {
-             "submitted": 2,
-             "approved": 15, // Includes reports from approved missions
-             "refused": 1
-          }
-        }
-        ```
--   **Error Responses:** 401, 403, 500
+### Valider une candidature avec magasin et créneau horaire
+* **URL :** `PATCH /api/applications/patch/:id`
+* **Corps :** `{ status: "approved", store_id: 3, slot_time: "2026-11-15 14:00:00" }`
 
 ---
+
+## 6. Revue des Rapports d'Audit (`/api/reports`)
+
+### Liste des rapports soumis
+* **URL :** `GET /api/reports/mission/:missionId`
+* **Description :** Retourne les réponses, photos et enregistrements audio soumis par les auditeurs.
+
+### Valider / Rejeter un rapport
+* **URL :** `PATCH /api/reports/review/:reportId`
+* **Corps :** `{ status: "approved" | "refused", feedback: "Audit complet et conforme" }`
+
+---
+
+## 7. Gestion des Paiements (`/api/paiyments`)
+
+### Consulter le registre financier des paiements
+* **URL :** `GET /api/paiyments/all`
+* **Description :** Liste toutes les indemnisations dues pour les missions approuvées, avec RIB/IBAN du shopper.
+
+### Valider un paiement
+* **URL :** `PATCH /api/paiyments/:id`
+* **Description :** Marque la mission comme payée et enregistre la date du virement.
+
+---
+
+## 8. Messagerie Directe (`/api/chat_messages`)
+
+### Liste des conversations administrateur
+* **URL :** `GET /api/chat_messages/:adminId`
+* **Description :** Retourne la liste des auditeurs ayant échangé avec le support, avec compteur de messages non lus.
+
+### Envoyer un message
+* **URL :** `POST /api/chat_messages`
+* **Corps :** `{ sender_id: 1, receiver_id: 10, message_text: "Bonjour, merci de confirmer votre créneau." }`
+
+---
+
+## 9. Automatisation & Rappels Automatiques
+
+### Vérification automatique des dates limites (Cron / Webhook)
+* **URL :** `POST /api/notifications/check-expiring-missions`
+* **URL :** `POST /api/user-notifications/check-user-deadlines`
+* **Description :** Détecte les missions proches de l'échéance et envoie des emails de rappel aux auditeurs et administrateurs.

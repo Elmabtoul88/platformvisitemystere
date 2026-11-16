@@ -67,7 +67,7 @@ export default function AdminChatPage() {
         }
         setIsLoading(false);
       } catch (err) {
-        console.log("error", err);
+        setIsLoading(false);
       }
     };
     if (userId) {
@@ -106,8 +106,6 @@ export default function AdminChatPage() {
             localStorage.removeItem("cache_messages" + id);
           });
           localStorage.removeItem("cache_messages");
-        } else {
-          console.log("Erreur:", result.message);
         }
       } catch (error) {
         console.error("Erreur lors du marquage:", error);
@@ -204,20 +202,20 @@ export default function AdminChatPage() {
 
   if (isLoading) {
     return (
-      <div className="container mx-auto py-8 px-4 flex justify-center items-center min-h-[400px]">
-        <Loader2 className="h-8 w-8 animate-spin text-primary" />
-        <span className="ml-2">Loading Chat...</span>
+      <div className="flex flex-col items-center justify-center min-h-[400px] gap-3">
+        <Loader2 className="h-8 w-8 animate-spin text-[#041F40]" />
+        <span className="text-sm font-medium text-slate-600">Chargement de la conversation...</span>
       </div>
     );
   }
 
   if (!user) {
     return (
-      <div className="container mx-auto py-8 px-4 flex justify-center">
-        <p>Shopper not found.</p>
-        <Button asChild variant="link" className="mt-4">
+      <div className="max-w-md mx-auto py-12 px-4 flex flex-col items-center">
+        <p className="text-sm text-slate-600 mb-4">Auditeur introuvable.</p>
+        <Button asChild variant="outline" size="sm" className="border-slate-300 text-slate-700 hover:bg-slate-50 text-xs font-semibold h-9 rounded-lg">
           <Link href="/admin/chat">
-            <ArrowLeft className="w-4 h-4 mr-1" /> Back to Chat List
+            <ArrowLeft className="w-4 h-4 mr-1.5" /> Retour à la messagerie
           </Link>
         </Button>
       </div>
@@ -225,30 +223,31 @@ export default function AdminChatPage() {
   }
 
   return (
-    <div className="container mx-auto py-8 px-4 max-w-3xl">
-      <Button asChild variant="outline" size="sm" className="mb-4">
+    <div className="space-y-4 max-w-4xl mx-auto pb-6">
+      <Button asChild variant="outline" size="sm" className="border-slate-300 text-slate-700 bg-white hover:bg-slate-50 text-xs font-semibold h-9 rounded-lg shadow-sm">
         <Link href="/admin/chat">
-          <ArrowLeft className="w-4 h-4 mr-1" /> Back to Shopper List
+          <ArrowLeft className="w-4 h-4 mr-1.5" /> Retour à la messagerie
         </Link>
       </Button>
-      <Card className="shadow-lg h-[calc(100vh-14rem)] flex flex-col">
-        <CardHeader className="border-b flex flex-row items-center gap-3">
-          <Avatar className="h-10 w-10 border">
+
+      <Card className="bg-white border border-slate-200 shadow-sm rounded-xl overflow-hidden h-[calc(100vh-13rem)] flex flex-col">
+        <CardHeader className="border-b border-slate-100 flex flex-row items-center gap-3.5 bg-slate-50/60 p-4">
+          <Avatar className="h-10 w-10 border-2 border-[#041F40] shadow-sm">
             <AvatarImage src={user.profile_pic_url} alt={user.name} />
-            <AvatarFallback>
+            <AvatarFallback className="bg-[#041F40] text-[#D6C799] font-bold">
               {user.name?.charAt(0)?.toUpperCase() || "S"}
             </AvatarFallback>
           </Avatar>
           <div>
-            <CardTitle className="text-lg font-semibold text-primary flex items-center gap-2">
-              <MessageSquare className="w-5 h-5" /> Chat with {user.name}
+            <CardTitle className="text-base font-bold text-[#041F40] flex items-center gap-2">
+              <MessageSquare className="w-4 h-4 text-[#041F40]" /> Discussion avec {user.name}
             </CardTitle>
-            <CardDescription className="text-xs">{user.email}</CardDescription>
+            <CardDescription className="text-xs text-slate-500">{user.email}</CardDescription>
           </div>
         </CardHeader>
-        <CardContent className="flex-grow p-0 overflow-hidden">
+        <CardContent className="flex-grow p-0 overflow-hidden bg-slate-50/30">
           <ScrollArea className="h-full p-4" ref={scrollAreaRef}>
-            <div className="space-y-4">
+            <div className="space-y-3.5">
               {messages.map((msg, index) => (
                 <div
                   key={msg.id || `msg-${index}`}
@@ -259,20 +258,20 @@ export default function AdminChatPage() {
                   }`}
                 >
                   <div
-                    className={`p-3 rounded-lg max-w-[75%] ${
+                    className={`p-3 rounded-2xl max-w-[75%] shadow-xs ${
                       msg.sender_id === parseInt(currentUserId)
-                        ? "bg-primary text-primary-foreground"
-                        : "bg-secondary text-secondary-foreground"
+                        ? "bg-[#041F40] text-white rounded-br-xs"
+                        : "bg-white text-slate-800 border border-slate-200 rounded-bl-xs"
                     }`}
                   >
-                    <p className="text-sm whitespace-pre-wrap">
+                    <p className="text-xs sm:text-sm whitespace-pre-wrap leading-relaxed">
                       {msg.message_text}
                     </p>
                     <p
-                      className={`text-xs mt-1 ${
+                      className={`text-[10px] mt-1 font-mono ${
                         msg.sender_id === parseInt(currentUserId)
-                          ? "text-primary-foreground/70 text-right"
-                          : "text-muted-foreground"
+                          ? "text-white/60 text-right"
+                          : "text-slate-400"
                       }`}
                     >
                       {msg.created_at}
@@ -280,43 +279,41 @@ export default function AdminChatPage() {
                   </div>
                 </div>
               ))}
-              {isSending && ( // Show typing indicator for admin message sending
+              {isSending && (
                 <div className="flex justify-end">
-                  <div className="p-3 rounded-lg max-w-[75%] bg-primary/50 text-primary-foreground/80 italic text-sm">
-                    Sending...
+                  <div className="p-3 rounded-2xl max-w-[75%] bg-[#041F40]/70 text-white italic text-xs">
+                    Envoi en cours...
                   </div>
                 </div>
               )}
             </div>
           </ScrollArea>
         </CardContent>
-        <div className="p-4 border-t flex items-center gap-2 bg-background">
+        <div className="p-3 border-t border-slate-100 flex items-center gap-2 bg-white">
           <Input
             type="text"
-            placeholder={`Message ${user.name}...`}
-            className="flex-grow"
+            placeholder={`Écrivez votre message à ${user.name}...`}
+            className="flex-grow bg-white border-slate-300 text-slate-900 text-xs h-9 rounded-lg placeholder:text-slate-400 focus:border-[#041F40] focus:ring-1 focus:ring-[#041F40]"
             value={inputValue}
             onChange={handleInputChange}
             onKeyPress={handleKeyPress}
             disabled={isSending}
           />
           <Button
-            size="icon"
+            size="sm"
             onClick={handleSendMessage}
             disabled={isSending || !inputValue.trim()}
+            className="bg-[#041F40] hover:bg-[#041F40]/90 text-white font-bold h-9 px-4 rounded-lg shadow-sm"
           >
             {isSending ? (
               <Loader2 className="w-4 h-4 animate-spin" />
             ) : (
               <Send className="w-4 h-4" />
             )}
-            <span className="sr-only">Send Message</span>
+            <span className="sr-only">Envoyer</span>
           </Button>
         </div>
       </Card>
-      <p className="text-center text-xs text-muted-foreground mt-4">
-        Note: Chat functionality is simulated. Messages are not persisted.
-      </p>
     </div>
   );
 }

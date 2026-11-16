@@ -1,0 +1,356 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "mysql"
+  url      = env("DATABASE_URL")
+}
+
+/// This model or at least one of its fields has comments in the database, and requires an additional setup for migrations: Read more: https://pris.ly/d/database-comments
+model applications {
+  id                    Int                     @id @default(autoincrement())
+  mission_id            Int
+  user_id               Int
+  status                applications_status
+  refusal_reason        String?                 @db.Text
+  applied_at            DateTime                @default(now()) @db.DateTime(0)
+  stores                String                  @db.LongText
+  quiz                  String                  @db.LongText
+  time_slot             applications_time_slot?
+  mission_date          DateTime?               @db.DateTime(0)
+  recognition_passed    Boolean?                @default(false)
+  recognition_passed_at DateTime?               @db.Timestamp(0)
+  last_quiz_attempt_at  DateTime?               @db.Timestamp(0)
+  quiz_blocked_until    DateTime?               @db.Timestamp(0)
+  missions              missions                @relation(fields: [mission_id], references: [id], onDelete: Cascade, onUpdate: Restrict, map: "applications_ibfk_1")
+  users                 users                   @relation(fields: [user_id], references: [id], onDelete: Cascade, onUpdate: Restrict, map: "applications_ibfk_2")
+
+  @@index([mission_id], map: "mission_id")
+  @@index([user_id], map: "user_id")
+  @@index([status], map: "applications_status_idx")
+  @@index([applied_at], map: "applications_applied_at_idx")
+}
+
+
+/// This model or at least one of its fields has comments in the database, and requires an additional setup for migrations: Read more: https://pris.ly/d/database-comments
+model bank_info {
+  id             Int     @id @default(autoincrement())
+  user_id        Int
+  account_holder String  @db.VarChar(255)
+  rib            String  @db.VarChar(50)
+  bank_name      String  @db.VarChar(255)
+  swift          String? @db.VarChar(50)
+  country        String  @default("Maroc") @db.VarChar(100)
+  currency       String  @default("MAD") @db.VarChar(10)
+  users          users   @relation(fields: [user_id], references: [id], onDelete: Cascade, map: "bank_info_ibfk_1")
+
+  @@index([user_id], map: "user_id")
+}
+
+/// This model or at least one of its fields has comments in the database, and requires an additional setup for migrations: Read more: https://pris.ly/d/database-comments
+model chat_messages {
+  id                                     Int      @id @default(autoincrement())
+  sender_id                              Int
+  receiver_id                            Int
+  message_text                           String   @db.Text
+  created_at                             DateTime @default(now()) @db.Timestamp(0)
+  is_read                                Boolean? @default(false)
+  users_chat_messages_sender_idTousers   users    @relation("chat_messages_sender_idTousers", fields: [sender_id], references: [id], onDelete: Cascade, onUpdate: Restrict, map: "chat_messages_ibfk_1")
+  users_chat_messages_receiver_idTousers users    @relation("chat_messages_receiver_idTousers", fields: [receiver_id], references: [id], onDelete: Cascade, onUpdate: Restrict, map: "chat_messages_ibfk_2")
+
+  @@index([receiver_id], map: "receiver_id")
+  @@index([sender_id], map: "sender_id")
+  @@index([created_at], map: "chat_messages_created_at_idx")
+  @@index([is_read], map: "chat_messages_is_read_idx")
+}
+
+model mission_recognition_quizzes {
+  id              Int                              @id @default(autoincrement())
+  mission_id      Int
+  question        String                           @db.Text
+  type            mission_recognition_quizzes_type
+  options         String                           @db.LongText
+  correct_answers String                           @db.LongText
+  points          Int?                             @default(1)
+  created_at      DateTime                         @default(now()) @db.Timestamp(0)
+  missions        missions                         @relation(fields: [mission_id], references: [id], onDelete: Cascade, onUpdate: Restrict, map: "mission_recognition_quizzes_ibfk_1")
+
+  @@index([mission_id], map: "mission_id")
+}
+
+/// This model or at least one of its fields has comments in the database, and requires an additional setup for migrations: Read more: https://pris.ly/d/database-comments
+model mission_recognition_results {
+  id              Int      @id @default(autoincrement())
+  mission_id      Int
+  user_id         Int
+  score           Decimal  @db.Decimal(5, 2)
+  total_questions Int
+  correct_answers Int
+  completed_at    DateTime @default(now()) @db.Timestamp(0)
+  missions        missions @relation(fields: [mission_id], references: [id], onDelete: Cascade, onUpdate: Restrict, map: "mission_recognition_results_ibfk_1")
+  users           users    @relation(fields: [user_id], references: [id], onDelete: Cascade, onUpdate: Restrict, map: "mission_recognition_results_ibfk_2")
+
+  @@unique([mission_id, user_id], map: "unique_mission_user")
+  @@index([user_id], map: "user_id")
+}
+
+/// This model or at least one of its fields has comments in the database, and requires an additional setup for migrations: Read more: https://pris.ly/d/database-comments
+model mission_recognition_settings {
+  id            Int      @id @default(autoincrement())
+  mission_id    Int      @unique(map: "unique_mission")
+  passing_score Int?     @default(100)
+  created_at    DateTime @default(now()) @db.Timestamp(0)
+  updated_at    DateTime @default(now()) @db.Timestamp(0)
+  missions      missions @relation(fields: [mission_id], references: [id], onDelete: Cascade, onUpdate: Restrict, map: "mission_recognition_settings_ibfk_1")
+}
+
+model missions {
+  id                           Int                           @id @default(autoincrement())
+  title                        String                        @db.VarChar(255)
+  description                  String?                       @db.Text
+  deadline                     DateTime?                     @db.DateTime(0)
+  reward                       Decimal?                      @db.Decimal(10, 2)
+  category                     String?                       @db.VarChar(100)
+  status                       missions_status
+  assignedTo                   String?                       @db.LongText
+  businessName                 String?                       @db.VarChar(255)
+  location                     String?                       @db.VarChar(255)
+  clientId                     Int?
+  pays                         String?                       @db.VarChar(255)
+  ville                        String?                       @db.VarChar(255)
+  briefing                     String?                       @db.VarChar(255)
+  scenario                     String?                       @db.VarChar(255)
+  questionnaire                String?                       @db.VarChar(255)
+  profil                       String?                       @db.VarChar(255)
+  applications                 applications[]
+  mission_recognition_quizzes  mission_recognition_quizzes[]
+  mission_recognition_results  mission_recognition_results[]
+  mission_recognition_settings mission_recognition_settings?
+  quiz_questions               quiz_questions[]
+  reports                      reports[]
+  stores                       stores[]
+  survey_questions             survey_questions[]
+
+  @@index([status], map: "missions_status_idx")
+  @@index([deadline], map: "missions_deadline_idx")
+  @@index([clientId], map: "missions_client_id_idx")
+  @@index([category], map: "missions_category_idx")
+}
+
+model notifications {
+  id         Int       @id @default(autoincrement())
+  user_id    Int
+  type       String    @db.VarChar(50)
+  message    String    @db.Text
+  created_at DateTime? @default(now()) @db.DateTime(0)
+  users      users     @relation(fields: [user_id], references: [id], onDelete: Cascade, onUpdate: Restrict, map: "fk_notifications_user")
+
+  @@index([user_id], map: "user_id")
+}
+
+/// This model or at least one of its fields has comments in the database, and requires an additional setup for migrations: Read more: https://pris.ly/d/database-comments
+model quiz_questions {
+  id                   Int                 @id @default(autoincrement())
+  mission_id           Int
+  type                 quiz_questions_type
+  text                 String              @db.Text
+  is_required          Boolean             @default(false)
+  max_rating           Int?
+  min_label            String?             @db.VarChar(100)
+  max_label            String?             @db.VarChar(100)
+  allow_multiple       Boolean?
+  max_images           Int?
+  max_duration_seconds Int?
+  options_json         String?             @db.LongText
+  user_id              Int?
+  missions             missions            @relation(fields: [mission_id], references: [id], onDelete: Cascade, map: "quiz_questions_ibfk_1")
+  users                users?              @relation(fields: [user_id], references: [id], onDelete: Restrict, onUpdate: Restrict, map: "quiz_questions_ibfk_2")
+
+  @@index([mission_id], map: "mission_id")
+  @@index([user_id], map: "user_id")
+}
+
+model reports {
+  id                   Int            @id @default(autoincrement())
+  mission_id           Int
+  user_id              Int
+  answers              String         @db.LongText
+  submitted_at         DateTime       @db.DateTime(0)
+  status               reports_status
+  refusal_reason       String?        @db.Text
+  nomMagazin           String?        @db.VarChar(255)
+  specificStoreAddress String?        @db.VarChar(255)
+  scenario             String?        @db.LongText
+  dateTimeMission      DateTime?      @db.DateTime(0)
+  ville                String         @db.VarChar(200)
+  store_id             Int
+  reference_paiement   String?        @db.VarChar(255)
+  missions             missions       @relation(fields: [mission_id], references: [id], onUpdate: Restrict, map: "reports_ibfk_1")
+  users                users          @relation(fields: [user_id], references: [id], onUpdate: Restrict, map: "reports_ibfk_2")
+
+  @@index([mission_id], map: "mission_id")
+  @@index([user_id], map: "user_id")
+  @@index([status], map: "reports_status_idx")
+  @@index([submitted_at], map: "reports_submitted_at_idx")
+}
+
+model stores {
+  id         Int      @id @default(autoincrement())
+  mission_id Int
+  name       String   @db.VarChar(150)
+  city       String   @db.VarChar(100)
+  address    String   @db.VarChar(255)
+  latitude   Decimal? @db.Decimal(10, 7)
+  longitude  Decimal? @db.Decimal(10, 7)
+  category   String?  @db.VarChar(100)
+  active     Boolean? @default(true)
+  created_at DateTime @default(now()) @db.Timestamp(0)
+  updated_at DateTime @default(now()) @db.Timestamp(0)
+  missions   missions @relation(fields: [mission_id], references: [id], onDelete: Cascade, map: "stores_ibfk_1")
+
+  @@index([mission_id], map: "mission_id")
+}
+
+/// This model or at least one of its fields has comments in the database, and requires an additional setup for migrations: Read more: https://pris.ly/d/database-comments
+model survey_questions {
+  id                   Int                   @id @default(autoincrement())
+  mission_id           Int
+  type                 survey_questions_type
+  text                 String                @db.Text
+  is_required          Boolean               @default(false)
+  max_rating           Int?
+  min_label            String?               @db.VarChar(100)
+  max_label            String?               @db.VarChar(100)
+  allow_multiple       Boolean?
+  max_images           Int?
+  max_duration_seconds Int?
+  options_json         String?               @db.LongText
+  missions             missions              @relation(fields: [mission_id], references: [id], onDelete: Cascade, map: "survey_questions_ibfk_1")
+
+  @@index([mission_id], map: "mission_id")
+}
+
+model user_notifications {
+  id                Int       @id @default(autoincrement())
+  user_id           Int
+  user_email        String    @db.VarChar(255)
+  user_name         String    @db.VarChar(255)
+  type              String    @db.VarChar(50)
+  notification_data String    @db.LongText
+  created_at        DateTime? @default(now()) @db.DateTime(0)
+  users             users     @relation(fields: [user_id], references: [id], onDelete: Cascade, onUpdate: Restrict, map: "fk_user_notifications_user")
+
+  @@index([user_id], map: "fk_user_notifications_user")
+}
+
+/// This model or at least one of its fields has comments in the database, and requires an additional setup for migrations: Read more: https://pris.ly/d/database-comments
+model users {
+  id                                             Int                           @id @default(autoincrement())
+  name                                           String                        @db.VarChar(255)
+  email                                          String                        @unique(map: "email") @db.VarChar(255)
+  password                                       String                        @db.VarChar(255)
+  role                                           users_role                    @default(shopper)
+  status                                         users_status                  @default(active)
+  registration_date                              DateTime?                     @default(now()) @db.Timestamp(0)
+  profile_pic_url                                String?                       @db.VarChar(255)
+  city                                           String?                       @db.VarChar(255)
+  telephone                                      String?                       @db.VarChar(25)
+  motivation                                     String?                       @db.Text
+  cv_url                                         String?                       @db.VarChar(255)
+  birth_year                                     Int?
+  gender                                         users_gender?                 @default(prefer_not_say)
+  completed_missions_count                       Int?                          @default(0)
+  applications                                   applications[]
+  bank_info                                      bank_info[]
+  chat_messages_chat_messages_sender_idTousers   chat_messages[]               @relation("chat_messages_sender_idTousers")
+  chat_messages_chat_messages_receiver_idTousers chat_messages[]               @relation("chat_messages_receiver_idTousers")
+  mission_recognition_results                    mission_recognition_results[]
+  notifications                                  notifications[]
+  quiz_questions                                 quiz_questions[]
+  reports                                        reports[]
+  user_notifications                             user_notifications[]
+}
+
+enum quiz_questions_type {
+  rating
+  multiple_choice
+  text
+  image_upload
+  checkboxes
+  gps_capture
+  audio_recording
+  section_header
+  info_text
+  date
+  time
+  yes_no
+  number
+}
+
+enum survey_questions_type {
+  rating
+  multiple_choice
+  text
+  image_upload
+  checkboxes
+  gps_capture
+  audio_recording
+  section_header
+  info_text
+  date
+  time
+  yes_no
+  number
+}
+
+enum applications_status {
+  pending
+  approved
+  refused
+  submitted
+  completed
+}
+
+enum mission_recognition_quizzes_type {
+  multiple_choice
+  checkboxes
+}
+
+enum users_role {
+  shopper
+  admin
+  client
+}
+
+enum reports_status {
+  submitted
+  approved
+  refused
+  paid
+}
+
+enum users_status {
+  active
+  inactive
+}
+
+enum missions_status {
+  available
+  completed
+  cancelled
+}
+
+enum applications_time_slot {
+  slot_30  @map("30")
+  slot_60  @map("60")
+  slot_120 @map("120")
+  open
+}
+
+enum users_gender {
+  female
+  male
+  other
+  prefer_not_say
+}

@@ -7,117 +7,129 @@ import React, {
   useEffect,
   useCallback,
 } from "react";
-import { usePathname, useRouter } from "next/navigation"; // Import hooks for redirection
-import axios from "axios";
+import { usePathname, useRouter } from "next/navigation";
 import { useToast } from "@/hooks/use-toast";
-const AuthContext = createContext(null);
 
+const AuthContext = createContext(null);
 const AUTH_STORAGE_KEY = "missionViewAuth";
+
+function setAuthCookie(data) {
+  if (typeof document === "undefined") return;
+  const value = encodeURIComponent(JSON.stringify(data));
+  const maxAge = 7 * 24 * 60 * 60; // 7 jours
+  document.cookie = `${AUTH_STORAGE_KEY}=${value}; path=/; max-age=${maxAge}; SameSite=Lax`;
+}
+
+function removeAuthCookie() {
+  if (typeof document === "undefined") return;
+  document.cookie = `${AUTH_STORAGE_KEY}=; path=/; max-age=0; SameSite=Lax`;
+}
+
+function getAuthCookie() {
+  if (typeof document === "undefined") return null;
+  const match = document.cookie.match(new RegExp(`(^| )${AUTH_STORAGE_KEY}=([^;]+)`));
+  if (match) {
+    try {
+      return JSON.parse(decodeURIComponent(match[2]));
+    } catch (e) {
+      return null;
+    }
+  }
+  return null;
+}
+
+// Routes publiques
+const PUBLIC_ROUTES = [
+  "/",
+  "/login",
+  "/signup",
+  "/forgot-password",
+  "/reset-password",
+  "/about",
+  "/contact",
+  "/services",
+  "/dashboard",
+];
 
 export function AuthProvider({ children }) {
   const { toast } = useToast();
   const [authState, setAuthState] = useState({
     isAuthenticated: false,
-    user: null, // Store user details (id, name, email, role)
+    user: null,
     token: null,
-    isLoading: true, // Start in loading state
+    isLoading: true,
   });
   const router = useRouter();
   const pathname = usePathname();
 
-  // --- Load Auth State ---
+  // --- Charger l'état d'authentification ---
   const loadAuthState = useCallback(() => {
-    let loadedState = {
+    try {
+      // 1. Lire depuis le cookie prioritairement (compatible Next.js middleware)
+      let stored = getAuthCookie();
+
+      // 2. Fallback sur localStorage si besoin
+      if (!stored && typeof window !== "undefined") {
+        const local = localStorage.getItem(AUTH_STORAGE_KEY);
+        if (local) {
+          try {
+            stored = JSON.parse(local);
+            if (stored) setAuthCookie(stored); // Sync vers cookie
+          } catch (e) {}
+        }
+      }
+
+      if (stored) {
+        const userObj = stored.user || (stored.id ? stored : null);
+        const tokenVal =
+          stored.token ||
+          (typeof stored === "string" ? stored : null) ||
+          (typeof window !== "undefined" ? localStorage.getItem("token") : null);
+
+        if (tokenVal && userObj && userObj.id) {
+          if (typeof window !== "undefined") {
+            localStorage.setItem("token", tokenVal);
+          }
+          setAuthState({
+            isAuthenticated: true,
+            user: userObj,
+            token: tokenVal,
+            isLoading: false,
+          });
+          return;
+        }
+      }
+    } catch (error) {
+      console.error("AuthProvider: Erreur parsing auth:", error);
+    }
+
+    setAuthState({
       isAuthenticated: false,
       user: null,
       token: null,
-      isLoading: false, // Will be false after loading attempt
-    };
-    try {
-      const storedAuth = localStorage.getItem(AUTH_STORAGE_KEY);
-      if (storedAuth) {
-        const { user: storedUser, token: storedToken } = JSON.parse(storedAuth);
-        // **Stricter Validation:** Check all necessary fields, especially role
-
-        if (
-          storedUser &&
-          storedToken &&
-          typeof storedUser.id !== "undefined" &&
-          storedUser.id !== null && // Ensure ID exists and is not null
-          typeof storedUser.role === "string" &&
-          storedUser.role.trim() !== "" && // Ensure role is non-empty string
-          typeof storedUser.name === "string" // Ensure name is a string (can be empty)
-        ) {
-          loadedState = {
-            isAuthenticated: true,
-            user: storedUser, // Use the validated user object from storage
-            token: storedToken,
-            isLoading: false,
-          };
-        } else {
-          localStorage.removeItem(AUTH_STORAGE_KEY);
-        }
-      } else {
-        toast({
-          variant: "destructive",
-          title: "ERROR",
-          description: "AuthProvider: No stored auth found.",
-        });
-      }
-    } catch (error) {
-      toast({
-        variant: "destructive",
-        title: "ERROR",
-        description:
-          "AuthProvider: Failed to parse stored auth state. Clearing.",
-      });
-      localStorage.removeItem(AUTH_STORAGE_KEY);
-    }
-    setAuthState(loadedState);
+      isLoading: false,
+    });
   }, []);
 
   useEffect(() => {
-    loadAuthState(); // Load state on initial mount
-
+    loadAuthState();
     const handleStorageChange = (event) => {
-      if (event.key === AUTH_STORAGE_KEY) {
-        loadAuthState(); // Reload state from storage
-      }
+      if (event.key === AUTH_STORAGE_KEY) loadAuthState();
     };
     window.addEventListener("storage", handleStorageChange);
-    return () => {
-      window.removeEventListener("storage", handleStorageChange);
-    };
+    return () => window.removeEventListener("storage", handleStorageChange);
   }, [loadAuthState]);
 
-  // --- Login Function ---
-  // --- Login Function ---
+  // --- Connexion ---
   const login = useCallback(
     (apiResponseData) => {
       const { user: apiUser, token } = apiResponseData || {};
-
-      // ✅ Add "client" as a valid role
-      if (
-        !apiUser ||
-        !token ||
-        typeof apiUser.id === "undefined" ||
-        apiUser.id === null ||
-        typeof apiUser.role !== "string" ||
-        !["shopper", "admin", "client"].includes(apiUser.role) || // ⬅️ Updated
-        typeof apiUser.name !== "string"
-      ) {
+      if (!apiUser || !token || !apiUser.id || !apiUser.role || !apiUser.name) {
         toast({
-          title: "Error",
-          description:
-            "AuthProvider: Invalid login data received from API. User object or required fields (id, valid role, name) missing or invalid.",
+          title: "Erreur",
+          description: "Données de connexion invalides",
+          variant: "destructive",
         });
-        setAuthState((prev) => ({
-          ...prev,
-          isAuthenticated: false,
-          user: null,
-          token: null,
-          isLoading: false,
-        }));
         return;
       }
 
@@ -126,41 +138,43 @@ export function AuthProvider({ children }) {
         name: apiUser.name,
         email: apiUser.email,
         role: apiUser.role,
-        profilePicUrl: apiUser?.profile_pic_url,
-        completedMissions: apiUser?.completed_missions_count,
+        profilePicUrl: apiUser?.profile_pic_url || apiUser?.profilePicUrl,
+        completedMissions: apiUser?.completed_missions_count || apiUser?.completedMissions || 0,
         city: apiUser.city,
         motivation: apiUser.motivation,
-        cvUrl: apiUser.cv_url,
-        birthYear: apiUser.birth_year,
+        cvUrl: apiUser.cv_url || apiUser?.cvUrl,
+        birthYear: apiUser.birth_year || apiUser?.birthYear,
         gender: apiUser.gender,
       };
 
-      setAuthState((prevState) => ({
-        ...prevState,
+      setAuthState({
         isAuthenticated: true,
         user: userContextData,
         token: token,
         isLoading: false,
-      }));
+      });
 
-      localStorage.setItem(
-        AUTH_STORAGE_KEY,
-        JSON.stringify({ user: userContextData, token }),
+      const sessionData = { user: userContextData, token };
+      setAuthCookie(sessionData);
+      if (typeof window !== "undefined") {
+        localStorage.setItem(AUTH_STORAGE_KEY, JSON.stringify(sessionData));
+        localStorage.setItem("token", token);
+      }
+
+      const redirectMap = {
+        admin: "/admin",
+        client: "/client",
+        shopper: "/",
+      };
+      setTimeout(
+        () => router.push(redirectMap[userContextData.role] || "/"),
+        50,
       );
-
-      // ✅ Redirect based on role
-      let redirectPath = "/";
-      if (userContextData.role === "admin") redirectPath = "/admin";
-      else if (userContextData.role === "client")
-        redirectPath = "/client"; // ⬅️ NEW
-      else redirectPath = "/";
-
-      setTimeout(() => router.push(redirectPath), 50);
     },
-    [router],
+    [router, toast],
   );
 
-  // --- Logout Function ---
+  // --- Déconnexion ---
   const logout = useCallback(() => {
     setAuthState({
       isAuthenticated: false,
@@ -168,64 +182,87 @@ export function AuthProvider({ children }) {
       token: null,
       isLoading: false,
     });
-    //localStorage.removeItem(AUTH_STORAGE_KEY);
-    localStorage.clear();
+    removeAuthCookie();
+    if (typeof window !== "undefined") {
+      localStorage.removeItem(AUTH_STORAGE_KEY);
+      localStorage.removeItem("token");
+    }
+    setTimeout(() => router.push("/login"), 50);
+  }, [router]);
 
-    // Use setTimeout for redirect after logout as well, just in case
-    setTimeout(() => {
-      router.push("/login");
-    }, 50);
-  }, [router]); // Added router to dependency array
-
-  // --- Route Protection Effect ---
-  // --- Route Protection Effect ---
+  // --- Protection des routes ---
   useEffect(() => {
     if (authState.isLoading) return;
 
-    const isPublicRoute = pathname === "/login" || pathname === "/signup";
+    const isPublicRoute = PUBLIC_ROUTES.some(
+      (route) => pathname === route || pathname.startsWith(route + "/"),
+    );
+    const isLoginOrSignup = pathname === "/login" || pathname === "/signup";
+    const isAuthPage =
+      isLoginOrSignup ||
+      pathname === "/forgot-password" ||
+      pathname.startsWith("/reset-password");
     const isAdminRoute = pathname.startsWith("/admin");
-    const isClientRoute = pathname.startsWith("/client"); // ⬅️ NEW
-    const isShopperRoute = !isPublicRoute && !isAdminRoute && !isClientRoute;
+    const isClientRoute = pathname.startsWith("/client");
+    const isSharedAuthRoute =
+      pathname === "/settings" || pathname.startsWith("/settings/");
 
     if (!authState.isAuthenticated) {
-      if (!isPublicRoute) setTimeout(() => router.push("/login"), 0);
+      if (!isPublicRoute && !isAuthPage) {
+        router.replace("/login");
+      }
       return;
     }
 
     const userRole = authState.user?.role;
-    const userId = authState.user?.id;
-
-    if (
-      !authState.user ||
-      userId == null ||
-      !["admin", "shopper", "client"].includes(userRole) // ⬅️ UPDATED
-    ) {
-      toast({
-        title: "Error",
-        description: "AuthProvider: Invalid user data — logging out.",
-      });
-      setTimeout(() => logout(), 50);
+    if (!userRole || !["admin", "shopper", "client"].includes(userRole)) {
+      logout();
       return;
     }
 
-    // ✅ Role-based access and redirection
+    if (isLoginOrSignup) {
+      const redirectMap = {
+        admin: "/admin",
+        client: "/client",
+        shopper: "/",
+      };
+      router.replace(redirectMap[userRole] || "/");
+      return;
+    }
+
+    if (isPublicRoute || isSharedAuthRoute) return;
+
     if (userRole === "admin") {
-      if (!isAdminRoute) setTimeout(() => router.push("/admin"), 0);
-    } else if (userRole === "shopper") {
-      if (!isShopperRoute) setTimeout(() => router.push("/"), 0);
+      if (!isAdminRoute) router.replace("/admin");
     } else if (userRole === "client") {
-      if (!isClientRoute) setTimeout(() => router.push("/client"), 0); // ⬅️ NEW
-    } else {
-      setTimeout(() => logout(), 50);
+      if (!isClientRoute) router.replace("/client");
+    } else if (userRole === "shopper") {
+      if (isAdminRoute || isClientRoute) router.replace("/");
     }
   }, [
+    authState.isLoading,
     authState.isAuthenticated,
     authState.user,
-    authState.isLoading,
     pathname,
     router,
     logout,
   ]);
+
+  const updateUser = useCallback((partialUser) => {
+    setAuthState((prev) => {
+      if (!prev.user) return prev;
+      const updatedUser = { ...prev.user, ...partialUser };
+      const sessionData = { user: updatedUser, token: prev.token };
+      setAuthCookie(sessionData);
+      if (typeof window !== "undefined") {
+        localStorage.setItem(AUTH_STORAGE_KEY, JSON.stringify(sessionData));
+      }
+      return {
+        ...prev,
+        user: updatedUser,
+      };
+    });
+  }, []);
 
   const value = {
     isAuthenticated: authState.isAuthenticated,
@@ -235,6 +272,7 @@ export function AuthProvider({ children }) {
     userRole: authState?.user?.role,
     login,
     logout,
+    updateUser,
   };
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
@@ -242,8 +280,6 @@ export function AuthProvider({ children }) {
 
 export function useAuth() {
   const context = useContext(AuthContext);
-  if (context === null) {
-    throw new Error("useAuth must be used within an AuthProvider");
-  }
+  if (!context) throw new Error("useAuth must be used within AuthProvider");
   return context;
 }

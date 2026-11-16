@@ -21,12 +21,24 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { useToast } from "@/hooks/use-toast";
-import { ArrowLeft, Save, Loader2, MapPin as MapPinIcon } from "lucide-react";
+import {
+  ArrowLeft,
+  Save,
+  Loader2,
+  MapPin as MapPinIcon,
+  FileUp,
+  Upload,
+  X,
+  FileText,
+  Building2,
+} from "lucide-react";
 import { useRouter, useParams } from "next/navigation";
 import Link from "next/link";
-import { fetchMissions, updateMissions } from "@/services/fetchData";
+import { fetchMissions, getAuthToken } from "@/services/fetchData";
+import { Badge } from "@/components/ui/badge";
+
 const API_BASE_URL =
-  process.env.NEXT_PUBLIC_API_URL || "https://api.embertongroup.com/api/";
+  process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000/api/";
 
 export default function EditMissionPage() {
   const router = useRouter();
@@ -37,6 +49,7 @@ export default function EditMissionPage() {
   const [isLoading, setIsLoading] = useState(true);
   const [isFetchingLocation, setIsFetchingLocation] = useState(false);
   const [locationError, setLocationError] = useState(null);
+
   const [formData, setFormData] = useState({
     title: "",
     description: "",
@@ -45,51 +58,109 @@ export default function EditMissionPage() {
     location: "",
     category: "",
     businessName: "",
-    status: "", // Add status
+    clientId: "",
+    status: "available",
+    pays: "",
+    ville: "",
+    profil: "",
   });
+
+  const [clients, setClients] = useState([]);
+
+  // Nouveaux fichiers PDF (à uploader)
+  const [pdfFiles, setPdfFiles] = useState({
+    briefing: null,
+    scenario: null,
+    questionnaire: null,
+  });
+
+  // URLs des PDFs existants (pour affichage)
+  const [existingPdfUrls, setExistingPdfUrls] = useState({
+    briefing: null,
+    scenario: null,
+    questionnaire: null,
+  });
+
+  // Indique si les fichiers existants doivent être supprimés
+  const [removeExistingFiles, setRemoveExistingFiles] = useState({
+    briefing: false,
+    scenario: false,
+    questionnaire: false,
+  });
+
   const [availableCategories, setAvailableCategories] = useState([]);
 
   // Fetch mission data and categories
   useEffect(() => {
-    const getMissions = async () => {
+    const getMissionsAndClients = async () => {
       setIsLoading(true);
-      const response = await fetchMissions(
-        "admin-missions",
-        API_BASE_URL + "missions/admin/all",
-      );
-      // Simulate fetching mission data
-      const foundMission = response.find((m) => m.id === parseInt(missionId));
-      if (foundMission) {
-        // Format deadline for input type="date" (YYYY-MM-DD)
-        const deadlineDate = new Date(foundMission.deadline);
-        const formattedDeadline = !isNaN(deadlineDate)
-          ? deadlineDate.toISOString().split("T")[0]
-          : "";
+      try {
+        const [missionsRes, clientsRes] = await Promise.allSettled([
+          fetchMissions("admin-missions", API_BASE_URL + "missions/admin/all"),
+          fetchMissions("admin-clients", API_BASE_URL + "users/role/clients"),
+        ]);
 
-        setFormData({
-          title: foundMission.title || "",
-          description: foundMission.description || "",
-          deadline: formattedDeadline,
-          reward: String(foundMission.reward) || "", // Ensure reward is a string for input
-          location: foundMission.location || "",
-          category: foundMission.category || "",
-          businessName: foundMission.businessName || "",
-          status: foundMission.status || "available", // Include status
-        });
-      } else {
+        if (clientsRes.status === "fulfilled" && clientsRes.value) {
+          setClients(Array.isArray(clientsRes.value) ? clientsRes.value : []);
+        }
+
+        const response =
+          missionsRes.status === "fulfilled" && missionsRes.value
+            ? missionsRes.value
+            : [];
+
+        const foundMission = response.find((m) => m.id === parseInt(missionId));
+        if (foundMission) {
+          const deadlineDate = new Date(foundMission.deadline);
+          const formattedDeadline = !isNaN(deadlineDate)
+            ? deadlineDate.toISOString().split("T")[0]
+            : "";
+
+          setFormData({
+            title: foundMission.title || "",
+            description: foundMission.description || "",
+            deadline: formattedDeadline,
+            reward: String(foundMission.reward) || "",
+            location: foundMission.location || "",
+            category: foundMission.category || "",
+            businessName: foundMission.businessName || "",
+            clientId: foundMission.clientId ? String(foundMission.clientId) : "",
+            status: foundMission.status || "available",
+            pays: foundMission.pays || "",
+            ville: foundMission.ville || "",
+            profil: foundMission.profil || "",
+          });
+
+          // Stocker les URLs des PDFs existants
+          setExistingPdfUrls({
+            briefing: foundMission.briefing || null,
+            scenario: foundMission.scenario || null,
+            questionnaire: foundMission.questionnaire || null,
+          });
+
+          const categories = [
+            ...new Set(response.map((m) => m.category).filter(Boolean)),
+          ];
+          setAvailableCategories(categories);
+        } else {
+          toast({
+            variant: "destructive",
+            title: "Error",
+            description: "Mission not found.",
+          });
+          router.push("/admin/missions");
+        }
+      } catch (error) {
+        console.error("Erreur chargement mission ou clients:", error);
         toast({
           variant: "destructive",
           title: "Error",
-          description: "Mission not found.",
+          description: "Impossible de charger la mission.",
         });
-        router.push("/admin/missions"); // Redirect if mission doesn't exist
       }
-
-      // Set available categories 
-      setAvailableCategories([...new Set(response.map((m) => m.category))]);
       setIsLoading(false);
     };
-    getMissions();
+    getMissionsAndClients();
   }, [missionId, router, toast]);
 
   const handleInputChange = (e) => {
@@ -101,15 +172,42 @@ export default function EditMissionPage() {
     setFormData((prev) => ({ ...prev, [name]: value }));
   };
 
+  const handleFileChange = (e, fieldName) => {
+    const file = e.target.files[0];
+    if (file && file.type === "application/pdf") {
+      setPdfFiles((prev) => ({ ...prev, [fieldName]: file }));
+      // Si un nouveau fichier est ajouté, on ne supprime pas l'ancien automatiquement
+      // On laisse l'utilisateur décider avec le bouton de suppression
+      toast({
+        title: "PDF ajouté",
+        description: `${file.name} (${(file.size / 1024 / 1024).toFixed(2)} MB)`,
+      });
+    } else if (file) {
+      toast({
+        variant: "destructive",
+        title: "Format non supporté",
+        description: "Veuillez sélectionner un fichier PDF",
+      });
+    }
+  };
+
+  const removeFile = (fieldName) => {
+    // Si un nouveau fichier est présent, on le supprime
+    if (pdfFiles[fieldName]) {
+      setPdfFiles((prev) => ({ ...prev, [fieldName]: null }));
+    }
+    // Si un fichier existant est présent, on le marque pour suppression
+    if (existingPdfUrls[fieldName]) {
+      setRemoveExistingFiles((prev) => ({ ...prev, [fieldName]: true }));
+      setExistingPdfUrls((prev) => ({ ...prev, [fieldName]: null }));
+    }
+  };
+
   const handleSubmit = async (event) => {
     event.preventDefault();
     setIsSubmitting(true);
-    console.log("Submitting updated mission data (simulated):", {
-      missionId,
-      ...formData,
-    });
 
-    // Basic Frontend Validation
+    // Validation
     if (
       !formData.title ||
       !formData.description ||
@@ -122,44 +220,95 @@ export default function EditMissionPage() {
     ) {
       toast({
         variant: "destructive",
-        title: "Missing Information",
-        description: "Please fill out all required fields.",
+        title: "Champs manquants",
+        description: "Veuillez remplir tous les champs obligatoires.",
       });
       setIsSubmitting(false);
       return;
     }
 
-    // --- TODO: Replace simulation with actual update API call ---
-    // Simulate API call to update the mission
-    await new Promise((resolve) => setTimeout(resolve, 1000));
+    try {
+      // Créer FormData pour l'envoi
+      const formDataToSend = new FormData();
 
-    console.log("Simulated mission update successful.");
-    // ---
-    const baseUrl = API_BASE_URL + "missions"; //missions/admin/all
-    const result = await updateMissions(
-      `${baseUrl}/${missionId}`,
-      formData,
-      "missions",
-      `${baseUrl}${`/admin/all`}`,
-    );
-
-    if (result && result.status === 200) {
-      toast({
-        title: "Mission Updated",
-        description: `Mission "${formData.title}" has been updated.`,
+      // Ajouter les champs du formulaire
+      Object.keys(formData).forEach((key) => {
+        const val = formData[key] === "none" ? "" : formData[key] || "";
+        formDataToSend.append(key, val);
       });
-      router.push("/admin/missions"); // Redirect back to the mission list
-      // setIsSubmitting(false); // Not needed on success redirect
-    } else {
+
+      // Ajouter les nouveaux fichiers PDF (uniquement s'ils ont été sélectionnés)
+      if (pdfFiles.briefing) {
+        formDataToSend.append("briefing", pdfFiles.briefing);
+      }
+      if (pdfFiles.scenario) {
+        formDataToSend.append("scenario", pdfFiles.scenario);
+      }
+      if (pdfFiles.questionnaire) {
+        formDataToSend.append("questionnaire", pdfFiles.questionnaire);
+      }
+
+      // Si des fichiers existants doivent être supprimés, on envoie un indicateur
+      if (removeExistingFiles.briefing) {
+        formDataToSend.append("remove_briefing", "true");
+      }
+      if (removeExistingFiles.scenario) {
+        formDataToSend.append("remove_scenario", "true");
+      }
+      if (removeExistingFiles.questionnaire) {
+        formDataToSend.append("remove_questionnaire", "true");
+      }
+
+      // Envoyer la requête
+      const token = getAuthToken();
+      const response = await fetch(`${API_BASE_URL}missions/${missionId}`, {
+        method: "PUT",
+        headers: {
+          Authorization: `Bearer ${token}`,
+          "x-auth-token": token || "",
+        },
+        body: formDataToSend,
+        // Ne pas mettre Content-Type car FormData le gère
+      });
+
+      // Lire la réponse brute
+      const responseText = await response.text();
+
+      if (!response.ok) {
+        // Essayer de parser la réponse si c'est du JSON
+        try {
+          const errorData = JSON.parse(responseText);
+          throw new Error(errorData.error || `Erreur ${response.status}`);
+        } catch (e) {
+          throw new Error(`Erreur ${response.status}: ${responseText}`);
+        }
+      }
+
+      // Parser la réponse JSON
+      const result = JSON.parse(responseText);
+
+      if (result.success) {
+        toast({
+          title: "✅ Mission Mise à Jour",
+          description: `La mission "${formData.title}" a été mise à jour avec succès.`,
+        });
+        router.push("/admin/missions");
+      } else {
+        throw new Error(result.error || "Erreur lors de la mise à jour");
+      }
+    } catch (error) {
+      console.error("❌ Erreur détaillée:", error);
       toast({
         variant: "destructive",
-        title: "update failed",
-        description: "Failed to update the mission. please try again",
+        title: "Erreur",
+        description: error.message || "Impossible de mettre à jour la mission.",
       });
+    } finally {
+      setIsSubmitting(false);
     }
   };
 
-  const handleGetLocation = async () => {
+  /*const handleGetLocation = async () => {
     setIsFetchingLocation(true);
     setLocationError(null);
     if (navigator.geolocation) {
@@ -170,12 +319,10 @@ export default function EditMissionPage() {
           setFormData((prev) => ({
             ...prev,
             location: latLngString,
-            latitude,
-            longitude,
           }));
           toast({
             title: "Location Fetched",
-            description: `Coordinates: ${latLngString}`,
+            description: `Coordonnées: ${latLngString}`,
           });
           setIsFetchingLocation(false);
         },
@@ -186,55 +333,56 @@ export default function EditMissionPage() {
             variant: "destructive",
             title: "Location Error",
             description:
-              error.message || "Could not retrieve your current location.",
+              error.message || "Impossible de récupérer votre position.",
           });
           setIsFetchingLocation(false);
         },
         { enableHighAccuracy: true, timeout: 10000, maximumAge: 0 },
       );
     } else {
-      setLocationError("Geolocation is not supported by this browser.");
+      setLocationError("La géolocalisation n'est pas supportée.");
       toast({
         variant: "destructive",
         title: "Geolocation Not Supported",
-        description: "Your browser does not support geolocation.",
+        description: "Votre navigateur ne supporte pas la géolocalisation.",
       });
       setIsFetchingLocation(false);
     }
-  };
+  };*/
 
   if (isLoading) {
     return (
       <div className="container mx-auto py-8 px-4 flex justify-center items-center min-h-[300px]">
         <Loader2 className="h-8 w-8 animate-spin text-primary" />
-        <span className="ml-2">Loading mission details...</span>
+        <span className="ml-2">Chargement des détails de la mission...</span>
       </div>
     );
   }
 
   return (
-    <div className="container mx-auto py-8 px-4 max-w-2xl">
+    <div className="container mx-auto py-8 px-4 max-w-4xl">
       <Button asChild variant="outline" size="sm" className="mb-4">
         <Link href="/admin/missions">
-          <ArrowLeft className="w-4 h-4 mr-1" /> Back to Missions List
+          <ArrowLeft className="w-4 h-4 mr-1" /> Retour à la liste
         </Link>
       </Button>
 
-      <Card className="shadow-lg">
-        <CardHeader>
-          <CardTitle className="text-xl font-semibold text-primary">
-            Edit Mission
+      <Card className="shadow-lg border-none ring-1 ring-border/50">
+        <CardHeader className="bg-primary/5 border-b border-primary/10">
+          <CardTitle className="text-xl font-bold text-primary">
+            Modifier la Mission
           </CardTitle>
           <CardDescription>
-            Modify the details for mission: {formData.title || missionId}
+            Modifiez les détails de la mission:{" "}
+            <strong>{formData.title}</strong>
           </CardDescription>
         </CardHeader>
         <form onSubmit={handleSubmit}>
-          <CardContent className="space-y-4">
+          <CardContent className="p-6 space-y-6">
             {/* Mission Title and Business Name */}
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div className="space-y-1">
-                <Label htmlFor="title">Mission Title *</Label>
+              <div className="space-y-2">
+                <Label htmlFor="title">Titre de la mission *</Label>
                 <Input
                   id="title"
                   name="title"
@@ -244,8 +392,8 @@ export default function EditMissionPage() {
                   disabled={isSubmitting}
                 />
               </div>
-              <div className="space-y-1">
-                <Label htmlFor="businessName">Business Name *</Label>
+              <div className="space-y-2">
+                <Label htmlFor="businessName">Enseigne *</Label>
                 <Input
                   id="businessName"
                   name="businessName"
@@ -257,8 +405,71 @@ export default function EditMissionPage() {
               </div>
             </div>
 
+            {/* Compte Client Partenaire */}
+            <div className="space-y-2 p-4 rounded-xl border border-primary/10 bg-primary/5">
+              <Label htmlFor="clientId" className="flex items-center gap-2 font-semibold text-primary">
+                <Building2 className="w-4 h-4 text-emerald-600" />
+                Compte Client Partenaire (Portail Analytics)
+              </Label>
+              <Select
+                value={formData.clientId ? String(formData.clientId) : "none"}
+                onValueChange={(val) =>
+                  setFormData((prev) => ({
+                    ...prev,
+                    clientId: val === "none" ? "" : val,
+                  }))
+                }
+                disabled={isSubmitting}
+              >
+                <SelectTrigger id="clientId" className="bg-white">
+                  <SelectValue placeholder="Associer à un client partenaire..." />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="none">
+                    <span className="text-muted-foreground italic">
+                      Aucun client assigné (Interne)
+                    </span>
+                  </SelectItem>
+                  {clients.map((c) => (
+                    <SelectItem key={c.id} value={String(c.id)}>
+                      {c.name} ({c.email})
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              <p className="text-xs text-muted-foreground">
+                Le client sélectionné pourra consulter en temps réel l'ensemble des rapports d'audit, KPIs et verbatims dans son portail entreprise.
+              </p>
+            </div>
+
+            {/* Pays and Ville */}
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label htmlFor="pays">Pays</Label>
+                <Input
+                  id="pays"
+                  name="pays"
+                  value={formData.pays}
+                  onChange={handleInputChange}
+                  disabled={isSubmitting}
+                  placeholder="Ex: Maroc"
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="ville">Ville</Label>
+                <Input
+                  id="ville"
+                  name="ville"
+                  value={formData.ville}
+                  onChange={handleInputChange}
+                  disabled={isSubmitting}
+                  placeholder="Ex: Casablanca"
+                />
+              </div>
+            </div>
+
             {/* Description */}
-            <div className="space-y-1">
+            <div className="space-y-2">
               <Label htmlFor="description">Description *</Label>
               <Textarea
                 id="description"
@@ -271,38 +482,34 @@ export default function EditMissionPage() {
               />
             </div>
 
+            {/* Profil recherché */}
+            <div className="space-y-2">
+              <Label htmlFor="profil">Profil recherché</Label>
+              <Input
+                id="profil"
+                name="profil"
+                value={formData.profil}
+                onChange={handleInputChange}
+                disabled={isSubmitting}
+                placeholder="Ex: Femme 30-60 ans"
+              />
+            </div>
+
             {/* Location and Category */}
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div className="space-y-1">
-                <Label htmlFor="location">
-                  Location (Address or Lat,Lng) *
-                </Label>
+              <div className="space-y-2">
+                <Label htmlFor="location">Location *</Label>
                 <div className="flex items-center gap-2">
                   <Input
                     id="location"
                     name="location"
-                    placeholder="e.g., 123 Main St or 34.05,-118.24"
+                    placeholder="Adresse ou coordonnées"
                     value={formData.location}
                     onChange={handleInputChange}
                     required
                     disabled={isSubmitting || isFetchingLocation}
                     className="flex-grow"
                   />
-                  <Button
-                    type="button"
-                    variant="outline"
-                    size="icon"
-                    onClick={handleGetLocation}
-                    disabled={isSubmitting || isFetchingLocation}
-                    title="Get Current Location"
-                  >
-                    {isFetchingLocation ? (
-                      <Loader2 className="h-4 w-4 animate-spin" />
-                    ) : (
-                      <MapPinIcon className="h-4 w-4" />
-                    )}
-                    <span className="sr-only">Get Current Location</span>
-                  </Button>
                 </div>
                 {locationError && (
                   <p className="text-xs text-destructive mt-1">
@@ -310,8 +517,8 @@ export default function EditMissionPage() {
                   </p>
                 )}
               </div>
-              <div className="space-y-1">
-                <Label htmlFor="category">Category *</Label>
+              <div className="space-y-2">
+                <Label htmlFor="category">Catégorie *</Label>
                 <Select
                   name="category"
                   value={formData.category}
@@ -322,14 +529,26 @@ export default function EditMissionPage() {
                   disabled={isSubmitting}
                 >
                   <SelectTrigger id="category">
-                    <SelectValue />
+                    <SelectValue placeholder="Sélectionner une catégorie" />
                   </SelectTrigger>
                   <SelectContent>
-                    {availableCategories.map((cat) => (
-                      <SelectItem key={cat} value={cat}>
-                        {cat}
-                      </SelectItem>
-                    ))}
+                    {availableCategories.length > 0 ? (
+                      availableCategories.map((cat) => (
+                        <SelectItem key={cat} value={cat}>
+                          {cat}
+                        </SelectItem>
+                      ))
+                    ) : (
+                      <>
+                        <SelectItem value="Retail">Retail</SelectItem>
+                        <SelectItem value="Beauté">Beauté</SelectItem>
+                        <SelectItem value="Bricolage">Bricolage</SelectItem>
+                        <SelectItem value="Hotels">Hotels</SelectItem>
+                        <SelectItem value="Salles de sport">
+                          Salles de sport
+                        </SelectItem>
+                      </>
+                    )}
                   </SelectContent>
                 </Select>
               </div>
@@ -337,8 +556,8 @@ export default function EditMissionPage() {
 
             {/* Deadline and Reward */}
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div className="space-y-1">
-                <Label htmlFor="deadline">Deadline *</Label>
+              <div className="space-y-2">
+                <Label htmlFor="deadline">Date limite *</Label>
                 <Input
                   id="deadline"
                   name="deadline"
@@ -349,14 +568,14 @@ export default function EditMissionPage() {
                   disabled={isSubmitting}
                 />
               </div>
-              <div className="space-y-1">
-                <Label htmlFor="reward">Reward ($) *</Label>
+              <div className="space-y-2">
+                <Label htmlFor="reward">Récompense ($) *</Label>
                 <Input
                   id="reward"
                   name="reward"
                   type="number"
                   min="0"
-                  step="1"
+                  step="0.01"
                   value={formData.reward}
                   onChange={handleInputChange}
                   required
@@ -365,9 +584,9 @@ export default function EditMissionPage() {
               </div>
             </div>
 
-            {/* Status Selection */}
-            <div className="space-y-1">
-              <Label htmlFor="status">Mission Status *</Label>
+            {/* Status */}
+            <div className="space-y-2">
+              <Label htmlFor="status">Statut *</Label>
               <Select
                 name="status"
                 value={formData.status}
@@ -379,24 +598,126 @@ export default function EditMissionPage() {
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="available">Available</SelectItem>
-                  <SelectItem value="completed">Completed</SelectItem>
-                  <SelectItem value="cancelled">Cancelled</SelectItem>
+                  <SelectItem value="available">Disponible</SelectItem>
+                  <SelectItem value="completed">Terminée</SelectItem>
+                  <SelectItem value="cancelled">Annulée</SelectItem>
                 </SelectContent>
               </Select>
             </div>
 
-            {/* Add fields for assigning shoppers, setting specific criteria, etc. later */}
+            {/* PDF Documents */}
+            <div className="space-y-4 border rounded-xl p-6 bg-secondary/10 border-dashed border-primary/20">
+              <h3 className="font-bold flex items-center gap-2 text-primary">
+                <FileUp className="w-4 h-4" /> Documents PDF
+              </h3>
+              <p className="text-sm text-muted-foreground">
+                Téléchargez de nouveaux fichiers pour remplacer les existants.
+              </p>
+
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                {["briefing", "scenario", "questionnaire"].map((field) => {
+                  const hasExisting =
+                    existingPdfUrls[field] && !removeExistingFiles[field];
+                  const hasNew = pdfFiles[field];
+                  const fileName = hasNew
+                    ? pdfFiles[field].name
+                    : hasExisting
+                      ? existingPdfUrls[field].split("/").pop()
+                      : null;
+
+                  return (
+                    <div key={field} className="space-y-2">
+                      <Label className="text-xs capitalize flex items-center gap-2">
+                        <FileText className="w-4 h-4" />
+                        {field}
+                      </Label>
+
+                      {hasNew ? (
+                        <div className="flex items-center gap-2 p-2 bg-background rounded border border-green-500">
+                          <FileUp className="w-4 h-4 text-green-500 flex-shrink-0" />
+                          <span className="text-xs truncate flex-1">
+                            {fileName}
+                          </span>
+                          <Badge
+                            variant="secondary"
+                            className="text-[10px] bg-green-100 text-green-700"
+                          >
+                            Nouveau
+                          </Badge>
+                          <Button
+                            type="button"
+                            variant="ghost"
+                            size="sm"
+                            className="h-6 w-6 p-0 text-destructive hover:bg-destructive/10"
+                            onClick={() => removeFile(field)}
+                          >
+                            <X className="w-4 h-4" />
+                          </Button>
+                        </div>
+                      ) : hasExisting ? (
+                        <div className="flex items-center gap-2 p-2 bg-background rounded border border-blue-500">
+                          <FileUp className="w-4 h-4 text-blue-500 flex-shrink-0" />
+                          <span className="text-xs truncate flex-1">
+                            {fileName}
+                          </span>
+                          <Badge
+                            variant="secondary"
+                            className="text-[10px] bg-blue-100 text-blue-700"
+                          >
+                            Existant
+                          </Badge>
+                          <Button
+                            type="button"
+                            variant="ghost"
+                            size="sm"
+                            className="h-6 w-6 p-0 text-destructive hover:bg-destructive/10"
+                            onClick={() => removeFile(field)}
+                          >
+                            <X className="w-4 h-4" />
+                          </Button>
+                        </div>
+                      ) : (
+                        <div className="relative">
+                          <Input
+                            type="file"
+                            accept=".pdf"
+                            className="bg-background cursor-pointer"
+                            onChange={(e) => handleFileChange(e, field)}
+                            disabled={isSubmitting}
+                          />
+                          <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
+                            <Upload className="w-4 h-4 text-muted-foreground" />
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  );
+                })}
+              </div>
+              <p className="text-xs text-muted-foreground mt-2">
+                * Taille maximale : 5MB par fichier. Formats acceptés : PDF
+              </p>
+            </div>
           </CardContent>
-          <CardFooter className="flex justify-end">
+
+          <CardFooter className="flex justify-end gap-3 p-6 border-t bg-primary/5">
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => router.push("/admin/missions")}
+              disabled={isSubmitting}
+            >
+              Annuler
+            </Button>
             <Button type="submit" disabled={isSubmitting}>
               {isSubmitting ? (
                 <>
-                  <Loader2 className="mr-2 h-4 w-4 animate-spin" /> Updating...
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" /> Mise à
+                  jour...
                 </>
               ) : (
                 <>
-                  <Save className="mr-2 h-4 w-4" /> Save Changes
+                  <Save className="mr-2 h-4 w-4" /> Enregistrer
                 </>
               )}
             </Button>

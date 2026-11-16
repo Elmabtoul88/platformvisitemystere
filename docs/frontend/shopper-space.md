@@ -1,131 +1,102 @@
-# MissionView Documentation - Shopper Space (Frontend)
+# Documentation Frontend - Espace Mystery Shopper (Auditeur)
 
-This document describes the features and functionalities available to **shoppers** in the MissionView frontend application.
+Ce document décrit l'ensemble des fonctionnalités et parcours offerts aux **mystery shoppers (auditeurs)** sur la plateforme MissionView.
 
-**Target Audience:** Mystery Shoppers
-
-**Access:** Requires login with an account having the 'shopper' role.
-
----
-
-## Overview
-
-The Shopper Space allows users to find, apply for, manage, and report on mystery shopping missions.
+**Public cible :** Mystery Shoppers (Auditeurs qualité)  
+**Accès requis :** Compte utilisateur avec rôle `shopper`.
 
 ---
 
-## Key Sections
+## 🧭 Parcours & Cycle de Vie d'une Mission
 
-### 1. Available Missions (Homepage `/`)
-
--   **Purpose:** Browse and discover missions available for application.
--   **Features:**
-    -   **Mission List:** Displays available missions as cards.
-    -   **Filtering:** Provides options to filter missions by Location, Deadline (Before), and Category.
-    -   **Mission Card:** Shows key mission details (Title, Business, Location, Deadline, Reward, Category). Includes:
-        -   **View Details Button:** Navigates to the Mission Details page (`/missions/:missionId/details`).
-        -   **Apply Now Button:** (Deprecated/Removed - Application happens on details page).
--   **Data Source:** `/api/missions` (fetches status 'available')
-
-### 2. Mission Details (`/missions/:missionId/details`)
-
--   **Purpose:** View detailed information about a specific available mission and apply for it.
--   **Features:**
-    -   Displays full mission details: Title, Business Name, Category, Description, Location, Deadline, Reward.
-    -   **Apply for this Mission Button:** If the mission status is 'available', triggers an API call (`/api/missions/:id/apply`). On success, redirects to the Assigned Missions page. Shows loading state during application.
-    -   Displays an error message if the mission is not found or no longer available.
--   **Data Source:** `/api/missions/:id`
--   **Key Actions:** `applyForMission` (via API call)
-
-### 3. Assigned Missions (`/missions/assigned`)
-
--   **Purpose:** View missions currently assigned to the shopper that require action (report submission).
--   **Features:**
-    -   Lists missions with status 'assigned' or 'submitted'.
-    -   **Mission Card:** Displays mission details. Includes:
-        -   **Start Report Button:** (For status 'assigned') Navigates to the Report Submission page (`/report/:missionId`).
-        -   **View Report Button:** (For status 'submitted') Navigates to the Report Submission page (`/report/:missionId`) - allows viewing/editing if implemented.
--   **Data Source:** `/api/missions/assigned`
-
-### 4. Completed Missions (`/missions/completed`)
-
--   **Purpose:** View missions that have been completed, reviewed, and either approved (paid) or refused.
--   **Features:**
-    -   **Total Earnings Card:** Displays the sum of rewards from all approved missions.
-    -   Lists missions with status 'approved' or 'refused'.
-    -   **Mission Card:** Displays mission details alongside:
-        -   **Report Summary:** Shows submission date and final status (Approved/Refused).
-        -   **Payment Info:** Displays the reward amount and indicates payment status (Paid for approved).
-        -   **Refusal Reason:** Shows the reason provided by the admin if the report was refused.
--   **Data Source:** `/api/missions/completed`
-
-### 5. Report Submission (`/report/:missionId`)
-
--   **Purpose:** Allow shoppers to fill out and submit the survey/report for an assigned mission.
--   **Features:**
-    -   Displays mission title and description.
-    -   Dynamically renders form fields based on the `survey_questions` fetched for the mission.
-    -   Supports various question types: Text, Rating (Stars), Multiple Choice (Radio), Checkboxes, Image Upload (with preview and removal), GPS Capture (Button trigger), Audio Recording (Start/Stop/Playback/Remove).
-    -   Handles required field validation on the client-side before submission.
-    -   **Submit Report Button:** Triggers the `submitReport` server action/API call (`/api/missions/:missionId/reports`). Shows loading state. On success, redirects to Completed Missions page.
-    -   Displays error message if the user is not assigned or the mission is not in a submittable state.
--   **Data Source:** `/api/missions/:id` (for mission details), `/api/admin/missions/:missionId/survey` (for questions - *needs access adjustment or separate shopper endpoint*)
--   **Key Actions:** `submitReport` (via Server Action / API call)
-
-### 6. Mission Map (`/map`)
-
--   **Purpose:** Provide a geographical view of available and assigned missions.
--   **Features:**
-    -   Uses Leaflet.js to display an interactive map.
-    -   Attempts to get the user's current location and center the map.
-    -   Displays markers for missions:
-        -   Yellow markers for 'available' missions.
-        -   Green markers for 'assigned' or 'submitted' missions assigned to the current user.
-        -   Blue marker for the user's current location (if available).
-    -   Clicking markers shows a popup with basic mission info and a link to details or the report page.
-    -   Recenter button to center the map on the user's current location.
-    -   Handles location errors gracefully.
--   **Data Source:** `/api/missions` (available), `/api/missions/assigned`
-
-### 7. Shopper Settings (`/settings`)
-
--   **Purpose:** Allow shoppers to manage their profile and notification preferences.
--   **Features:**
-    -   **Personal Details:**
-        -   View/Update Profile Picture (simulated upload).
-        -   View Name and Email (read-only).
-        -   Placeholder for Password Change.
-    -   **Additional Information:**
-        -   Update City, Motivation, Birth Year, Gender.
-        -   Upload/View CV (simulated upload).
-    -   **Appearance:** Toggle Dark/Light mode.
-    -   **Notification Preferences:** Toggle switches for email/push notifications (New Mission, Deadline Reminder, Report Status).
-    -   **Share Profile:** Buttons to share profile link on social media (Twitter, Facebook, LinkedIn) or copy link.
-    -   **Save Changes Button:** Simulates saving all updated settings.
--   **Data Source:** Mock data / Local state. In a real app: `/api/users/profile` (GET/PUT) endpoints.
-
-### 8. Shopper Chat (`/chat`)
-
--   **Purpose:** Allow shoppers to communicate with administrators.
--   **Features:**
-    -   Real-time (simulated) chat interface.
-    -   Displays chat history with Admin.
-    -   Input field and Send button.
-    -   Simulates sending messages and receiving replies from Admin.
-    -   Updates notification count in `localStorage` upon receiving messages.
--   **Data Source:** Mock data. In a real app: WebSocket connection and chat backend.
+```mermaid
+flowchart LR
+    A["1. Découverte\n(/ ou /map)"] --> B["2. Candidature\n& Quiz"]
+    B --> C["3. Validation Admin\n(Créneau & Magasin)"]
+    C --> D["4. Réalisation terrain\n& Questionnaire multi-étapes"]
+    D --> E["5. Revue Admin\n& Rémunération"]
+```
 
 ---
 
-## Navigation
+## 📑 Pages et Fonctionnalités Shopper
 
--   Shoppers see navigation links relevant to their tasks (Available, Assigned, Completed, Map, Chat, Settings).
--   The profile dropdown menu links to `/settings` and `/chat`.
+### 1. Découverte des Missions Disponibles (`/` et `/map`)
+* **Vue Cartes (`/`)** :
+  * Filtres par ville, catégorie, date limite et rémunération.
+  * Cartes de missions optimisées : titre, enseigne, adresse, ville, gain en DH/EUR et date limite d'échéance.
+  * Indicateur clair des missions expirantes.
+* **Vue Carte Interactive (`/map`)** :
+  * Intégration de la bibliothèque **Leaflet**.
+  * Affichage de repères (marqueurs) pour chaque magasin possédant des coordonnées GPS valides (latitude et longitude).
+  * Fenêtre popup au clic affichant le nom du magasin, son adresse et un lien direct pour postuler à la mission associée.
 
 ---
 
-## Authentication & Authorization
+### 2. Détail & Candidature (`/missions/:missionId/details`)
+* Consultation du briefing complet, des consignes de visite et des critères de validation.
+* **Passage des Quiz de Qualification** : Test de validation des connaissances de l'auditeur sur les scénarios de visite de l'enseigne avant validation de sa postulation.
+* Notification en cas de succès et bascule de l'état en « Candidature transmise ».
 
--   Access to shopper-specific routes requires an active session with the `shopper` role.
--   Frontend routing logic redirects unauthenticated users to `/login` and admin users away from shopper routes.
--   API calls are protected by JWT authentication middleware on the backend.
+---
+
+### 3. Missions Assignées (`/missions/assigned`)
+* Liste des missions attribuées suite à l'approbation de l'administrateur (ou via assignation directe d'exception).
+* Affichage du **magasin assigné** et du **créneau horaire officiel** d'intervention.
+* Bouton d'accès immédiat au rapport d'audit : **« Remplir le Questionnaire »**.
+
+---
+
+### 4. Questionnaire d'Audit Multi-étapes (`/report/:missionId`)
+Le questionnaire d'audit est découpé par **sections thématiques** (ex: Accueil, Propreté, Conseil, Passage en caisse) pour offrir une expérience ergonomique et sans perte de données :
+* **Brouillon Automatique Local (Auto-Save)** :
+  * Sauvegarde automatique locale en temps réel (`localStorage`) des réponses, commentaires, sélections et notations de l'auditeur.
+  * Détection automatique à l'ouverture : bandeau interactif proposant de reprendre l'enquête là où l'auditeur s'était arrêté ou de repartir de zéro.
+  * Indicateur visuel d'état de sauvegarde automatique (« Brouillon auto ») dans l'en-tête du questionnaire.
+  * Nettoyage automatique du brouillon local dès confirmation de transmission du rapport final.
+* **Compression Client des Photos d'Enquête** :
+  * Compression automatique dans le navigateur (`src/lib/imageCompression.js`) avant tout téléversement.
+  * Réduction automatique des photos haute résolution prises sur smartphone (8-12 Mo ramenés à ~300-600 Ko en format WebP/JPEG haute fidélité).
+  * Gain d'autonomie et de vitesse de transmission sur les réseaux mobiles 4G/5G, et économie massive de stockage sur l'hébergement cPanel.
+* **Navigation progressive étape par étape** :
+  * Affichage exclusif de la **Section 1** avec ses questions dédiées.
+  * Bouton **« Section Suivante »** pour passer à la Section 2 après validation des champs requis.
+  * Bouton **« Section Précédente »** pour revenir en arrière et ajuster une réponse.
+  * Barre de progression visuelle indiquant le pourcentage d'avancement de l'enquête.
+  * Étape finale : Bouton **« Soumettre le Rapport d'Audit »** avec récapitulatif.
+* **Types de réponses pris en charge** :
+  * Notation par étoiles (Rating 1 à 5).
+  * Texte libre et commentaires détaillés.
+  * Choix unique (boutons radio) et choix multiple (cases à cocher).
+  * Téléversement de photos justificatives (ticket de caisse, devanture) avec prévisualisation et compression.
+  * Enregistrement vocal audio directement dans le navigateur.
+  * Horodatage automatique de la visite.
+
+---
+
+### 5. Missions Terminées & Indemnisations (`/missions/completed`)
+* Historique complet des missions réalisées.
+* **Statuts de rapport** :
+  * **En attente de révision** : Rapport soumis à l'administrateur.
+  * **Approuvé & Validé** : Rapport conforme, indemnisation validée.
+  * **Refusé** : Motif explicite communiqué par l'administrateur pour transparence.
+* Registre des gains accumulés et détails des virements bancaires reçus.
+
+---
+
+### 6. Profil & Coordonnées Bancaires (`/settings`)
+* Gestion des informations personnelles, ville de résidence et numéro de téléphone pour les rappels de missions.
+* Saisie et mise à jour du **RIB / IBAN** pour la perception des indemnités de visite.
+* Téléversement du Curriculum Vitae (CV) et de la photo de profil.
+
+---
+
+### 7. Progressive Web App (PWA) & Mode Hors Ligne
+* **Dossier dédié `pwa/`** et fichiers publics (`manifest.json`, `sw.js`, `offline.html`, `icons/`).
+* **Installation en 1 clic** :
+  * Bandeau d'installation automatique sur smartphones Android (Google Chrome) et Safari iOS (« Ajouter à l'écran d'accueil »).
+  * Lancement en plein écran (`standalone`) sans barre d'adresse navigateur, offrant l'expérience d'une application native.
+* **Résilience Réseau** :
+  * Mise en cache des polices et ressources statiques via Service Worker (`stale-while-revalidate`).
+  * Stratégie réseau d'abord (`network-first`) pour les flux API dynamiques.
+  * Écran de secours élégant (`offline.html`) aux couleurs d'Emberton Group en cas de coupure de connexion réseau sur le terrain.

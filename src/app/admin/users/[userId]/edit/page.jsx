@@ -65,7 +65,6 @@ export default function EditUserPage() {
   useEffect(() => {
     const getUserDetails = async (user_id) => {
       try {
-        console.log(`Fetching details for user ID: ${userId}`);
         setIsLoading(true);
         setError(null);
         const [foundUser] = await fetchMissions(
@@ -136,8 +135,6 @@ export default function EditUserPage() {
     delete updateData.cv_url;
     delete updateData.profile_pic_url; // Don't send image URL back
 
-    console.log(`Submitting updates for user ${userId}:`, updateData);
-
     try {
       // Call the server action to update the user
       //const result = await updateUserAction(userId, updateData, token); // Pass token
@@ -170,24 +167,24 @@ export default function EditUserPage() {
 
   if (isLoading) {
     return (
-      <div className="container mx-auto py-8 px-4 flex justify-center items-center min-h-[400px]">
-        <Loader2 className="h-8 w-8 animate-spin text-primary" />
-        <span className="ml-2">Loading User Data...</span>
+      <div className="flex flex-col items-center justify-center min-h-[400px] gap-3">
+        <Loader2 className="h-8 w-8 animate-spin text-[#041F40]" />
+        <span className="text-sm font-medium text-slate-600">Chargement de l'utilisateur...</span>
       </div>
     );
   }
 
   if (error) {
     return (
-      <div className="container mx-auto py-8 px-4 flex flex-col items-center">
-        <Alert variant="destructive" className="max-w-lg w-full mb-4">
+      <div className="max-w-2xl mx-auto py-8 px-4 flex flex-col items-center">
+        <Alert variant="destructive" className="w-full mb-4">
           <FileWarning className="h-4 w-4" />
-          <AlertTitle>Error Loading User</AlertTitle>
+          <AlertTitle>Erreur de chargement</AlertTitle>
           <AlertDescription>{error}</AlertDescription>
         </Alert>
-        <Button asChild variant="outline" size="sm">
+        <Button asChild variant="outline" size="sm" className="border-slate-300 text-slate-700 hover:bg-slate-50 text-xs font-semibold h-9 rounded-lg">
           <Link href="/admin/users">
-            <ArrowLeft className="w-4 h-4 mr-1" /> Back to User List
+            <ArrowLeft className="w-4 h-4 mr-1.5" /> Retour à la liste
           </Link>
         </Button>
       </div>
@@ -195,52 +192,62 @@ export default function EditUserPage() {
   }
 
   if (!user) {
-    // Should be covered by error state, but good fallback
     return (
-      <div className="container mx-auto py-8 px-4 flex justify-center">
-        User not found.
+      <div className="max-w-2xl mx-auto py-8 px-4 flex flex-col items-center">
+        <p className="text-sm text-slate-600 mb-4">Données utilisateur introuvables.</p>
+        <Button asChild variant="outline" size="sm" className="border-slate-300 text-slate-700 hover:bg-slate-50 text-xs font-semibold h-9 rounded-lg">
+          <Link href="/admin/users">
+            <ArrowLeft className="w-4 h-4 mr-1.5" /> Retour à la liste
+          </Link>
+        </Button>
       </div>
     );
   }
 
   return (
-    <div className="container mx-auto py-8 px-4 max-w-2xl">
-      <Button asChild variant="outline" size="sm" className="mb-6">
-        <Link href={`/admin/users/${userId}`}>
-          <ArrowLeft className="w-4 h-4 mr-1" /> Cancel Edit
-        </Link>
-      </Button>
+    <div className="space-y-6 max-w-3xl mx-auto pb-10">
+      <div className="flex justify-between items-center">
+        <Button asChild variant="outline" size="sm" className="border-slate-300 text-slate-700 bg-white hover:bg-slate-50 text-xs font-semibold h-9 rounded-lg shadow-sm">
+          <Link href={`/admin/users/${userId}`}>
+            <ArrowLeft className="w-4 h-4 mr-1.5" /> Annuler et retourner au profil
+          </Link>
+        </Button>
+      </div>
 
-      <Card className="shadow-lg">
-        <CardHeader>
-          <CardTitle className="text-xl font-semibold text-primary flex items-center gap-2">
-            <User className="w-5 h-5" /> Edit User Profile
+      <Card className="bg-white border border-slate-200 shadow-sm rounded-xl overflow-hidden">
+        <CardHeader className="p-5 border-b border-slate-100 bg-slate-50/50">
+          <CardTitle className="text-xl font-bold text-[#041F40] flex items-center gap-2">
+            <User className="w-5 h-5 text-[#041F40]" /> Modifier le Profil Utilisateur
           </CardTitle>
-          <CardDescription>Modify the details for {user.name}.</CardDescription>
+          <CardDescription className="text-xs text-slate-500 mt-0.5">
+            Mettez à jour les coordonnées et les autorisations de {user.name}
+          </CardDescription>
         </CardHeader>
         <form onSubmit={handleSubmit}>
-          <CardContent className="space-y-6">
-            {/* Avatar Preview */}
-            <div className="flex items-center gap-4">
-              <Avatar className="h-16 w-16 border">
-                {/* Use profilePicUrl from formData for consistency if needed, or original user object */}
+          <CardContent className="p-6 space-y-5">
+            {/* Aperçu Avatar */}
+            <div className="flex items-center gap-4 p-3 bg-slate-50 border border-slate-200/80 rounded-xl">
+              <Avatar className="h-16 w-16 border-2 border-[#041F40] shadow-sm">
                 <AvatarImage
                   src={formData.profile_pic_url}
                   alt={formData.name}
                 />
-                <AvatarFallback>
+                <AvatarFallback className="bg-[#041F40] text-[#D6C799] font-bold">
                   {formData.name?.charAt(0)?.toUpperCase() || "U"}
                 </AvatarFallback>
               </Avatar>
-              <p className="text-sm text-muted-foreground">
-                Profile picture managed by user.
-              </p>
+              <div>
+                <p className="text-xs font-bold text-[#041F40]">Photo de profil</p>
+                <p className="text-[11px] text-slate-500">
+                  Gérée et téléversée par l'utilisateur depuis son compte.
+                </p>
+              </div>
             </div>
 
-            {/* Editable Fields */}
+            {/* Champs modifiables */}
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div className="space-y-1">
-                <Label htmlFor="name">Full Name *</Label>
+              <div className="space-y-1.5">
+                <Label htmlFor="name" className="text-xs font-semibold text-slate-700">Nom Complet *</Label>
                 <Input
                   id="name"
                   name="name"
@@ -248,10 +255,11 @@ export default function EditUserPage() {
                   onChange={handleInputChange}
                   required
                   disabled={isSaving}
+                  className="bg-white border-slate-300 text-slate-900 rounded-lg text-xs h-9"
                 />
               </div>
-              <div className="space-y-1">
-                <Label htmlFor="email">Email Address</Label>
+              <div className="space-y-1.5">
+                <Label htmlFor="email" className="text-xs font-semibold text-slate-700">Adresse Email</Label>
                 <Input
                   id="email"
                   name="email"
@@ -259,18 +267,15 @@ export default function EditUserPage() {
                   value={formData.email}
                   readOnly
                   disabled
-                  className="bg-secondary/50 cursor-not-allowed"
+                  className="bg-slate-50 border-slate-200 text-slate-500 cursor-not-allowed rounded-lg text-xs h-9 font-medium"
                 />
-                <p className="text-xs text-muted-foreground">
-                  Email is read-only.
-                </p>
               </div>
             </div>
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div className="space-y-1">
-                <Label htmlFor="city" className="flex items-center gap-1">
-                  <MapPin className="w-3 h-3" /> City / Location
+              <div className="space-y-1.5">
+                <Label htmlFor="city" className="text-xs font-semibold text-slate-700 flex items-center gap-1">
+                  <MapPin className="w-3.5 h-3.5 text-slate-400" /> Ville / Région
                 </Label>
                 <Input
                   id="city"
@@ -278,11 +283,12 @@ export default function EditUserPage() {
                   value={formData.city}
                   onChange={handleInputChange}
                   disabled={isSaving}
+                  className="bg-white border-slate-300 text-slate-900 rounded-lg text-xs h-9"
                 />
               </div>
-              <div className="space-y-1">
-                <Label htmlFor="telephone" className="flex items-center gap-1">
-                  Telephone
+              <div className="space-y-1.5">
+                <Label htmlFor="telephone" className="text-xs font-semibold text-slate-700 flex items-center gap-1">
+                  Numéro de Téléphone
                 </Label>
                 <Input
                   id="telephone"
@@ -291,41 +297,42 @@ export default function EditUserPage() {
                   value={formData.telephone}
                   onChange={handleInputChange}
                   disabled={isSaving}
+                  className="bg-white border-slate-300 text-slate-900 rounded-lg text-xs h-9"
                 />
               </div>
             </div>
 
-            <div className="space-y-1">
-              <Label htmlFor="motivation">Motivation</Label>
+            <div className="space-y-1.5">
+              <Label htmlFor="motivation" className="text-xs font-semibold text-slate-700">Motivation</Label>
               <Textarea
                 id="motivation"
                 name="motivation"
                 value={formData.motivation}
                 onChange={handleInputChange}
-                className="min-h-[80px]"
+                className="min-h-[80px] bg-white border-slate-300 text-slate-900 rounded-lg text-xs"
                 disabled={isSaving}
               />
             </div>
 
-            {/* Added Birth Year and Gender */}
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div className="space-y-1">
-                <Label htmlFor="birthYear" className="flex items-center gap-1">
-                  <Cake className="w-3 h-3" /> Birth Year
+              <div className="space-y-1.5">
+                <Label htmlFor="birthYear" className="text-xs font-semibold text-slate-700 flex items-center gap-1">
+                  <Cake className="w-3.5 h-3.5 text-slate-400" /> Année de Naissance
                 </Label>
                 <Input
                   id="birthYear"
                   name="birth_year"
                   type="number"
-                  placeholder="YYYY"
-                  value={formData.birth_year || ""} // Handle potential null/undefined
+                  placeholder="Ex: 1995"
+                  value={formData.birth_year || ""}
                   onChange={handleInputChange}
                   disabled={isSaving}
+                  className="bg-white border-slate-300 text-slate-900 rounded-lg text-xs h-9"
                 />
               </div>
-              <div className="space-y-1">
-                <Label htmlFor="gender" className="flex items-center gap-1">
-                  <UsersIcon className="w-3 h-3" /> Gender
+              <div className="space-y-1.5">
+                <Label htmlFor="gender" className="text-xs font-semibold text-slate-700 flex items-center gap-1">
+                  <UsersIcon className="w-3.5 h-3.5 text-slate-400" /> Genre
                 </Label>
                 <Select
                   name="gender"
@@ -333,29 +340,25 @@ export default function EditUserPage() {
                   onValueChange={(value) => handleSelectChange("gender", value)}
                   disabled={isSaving}
                 >
-                  <SelectTrigger id="gender">
+                  <SelectTrigger id="gender" className="bg-white border-slate-300 text-slate-900 rounded-lg text-xs h-9">
                     <SelectValue />
                   </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="female">Female</SelectItem>
-                    <SelectItem value="male">Male</SelectItem>
-                    <SelectItem value="other">Other</SelectItem>
+                  <SelectContent className="bg-white border border-slate-200 text-slate-900 text-xs shadow-xl rounded-lg">
+                    <SelectItem value="female">Femme</SelectItem>
+                    <SelectItem value="male">Homme</SelectItem>
+                    <SelectItem value="other">Autre</SelectItem>
                     <SelectItem value="prefer_not_say">
-                      Prefer not to say
+                      Préfère ne pas préciser
                     </SelectItem>
                   </SelectContent>
                 </Select>
               </div>
             </div>
-            {/* CV is generally not edited by admin, maybe just displayed on detail page */}
-            <p className="text-sm text-muted-foreground">
-              CV/Resume managed by user via Settings page.
-            </p>
 
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div className="space-y-1">
-                <Label htmlFor="role" className="flex items-center gap-1">
-                  <Briefcase className="w-3 h-3" /> Role *
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 pt-2 border-t border-slate-100">
+              <div className="space-y-1.5">
+                <Label htmlFor="role" className="text-xs font-semibold text-slate-700 flex items-center gap-1">
+                  <Briefcase className="w-3.5 h-3.5 text-slate-400" /> Rôle Utilisateur *
                 </Label>
                 <Select
                   name="role"
@@ -364,19 +367,19 @@ export default function EditUserPage() {
                   required
                   disabled={isSaving}
                 >
-                  <SelectTrigger id="role">
+                  <SelectTrigger id="role" className="bg-white border-slate-300 text-slate-900 rounded-lg text-xs h-9 font-semibold">
                     <SelectValue />
                   </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="shopper">Shopper</SelectItem>
-                    <SelectItem value="admin">Admin</SelectItem>
-                    {/* Add other roles if applicable */}
+                  <SelectContent className="bg-white border border-slate-200 text-slate-900 text-xs shadow-xl rounded-lg">
+                    <SelectItem value="shopper">Shopper (Auditeur)</SelectItem>
+                    <SelectItem value="client">Client Partenaire</SelectItem>
+                    <SelectItem value="admin">Administrateur</SelectItem>
                   </SelectContent>
                 </Select>
               </div>
-              <div className="space-y-1">
-                <Label htmlFor="status" className="flex items-center gap-1">
-                  Status *
+              <div className="space-y-1.5">
+                <Label htmlFor="status" className="text-xs font-semibold text-slate-700 flex items-center gap-1">
+                  Statut du Compte *
                 </Label>
                 <Select
                   name="status"
@@ -385,35 +388,45 @@ export default function EditUserPage() {
                   required
                   disabled={isSaving}
                 >
-                  <SelectTrigger id="status">
+                  <SelectTrigger id="status" className="bg-white border-slate-300 text-slate-900 rounded-lg text-xs h-9 font-semibold">
                     <SelectValue />
                   </SelectTrigger>
-                  <SelectContent>
+                  <SelectContent className="bg-white border border-slate-200 text-slate-900 text-xs shadow-xl rounded-lg">
                     <SelectItem value="active">
-                      {" "}
-                      <CheckCircle className="w-3 h-3 inline mr-1 text-green-600" />{" "}
-                      Active
+                      <CheckCircle className="w-3.5 h-3.5 inline mr-1 text-emerald-600" />
+                      Actif
                     </SelectItem>
                     <SelectItem value="inactive">
-                      {" "}
-                      <Clock className="w-3 h-3 inline mr-1 text-red-600" />{" "}
-                      Inactive
+                      <Clock className="w-3.5 h-3.5 inline mr-1 text-slate-400" />
+                      Inactif
                     </SelectItem>
-                    {/* Add other statuses if applicable */}
                   </SelectContent>
                 </Select>
               </div>
             </div>
           </CardContent>
-          <CardFooter className="flex justify-end border-t pt-6">
-            <Button type="submit" disabled={isSaving}>
+          <CardFooter className="flex justify-end gap-3 border-t border-slate-100 p-5 bg-slate-50/50">
+            <Button
+              type="button"
+              variant="outline"
+              disabled={isSaving}
+              onClick={() => router.push(`/admin/users/${userId}`)}
+              className="border-slate-300 text-slate-700 hover:bg-slate-50 text-xs font-semibold h-9 rounded-lg"
+            >
+              Annuler
+            </Button>
+            <Button
+              type="submit"
+              disabled={isSaving}
+              className="bg-[#041F40] hover:bg-[#041F40]/90 text-white font-bold text-xs h-9 rounded-lg shadow-sm px-5"
+            >
               {isSaving ? (
                 <>
-                  <Loader2 className="mr-2 h-4 w-4 animate-spin" /> Saving...
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin text-[#D6C799]" /> Enregistrement...
                 </>
               ) : (
                 <>
-                  <Save className="mr-2 h-4 w-4" /> Save Changes
+                  <Save className="mr-2 h-4 w-4 text-[#D6C799]" /> Enregistrer les Modifications
                 </>
               )}
             </Button>

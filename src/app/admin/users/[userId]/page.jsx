@@ -52,7 +52,6 @@ export default function UserDetailPage() {
   useEffect(() => {
     const getUserDetails = async (user_id) => {
       try {
-        console.log(`Fetching details for user ID: ${userId}`);
         setIsLoading(true);
         setError(null);
         const [foundUser] = await fetchMissions(
@@ -81,24 +80,24 @@ export default function UserDetailPage() {
 
   if (isLoading) {
     return (
-      <div className="container mx-auto py-8 px-4 flex justify-center items-center min-h-[400px]">
-        <Loader2 className="h-8 w-8 animate-spin text-primary" />
-        <span className="ml-2">Loading User Details...</span>
+      <div className="flex flex-col items-center justify-center min-h-[400px] gap-3">
+        <Loader2 className="h-8 w-8 animate-spin text-[#041F40]" />
+        <span className="text-sm font-medium text-slate-600">Chargement de l'utilisateur...</span>
       </div>
     );
   }
 
   if (error) {
     return (
-      <div className="container mx-auto py-8 px-4 flex flex-col items-center">
-        <Alert variant="destructive" className="max-w-lg w-full">
+      <div className="max-w-2xl mx-auto py-8 px-4 flex flex-col items-center">
+        <Alert variant="destructive" className="w-full mb-4">
           <FileWarning className="h-4 w-4" />
-          <AlertTitle>Error</AlertTitle>
+          <AlertTitle>Erreur de chargement</AlertTitle>
           <AlertDescription>{error}</AlertDescription>
         </Alert>
-        <Button asChild variant="outline" size="sm" className="mt-6">
+        <Button asChild variant="outline" size="sm" className="border-slate-300 text-slate-700 hover:bg-slate-50 text-xs font-semibold h-9 rounded-lg">
           <Link href="/admin/users">
-            <ArrowLeft className="w-4 h-4 mr-1" /> Back to User List
+            <ArrowLeft className="w-4 h-4 mr-1.5" /> Retour à la liste
           </Link>
         </Button>
       </div>
@@ -106,190 +105,176 @@ export default function UserDetailPage() {
   }
 
   if (!user) {
-    // Should be caught by error state, but as a fallback
     return (
-      <div className="container mx-auto py-8 px-4 flex justify-center">
-        <p>User data could not be loaded.</p>
+      <div className="max-w-2xl mx-auto py-8 px-4 flex flex-col items-center">
+        <p className="text-sm text-slate-600 mb-4">Données utilisateur introuvables.</p>
+        <Button asChild variant="outline" size="sm" className="border-slate-300 text-slate-700 hover:bg-slate-50 text-xs font-semibold h-9 rounded-lg">
+          <Link href="/admin/users">
+            <ArrowLeft className="w-4 h-4 mr-1.5" /> Retour à la liste
+          </Link>
+        </Button>
       </div>
     );
   }
 
-  // Helper to get status badge variant
-  const getStatusVariant = (status) =>
-    status === "active" ? "default" : "outline";
-  const getStatusBg = (status) =>
-    status === "active"
-      ? "bg-green-100 text-green-800 border-green-300"
-      : "bg-red-100 text-red-800 border-red-300";
-  const getRoleVariant = (role) =>
-    role === "admin" ? "destructive" : "secondary";
-
   return (
-    <div className="container mx-auto py-8 px-4 max-w-4xl">
-      <div className="flex justify-between items-center mb-6">
-        <Button asChild variant="outline" size="sm">
+    <div className="space-y-6 max-w-4xl mx-auto pb-10">
+      <div className="flex justify-between items-center">
+        <Button asChild variant="outline" size="sm" className="border-slate-300 text-slate-700 bg-white hover:bg-slate-50 text-xs font-semibold h-9 rounded-lg shadow-sm">
           <Link href="/admin/users">
-            <ArrowLeft className="w-4 h-4 mr-1" /> Back to User List
+            <ArrowLeft className="w-4 h-4 mr-1.5" /> Retour à la liste
           </Link>
         </Button>
-        <Button asChild size="sm">
+        <Button asChild size="sm" className="bg-[#041F40] hover:bg-[#041F40]/90 text-white font-bold text-xs h-9 rounded-lg shadow-sm">
           <Link href={`/admin/users/${userId}/edit`}>
-            <Edit className="w-4 h-4 mr-1" /> Edit User
+            <Edit className="w-4 h-4 mr-1.5 text-[#D6C799]" /> Modifier l'utilisateur
           </Link>
         </Button>
       </div>
 
-      <Card className="shadow-lg">
-        <CardHeader className="flex flex-col sm:flex-row items-start sm:items-center gap-4 border-b pb-4 bg-secondary/30">
-          <Avatar className="h-20 w-20 border-2 border-primary shadow-sm">
-            {/* Use profilePicUrl from the fetched user data */}
+      <Card className="bg-white border border-slate-200 shadow-sm rounded-xl overflow-hidden">
+        <CardHeader className="flex flex-col sm:flex-row items-start sm:items-center gap-5 p-6 border-b border-slate-100 bg-slate-50/50">
+          <Avatar className="h-20 w-20 border-2 border-[#041F40] shadow-sm">
             <AvatarImage src={user.profile_pic_url} alt={user.name} />
-            <AvatarFallback>
+            <AvatarFallback className="bg-[#041F40] text-[#D6C799] text-xl font-bold">
               {user.name?.charAt(0)?.toUpperCase() || "U"}
             </AvatarFallback>
           </Avatar>
-          <div className="flex-grow">
-            <CardTitle className="text-2xl font-bold text-primary mb-1">
+          <div className="flex-grow space-y-1">
+            <CardTitle className="text-2xl font-extrabold text-[#041F40]">
               {user.name}
             </CardTitle>
-            <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-sm text-muted-foreground">
+            <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-slate-600">
               <span className="flex items-center gap-1">
-                <Mail className="w-4 h-4" /> {user.email}
+                <Mail className="w-3.5 h-3.5 text-slate-400" /> {user.email}
               </span>
               {user.city && (
-                <span className="flex items-center gap-1">
-                  <MapPin className="w-4 h-4" /> {user.city}
+                <span className="flex items-center gap-1 font-medium text-slate-800">
+                  <MapPin className="w-3.5 h-3.5 text-slate-400" /> {user.city}
                 </span>
               )}
               {user.telephone && (
-                <span className="flex items-center gap-1">
-                  Tel: {user.telephone}
+                <span className="flex items-center gap-1 font-mono text-slate-700">
+                  Tél : {user.telephone}
                 </span>
-              )}{" "}
-              {/* Display telephone */}
+              )}
             </div>
-            <div className="mt-2 flex flex-wrap gap-2">
-              <Badge variant={getRoleVariant(user.role)} className="capitalize">
+            <div className="pt-2 flex flex-wrap gap-2">
+              <Badge
+                className={
+                  user.role === "admin"
+                    ? "bg-red-50 text-red-700 border border-red-200 text-xs font-semibold capitalize"
+                    : user.role === "client"
+                    ? "bg-purple-50 text-purple-700 border border-purple-200 text-xs font-semibold capitalize"
+                    : "bg-blue-50 text-[#041F40] border border-blue-200 text-xs font-semibold capitalize"
+                }
+              >
                 {user.role}
               </Badge>
               <Badge
-                variant={getStatusVariant(user.status)}
-                className={`capitalize ${getStatusBg(user.status)}`}
+                className={
+                  user.status === "active"
+                    ? "bg-emerald-50 text-emerald-700 border border-emerald-200 text-xs font-semibold capitalize"
+                    : "bg-slate-100 text-slate-600 border border-slate-200 text-xs font-semibold capitalize"
+                }
               >
                 {user.status === "active" ? (
                   <CheckCircle className="w-3 h-3 mr-1" />
                 ) : (
                   <Clock className="w-3 h-3 mr-1" />
                 )}
-                {user.status}
+                {user.status === "active" ? "Actif" : "Inactif"}
               </Badge>
             </div>
           </div>
         </CardHeader>
-        <CardContent className="pt-6 space-y-6">
-          {/* Additional Details Section */}
+        <CardContent className="p-6 space-y-6">
+          {/* Détails du profil */}
           <div className="space-y-3">
-            <h3 className="text-lg font-semibold text-foreground border-b pb-1">
-              Profile Details
+            <h3 className="text-sm font-bold text-[#041F40] uppercase tracking-wider border-b border-slate-100 pb-2">
+              Informations Générales
             </h3>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-x-6 gap-y-3 text-sm">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-x-6 gap-y-3 text-xs">
               {user.birth_year && (
-                <p className="flex items-start gap-2">
-                  <Cake className="w-4 h-4 text-muted-foreground mt-0.5" />{" "}
-                  <strong className="w-24 inline-block text-muted-foreground">
-                    Birth Year:
-                  </strong>{" "}
-                  {user.birth_year}
-                </p>
+                <div className="flex items-center gap-2 p-2.5 rounded-lg bg-slate-50 border border-slate-200/60">
+                  <Cake className="w-4 h-4 text-slate-400" />
+                  <span className="text-slate-500 font-medium">Année de naissance :</span>
+                  <span className="font-bold text-slate-800">{user.birth_year}</span>
+                </div>
               )}
               {user.gender && user.gender !== "prefer_not_say" && (
-                <p className="flex items-start gap-2">
-                  <UsersIcon className="w-4 h-4 text-muted-foreground mt-0.5" />{" "}
-                  <strong className="w-24 inline-block text-muted-foreground">
-                    Gender:
-                  </strong>{" "}
-                  <span className="capitalize">{user.gender}</span>
-                </p>
+                <div className="flex items-center gap-2 p-2.5 rounded-lg bg-slate-50 border border-slate-200/60">
+                  <UsersIcon className="w-4 h-4 text-slate-400" />
+                  <span className="text-slate-500 font-medium">Genre :</span>
+                  <span className="font-bold text-slate-800 capitalize">{user.gender}</span>
+                </div>
               )}
-              {user.registration_date && ( // Check if date is valid
-                <p className="flex items-start gap-2">
-                  <Calendar className="w-4 h-4 text-muted-foreground mt-0.5" />{" "}
-                  <strong className="w-24 inline-block text-muted-foreground">
-                    Registered:
-                  </strong>{" "}
-                  {format(user.registration_date, "PPP")}
-                </p>
+              {user.registration_date && (
+                <div className="flex items-center gap-2 p-2.5 rounded-lg bg-slate-50 border border-slate-200/60">
+                  <Calendar className="w-4 h-4 text-slate-400" />
+                  <span className="text-slate-500 font-medium">Inscription :</span>
+                  <span className="font-bold text-slate-800">
+                    {format(new Date(user.registration_date), "dd/MM/yyyy")}
+                  </span>
+                </div>
               )}
-              <p className="flex items-start gap-2">
-                <strong className="w-24 inline-block text-muted-foreground">
-                  User ID:
-                </strong>{" "}
-                <code>{user.id}</code>
-              </p>
+              <div className="flex items-center gap-2 p-2.5 rounded-lg bg-slate-50 border border-slate-200/60">
+                <span className="text-slate-500 font-medium">Identifiant Système :</span>
+                <code className="font-bold text-[#041F40] font-mono">#{user.id}</code>
+              </div>
             </div>
           </div>
 
           {user.role === "shopper" && (
             <>
-              {/* Motivation Section */}
+              {/* Section Motivation */}
               {user.motivation && (
                 <div className="space-y-2">
-                  <h3 className="text-lg font-semibold text-foreground border-b pb-1 flex items-center gap-1">
-                    {" "}
-                    <MessageSquare className="w-4 h-4" /> Motivation
+                  <h3 className="text-sm font-bold text-[#041F40] uppercase tracking-wider border-b border-slate-100 pb-2 flex items-center gap-1.5">
+                    <MessageSquare className="w-4 h-4 text-[#041F40]" /> Motivation & Profil Auditeur
                   </h3>
-                  <p className="text-sm text-foreground/90 italic bg-secondary/50 p-3 rounded border">
+                  <p className="text-xs text-slate-700 italic bg-slate-50 p-4 rounded-xl border border-slate-200 leading-relaxed">
                     "{user.motivation}"
                   </p>
                 </div>
               )}
 
-              {/* CV Section */}
+              {/* Section CV */}
               {user.cv_url && (
                 <div className="space-y-2">
-                  <h3 className="text-lg font-semibold text-foreground border-b pb-1 flex items-center gap-1">
-                    {" "}
-                    <FileText className="w-4 h-4" /> Curriculum Vitae (CV)
+                  <h3 className="text-sm font-bold text-[#041F40] uppercase tracking-wider border-b border-slate-100 pb-2 flex items-center gap-1.5">
+                    <FileText className="w-4 h-4 text-[#041F40]" /> Curriculum Vitae (CV)
                   </h3>
-                  <div className="flex items-center gap-2">
-                    <Button asChild variant="outline" size="sm">
-                      {/* Use an anchor tag with download attribute */}
-                      {/* IMPORTANT: Ensure cvUrl is a direct link or handle download via API */}
+                  <div className="flex items-center gap-3">
+                    <Button asChild variant="outline" size="sm" className="border-slate-300 text-slate-700 hover:bg-slate-50 text-xs font-semibold h-9 rounded-lg">
                       <a
                         href={user.cv_url}
                         target="_blank"
                         rel="noopener noreferrer"
                         download={user.cv_url.split("/").pop()}
                       >
-                        <Download className="w-4 h-4 mr-2" /> Download CV
+                        <Download className="w-3.5 h-3.5 mr-1.5 text-[#041F40]" /> Télécharger le CV
                       </a>
                     </Button>
-                    <span className="text-sm text-muted-foreground italic">
+                    <span className="text-xs text-slate-500 italic">
                       ({user.cv_url.split("/").pop()})
                     </span>
                   </div>
                 </div>
               )}
 
-              {/* Performance/Stats Section */}
+              {/* Section Performance */}
               <div className="space-y-2">
-                <h3 className="text-lg font-semibold text-foreground border-b pb-1 flex items-center gap-1">
-                  {" "}
-                  <Award className="w-4 h-4" /> Performance
+                <h3 className="text-sm font-bold text-[#041F40] uppercase tracking-wider border-b border-slate-100 pb-2 flex items-center gap-1.5">
+                  <Award className="w-4 h-4 text-[#041F40]" /> Statistiques d'Audit
                 </h3>
-                {/* Ensure completedMissions field name matches API response */}
-                <p className="text-sm">
-                  <strong className="text-muted-foreground">
-                    Completed Missions:
-                  </strong>{" "}
-                  {user.completed_missions_count ?? 0}
-                </p>
-                {/* Add more stats like average rating, last activity etc. */}
+                <div className="flex items-center gap-2 p-3 bg-emerald-50/60 border border-emerald-200 rounded-xl text-xs">
+                  <strong className="text-emerald-900 font-bold">Missions Complétées avec Succès :</strong>
+                  <span className="font-extrabold text-emerald-700 text-sm">{user.completed_missions_count ?? 0}</span>
+                </div>
               </div>
             </>
           )}
-
-          {/* Add more sections as needed: Assigned Missions, Recent Reports, Ratings, etc. */}
         </CardContent>
       </Card>
     </div>

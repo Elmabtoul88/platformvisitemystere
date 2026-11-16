@@ -1,7 +1,8 @@
 # See https://help.github.com/articles/ignoring-files/ for more about ignoring files.
 
 # dependencies
-/node_modules
+node_modules/
+**/node_modules/
 /.pnp
 .pnp.*
 .yarn/*
@@ -20,15 +21,29 @@
 # production
 /build
 
+# archives
+*.zip
+*.tar.gz
+*.rar
+backup_*.json
+
+# environment variables
+.env
+.env*.local
+backend/.env
+
 # misc
 .DS_Store
 *.pem
 
-# debug
+# debug & logs
 npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
 .pnpm-debug.log*
+*.log
+uncaughtException.log
+logfile.log
 
 # vercel
 .vercel

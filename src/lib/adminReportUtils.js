@@ -152,6 +152,44 @@ function formatResponseForDisplay(answer, question = {}) {
         audioUrl: answer.value,
         context: 'Fichier audio disponible'
       };
+
+    case 'date':
+      return {
+        ...baseResponse,
+        displayValue: answer.value ? String(answer.value) : 'Non renseignée',
+        icon: '📅',
+        color: 'blue',
+        context: 'Date observée'
+      };
+
+    case 'time':
+      return {
+        ...baseResponse,
+        displayValue: answer.value ? String(answer.value) : 'Non renseignée',
+        icon: '⏰',
+        color: 'blue',
+        context: 'Heure observée'
+      };
+
+    case 'yes_no': {
+      const isYes = String(answer.value).toLowerCase() === 'oui' || answer.value === true || String(answer.value).toLowerCase() === 'yes';
+      return {
+        ...baseResponse,
+        displayValue: isYes ? 'Oui' : 'Non',
+        icon: isYes ? '✅' : '❌',
+        color: isYes ? 'green' : 'red',
+        context: isYes ? 'Conforme / Positif' : 'Non conforme / Négatif'
+      };
+    }
+
+    case 'number':
+      return {
+        ...baseResponse,
+        displayValue: answer.value !== undefined && answer.value !== null ? String(answer.value) : '0',
+        icon: '🔢',
+        color: 'emerald',
+        context: 'Valeur numérique'
+      };
       
     default:
       return {

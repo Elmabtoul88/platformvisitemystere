@@ -13,7 +13,7 @@ async function fetchWithAuth(url, options = {}, token) {
   };
 
   if (token) {
-    headers["Authorization"] = `Bearer ${token}`;
+    headers["x-auth-token"] = `${token}`;
   } else {
     console.warn(`fetchWithAuth called without token for URL: ${url}`);
     // Shopper actions strictly require authentication

@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useMemo, useEffect } from "react";
+import React, { useState, useMemo, useEffect, useCallback } from "react";
 import {
   Card,
   CardContent,
@@ -24,59 +24,58 @@ import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { fetchMissions } from "@/services/fetchData.js";
 import { useMessage } from "@/context/message-context";
+import { useAuth } from "@/context/auth-context";
+
 const API_BASE_URL =
-  process.env.NEXT_PUBLIC_API_URL || "https://api.embertongroup.com/api/";
+  process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000/api/";
 
 export default function AdminChatListPage() {
   const [searchTerm, setSearchTerm] = useState("");
   const [shoppers, setShoppers] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
-  const [userId, setUserId] = useState(null);
+  const { user } = useAuth();
   const { setMessageCount, decrementMessageCount } = useMessage();
 
-  useEffect(() => {
-    const getUsersMessages = async () => {
-      try {
-        setIsLoading(true);
-        const currentUsers = localStorage.getItem("missionViewAuth");
-        const parsedUsers = JSON.parse(currentUsers);
-        parsedUsers ? setUserId(parsedUsers.user.id) : setUserId(null);
+  const loadShoppers = useCallback(async () => {
+    if (!user?.id) return;
+    try {
+      setIsLoading(true);
+      const response = await fetchMissions(
+        "admin-chat-shoppers",
+        `${API_BASE_URL}chat_messages/${user.id}`,
+      );
 
-        if (userId) {
-          const response = await fetchMissions(
-            "messages",
-            API_BASE_URL + "chat_messages/" + userId
-          );
+      if (Array.isArray(response)) {
+        const totalUnread = response.reduce((sum, shopper) => {
+          const count = typeof shopper.is_read === "number" ? shopper.is_read : 0;
+          return sum + count;
+        }, 0);
 
-          if (response) {
-            const totalUnread = response.reduce((sum, shopper) => {
-              const unreadCount = shopper.is_read || 0;
-              return sum + unreadCount;
-            }, 0);
-
-            setMessageCount(totalUnread);
-            setShoppers(response);
-          } else {
-            setShoppers([]);
-          }
-
-          setIsLoading(false);
-        }
-      } catch (err) {
-        console.error("Erreur chargement messages:", err);
-        setIsLoading(false);
+        setMessageCount(totalUnread);
+        setShoppers(response);
+      } else {
+        setShoppers([]);
       }
-    };
+    } catch (err) {
+      console.error("Erreur chargement messages chat:", err);
+      setShoppers([]);
+    } finally {
+      setIsLoading(false);
+    }
+  }, [user?.id, setMessageCount]);
 
-    getUsersMessages();
-  }, [userId, setMessageCount]);
+  useEffect(() => {
+    loadShoppers();
+  }, [loadShoppers]);
 
   const filteredShoppers = useMemo(() => {
+    const term = searchTerm.toLowerCase().trim();
+    if (!term) return shoppers;
     return shoppers.filter(
       (shopper) =>
-        shopper.name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        shopper.email?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        shopper.id?.toString().toLowerCase().includes(searchTerm.toLowerCase())
+        shopper.name?.toLowerCase().includes(term) ||
+        shopper.email?.toLowerCase().includes(term) ||
+        shopper.id?.toString().includes(term),
     );
   }, [shoppers, searchTerm]);
 
@@ -87,117 +86,167 @@ export default function AdminChatListPage() {
     if (unreadCount > 0) {
       decrementMessageCount(unreadCount);
       setShoppers((prev) =>
-        prev.map((s) => (s.id === shopperId ? { ...s, is_read: 0 } : s))
+        prev.map((s) => (s.id === shopperId ? { ...s, is_read: 0 } : s)),
       );
     }
   };
 
-  if (isLoading) {
-    return (
-      <div className="container mx-auto py-8 px-4 flex justify-center items-center min-h-[300px]">
-        <Loader2 className="h-8 w-8 animate-spin text-primary" />
-        <span className="ml-2">Loading shoppers...</span>
-      </div>
-    );
-  }
-
   return (
-    <div className="container mx-auto py-8 px-4">
-      <h1 className="text-2xl font-bold mb-6 text-primary flex items-center gap-2">
-        <Users className="w-6 h-6" /> Select Shopper to Chat With
-      </h1>
+    <div className="container mx-auto py-6 px-3 sm:px-6 max-w-6xl">
+      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-6">
+        <div>
+          <h1 className="text-2xl sm:text-3xl font-bold text-[#041F40] flex items-center gap-2">
+            <Users className="w-7 h-7 text-[#041F40]" /> Messagerie Directe
+          </h1>
+          <p className="text-sm text-[#041F40]/70 mt-1">
+            Sélectionnez un auditeur pour échanger en direct sur les missions.
+          </p>
+        </div>
+      </div>
 
-      <Card className="shadow-sm">
-        <CardHeader>
-          <CardTitle>Shopper List</CardTitle>
+      <Card className="shadow-sm border-[#041F40]/10 bg-white">
+        <CardHeader className="pb-3">
+          <CardTitle className="text-lg sm:text-xl text-[#041F40]">Auditeurs</CardTitle>
           <CardDescription>
-            Select a shopper to start a conversation.
+            {filteredShoppers.length} conversation{filteredShoppers.length > 1 ? "s" : ""}
           </CardDescription>
           <div className="relative pt-2">
-            <Search className="absolute left-2.5 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+            <Search className="absolute left-2.5 top-1/2 transform -translate-y-1/2 h-4 w-4 text-[#041F40]/50" />
             <Input
-              placeholder="Search shoppers (name, email, ID)..."
+              placeholder="Rechercher par nom, email..."
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
-              className="pl-8 w-full md:w-1/2 lg:w-1/3"
+              className="pl-8 w-full sm:w-80 border-[#041F40]/20"
             />
           </div>
         </CardHeader>
-        <CardContent>
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead>Name</TableHead>
-                <TableHead>Email</TableHead>
-                <TableHead>Status</TableHead>
-                <TableHead className="text-right">Action</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {filteredShoppers.length > 0 ? (
-                filteredShoppers.map((shopper, index) => (
-                  <TableRow key={`shopper-${shopper.id}-${index}`}>
-                    <TableCell className="font-medium">
-                      <div className="flex items-center gap-2">
-                        <Avatar className="h-8 w-8 border">
-                          <AvatarImage
-                            src={shopper.profile_pic_url}
-                            alt={shopper.name}
-                          />
-                          <AvatarFallback>
+        <CardContent className="p-0 sm:p-6">
+          {isLoading ? (
+            <div className="flex justify-center items-center py-12">
+              <Loader2 className="h-8 w-8 animate-spin text-[#041F40]" />
+              <span className="ml-2 text-sm text-[#041F40]/70">Chargement...</span>
+            </div>
+          ) : (
+            <>
+              {/* Vue Desktop / Tablette */}
+              <div className="hidden md:block overflow-x-auto">
+                <Table>
+                  <TableHeader>
+                    <TableRow className="border-b border-[#041F40]/10">
+                      <TableHead className="font-bold text-[#041F40]">Nom</TableHead>
+                      <TableHead className="font-bold text-[#041F40]">Email</TableHead>
+                      <TableHead className="font-bold text-[#041F40]">Statut</TableHead>
+                      <TableHead className="text-right font-bold text-[#041F40]">Action</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {filteredShoppers.length > 0 ? (
+                      filteredShoppers.map((shopper) => (
+                        <TableRow key={`shopper-${shopper.id}`} className="hover:bg-[#041F40]/5 transition-colors">
+                          <TableCell className="font-medium">
+                            <div className="flex items-center gap-2.5">
+                              <Avatar className="h-8 w-8 border border-[#041F40]/10">
+                                <AvatarImage src={shopper.profile_pic_url} alt={shopper.name} />
+                                <AvatarFallback className="bg-[#041F40] text-[#D6C799]">
+                                  {shopper.name?.charAt(0)?.toUpperCase() || "U"}
+                                </AvatarFallback>
+                              </Avatar>
+                              <span className="flex items-center gap-2 text-[#041F40]">
+                                <span>{shopper.name}</span>
+                                {shopper.is_read > 0 && (
+                                  <Badge
+                                    variant="destructive"
+                                    className="h-5 min-w-[1.25rem] px-1.5 flex items-center justify-center rounded-full text-xs"
+                                  >
+                                    {shopper.is_read}
+                                  </Badge>
+                                )}
+                              </span>
+                            </div>
+                          </TableCell>
+                          <TableCell className="text-sm text-[#041F40]/80">{shopper.email}</TableCell>
+                          <TableCell>
+                            <Badge
+                              variant={shopper.status === "active" ? "default" : "outline"}
+                              className={
+                                shopper.status === "active"
+                                  ? "bg-green-100 text-green-800 border-green-300"
+                                  : "bg-red-100 text-red-800 border-red-300"
+                              }
+                            >
+                              {shopper.status === "active" ? "Actif" : "Inactif"}
+                            </Badge>
+                          </TableCell>
+                          <TableCell className="text-right">
+                            <Button asChild size="sm" className="bg-[#041F40] text-[#D6C799] hover:bg-[#041F40]/90">
+                              <Link
+                                href={`/admin/chat/${shopper.id}`}
+                                onClick={() => handleChatClick(shopper.id)}
+                              >
+                                <MessageSquare className="w-4 h-4 mr-1.5" /> Discuter
+                              </Link>
+                            </Button>
+                          </TableCell>
+                        </TableRow>
+                      ))
+                    ) : (
+                      <TableRow>
+                        <TableCell colSpan={4} className="h-24 text-center text-muted-foreground">
+                          Aucun auditeur trouvé.
+                        </TableCell>
+                      </TableRow>
+                    )}
+                  </TableBody>
+                </Table>
+              </div>
+
+              {/* Vue Mobile (320px - 767px) */}
+              <div className="block md:hidden divide-y divide-[#041F40]/10 px-3">
+                {filteredShoppers.length > 0 ? (
+                  filteredShoppers.map((shopper) => (
+                    <div key={`mob-shopper-${shopper.id}`} className="py-3 flex items-center justify-between gap-3">
+                      <div className="flex items-center gap-2.5 min-w-0">
+                        <Avatar className="h-10 w-10 border border-[#041F40]/10 shrink-0">
+                          <AvatarImage src={shopper.profile_pic_url} alt={shopper.name} />
+                          <AvatarFallback className="bg-[#041F40] text-[#D6C799]">
                             {shopper.name?.charAt(0)?.toUpperCase() || "U"}
                           </AvatarFallback>
                         </Avatar>
-                        <span className="flex items-center gap-1.5">
-                          <span>{shopper.name}</span>
-                          {shopper.is_read > 0 && (
-                            <Badge
-                              variant="destructive"
-                              className="h-4 min-w-[1rem] px-1.5 flex items-center justify-center rounded-full text-[10px]"
-                            >
-                              {shopper.is_read}
-                            </Badge>
-                          )}
-                        </span>
+                        <div className="min-w-0">
+                          <div className="flex items-center gap-1.5">
+                            <h3 className="font-semibold text-sm text-[#041F40] truncate">
+                              {shopper.name}
+                            </h3>
+                            {shopper.is_read > 0 && (
+                              <Badge variant="destructive" className="h-4 px-1 text-[10px]">
+                                {shopper.is_read}
+                              </Badge>
+                            )}
+                          </div>
+                          <p className="text-xs text-[#041F40]/60 truncate">
+                            {shopper.email}
+                          </p>
+                        </div>
                       </div>
-                    </TableCell>
-                    <TableCell>{shopper.email}</TableCell>
-                    <TableCell>
-                      <Badge
-                        variant={
-                          shopper.status === "active" ? "default" : "outline"
-                        }
-                        className={`capitalize ${
-                          shopper.status === "active"
-                            ? "bg-green-100 text-green-800 border-green-300"
-                            : "bg-red-100 text-red-800 border-red-300"
-                        }`}
-                      >
-                        {shopper.status}
-                      </Badge>
-                    </TableCell>
-                    <TableCell className="text-right">
-                      <Button asChild variant="default" size="sm">
+
+                      <Button asChild size="sm" className="bg-[#041F40] text-[#D6C799] shrink-0 text-xs">
                         <Link
                           href={`/admin/chat/${shopper.id}`}
-                          className="inline-flex items-center gap-1"
                           onClick={() => handleChatClick(shopper.id)}
                         >
-                          <MessageSquare className="w-4 h-4" /> Chat
+                          <MessageSquare className="w-3.5 h-3.5 mr-1" /> Ouvrir
                         </Link>
                       </Button>
-                    </TableCell>
-                  </TableRow>
-                ))
-              ) : (
-                <TableRow>
-                  <TableCell colSpan={4} className="h-24 text-center">
-                    No shoppers found matching your search criteria.
-                  </TableCell>
-                </TableRow>
-              )}
-            </TableBody>
-          </Table>
+                    </div>
+                  ))
+                ) : (
+                  <div className="py-8 text-center text-sm text-[#041F40]/60">
+                    Aucun auditeur trouvé.
+                  </div>
+                )}
+              </div>
+            </>
+          )}
         </CardContent>
       </Card>
     </div>
